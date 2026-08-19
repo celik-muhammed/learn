@@ -11,9 +11,9 @@ build:
     python: "3.12"jobs:
     # Download the requirements file from the other repo before installing dependencies
     # https://raw.githubusercontent.com/USERNAME/REPO_NAME/main/requirements.txt
-    pre_install:
-      # https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/all.txt
-      - curl -sSL https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/doc.txt -o requirements.txt
+  pre_install:
+    # https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/all.txt
+    - curl -sSL https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/doc.txt -o requirements.txt
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
