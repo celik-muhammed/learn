@@ -1,0 +1,28 @@
+# Sphinx documentation
+_contents/
+**_tags/
+**/apis/*.rst
+**auto_examples/
+**jupyterlite_contents/
+**/modules/generated/
+
+# jupyter lite atifact
+**.jupyterlite.doit.db
+**cockle-config.json
+**.cockle_temp/
+**cockle_wasm_env
+
+# sphinx template artifact
+/index.rst
+/devel/index.rst
+/devel/guide_maintainer.rst
+
+# sphinx-gallery template artifact
+/sg_execution_times.rst
+
+# sphinx scss artifact
+/css/styles/apis-search.css
+/css/styles/apis.css
+/css/styles/colors.css
+/css/styles/custom.css
+/css/styles/index.css
