@@ -17,7 +17,7 @@ build:
       # https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/all.txt
       - curl -sSL https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/doc.txt -o requirements.txt
       # 2. Delete the line referencing core.txt (quoted YAML string)
-      - "sed -i '/-r core.txt/d' requirements.txt"
+      - sed -i '/core.txt/d' requirements.txt
 
 # Build documentation in the "docs/" directory with Sphinx
 # Change to docs/conf.py if your conf.py is inside a docs folder
