@@ -13,8 +13,11 @@ build:
     # Download the requirements file from the other repo before installing dependencies
     # https://raw.githubusercontent.com/USERNAME/REPO_NAME/main/requirements.txt
     pre_install:
+      # 1. Download the external requirements file
       # https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/all.txt
       - curl -sSL https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/doc.txt -o requirements.txt
+      # 2. Delete the line containing '-r core.txt'
+      - sed -i '/-r core.txt/d' requirements.txt
 
 # Build documentation in the "docs/" directory with Sphinx
 # Change to docs/conf.py if your conf.py is inside a docs folder
