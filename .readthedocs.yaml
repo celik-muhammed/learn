@@ -18,6 +18,16 @@ build:
       - curl -sSL https://raw.githubusercontent.com/scikit-plots/scikit-plots/main/requirements/doc.txt -o requirements.txt
       # 2. Delete the line referencing core.txt (quoted YAML string)
       - sed -i '/core.txt/d' requirements.txt
+      # 3. Append additional documentation packages
+      # - echo "sphinx-issues" >> requirements.txt
+      # - printf "sphinx\nsphinx-rtd-theme\nsphinx-issues\n" >> requirements.txt
+      # 3. Append multiple lines at once
+      - |
+        cat << 'EOF' >> requirements.txt
+        sphinx
+        sphinx-rtd-theme
+        sphinx-issues
+        EOF
 
 # Build documentation in the "docs/" directory with Sphinx
 # Change to docs/conf.py if your conf.py is inside a docs folder
