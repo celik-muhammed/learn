@@ -53,8 +53,8 @@ extensions = [
     'sphinx_issues',
     "sphinx_tabs.tabs",  # Tabbed content extension
     "sphinx_tags",  # Needs to be loaded *after* autodoc.
-    # "sphinxcontrib.youtube",
-    "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",
+    "sphinxcontrib.youtube",
+    # "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",
     "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
 ]
 
