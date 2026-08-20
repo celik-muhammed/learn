@@ -24,15 +24,15 @@ build:
       # 3. Append multiple lines at once
       - |
         cat << 'EOF' >> requirements.txt
+        scikit-plots
         sphinx
         sphinx-rtd-theme
         sphinx-issues
         EOF
 
 # Build documentation in the "docs/" directory with Sphinx
-# Change to docs/conf.py if your conf.py is inside a docs folder
 sphinx:
-  configuration: ./conf.py
+  configuration: docs/source/conf.py
 
 # Optionally, but recommended,
 # declare the Python requirements required to build your documentation
