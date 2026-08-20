@@ -6,5 +6,8 @@ learning center.
 An AI-powered learning hub providing structured discussions and curated
 learning resources for scikit-plots community.
 
-The SLEPs are publicly available online on `Read The Docs
-<https://scikit-plots-learn.readthedocs.io>`_.
+The Learning Hub are publicly available online on [Read The Docs](https://scikit-plots-learn.readthedocs.io).
+
+## See Also:
+
+- https://github.com/scikit-plots/learn

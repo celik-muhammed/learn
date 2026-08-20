@@ -464,12 +464,13 @@ rst_prolog = f"""
 
 # Base URL — used by llms.txt and AI provider prompt templates
 # html_baseurl = "https://docs.example.com"
-html_baseurl = "https://scikit-plots.github.io"
+# html_baseurl = "https://scikit-plots.github.io"
+html_baseurl = "https://scikit-plots-learn.readthedocs.io/en/latest"
 ai_assistant_enabled = True
 
 # scikit-plots default:
 ai_assistant_panel_source_url = "https://github.com/scikit-plots/scikit-plots"
-ai_assistant_panel_site_url = "https://scikit-plots.github.io/dev"
+ai_assistant_panel_site_url = f"{html_baseurl}"
 
 # → https://scikit-plots.github.io/dev/apis/scikitplot.html
 # → https://scikit-plots.github.io/dev/user_guide/logging/index.html
