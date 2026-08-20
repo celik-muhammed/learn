@@ -28,6 +28,7 @@ build:
         sphinx
         sphinx-rtd-theme
         sphinx-issues
+        sphinxcontrib-youtube
         EOF
 
 # Build documentation in the "docs/" directory with Sphinx
