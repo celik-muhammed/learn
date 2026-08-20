@@ -15,8 +15,10 @@
 import os
 import sys
 
-# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('.'))
 
+# https://github.com/scikit-plots/scikit-plots
+# from . import _sphinx_ai_assistant  # dev
 
 # -- Project information -----------------------------------------------------
 
@@ -53,9 +55,10 @@ extensions = [
     'sphinx_issues',
     "sphinx_tabs.tabs",  # Tabbed content extension
     "sphinx_tags",  # Needs to be loaded *after* autodoc.
-    "sphinxcontrib.youtube",
     # "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",
-    "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
+    # "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
+    "sphinxcontrib.youtube",
+    "_sphinx_ai_assistant",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -464,13 +467,13 @@ rst_prolog = f"""
 
 # Base URL — used by llms.txt and AI provider prompt templates
 # html_baseurl = "https://docs.example.com"
-# html_baseurl = "https://scikit-plots.github.io"
+# html_baseurl = "https://scikit-plots.github.io/dev/"  # main or release branch
 html_baseurl = "https://scikit-plots-learn.readthedocs.io/en/latest"
 ai_assistant_enabled = True
 
 # scikit-plots default:
 ai_assistant_panel_source_url = "https://github.com/scikit-plots/scikit-plots"
-ai_assistant_panel_site_url = f"{html_baseurl}"
+ai_assistant_panel_site_url = f"{html_baseurl}"  # fallback default html_baseurl
 
 # → https://scikit-plots.github.io/dev/apis/scikitplot.html
 # → https://scikit-plots.github.io/dev/user_guide/logging/index.html
@@ -480,7 +483,7 @@ ai_assistant_panel_site_url = f"{html_baseurl}"
 # Page and/or can be use hash value correspond title
 # AI_ASSISTANT_PDF_PAGE_MAP → https://scikit-plots.github.io/dev/_downloads/scikit-plots.pdf#page=42
 ai_assistant_pdf_url_mode_toggle = True
-ai_assistant_pdf_export_url = f"{html_baseurl}"
+ai_assistant_pdf_export_url = f"{html_baseurl}"  # fallback default html_baseurl
 
 # Where to render the AI-assistant button.
 # "sidebar"  → right sidebar, above the page TOC (works well with pydata)
