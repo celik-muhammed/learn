@@ -1,4 +1,5 @@
-"""Tests for the structured ``llms.txt`` helpers.
+"""
+Tests for the structured ``llms.txt`` helpers.
 
 These cover the pure functions only, so the suite runs without Sphinx, without a
 built documentation tree, and without the optional Markdown dependencies. The
@@ -58,7 +59,8 @@ def test_title_stops_at_a_code_fence():
 
 
 def test_title_scan_is_bounded():
-    """A heading far down a long page is not searched for.
+    """
+    A heading far down a long page is not searched for.
 
     Whole-site generation must stay linear in page count, not page size.
     """
@@ -197,7 +199,8 @@ def test_root_entries_precede_every_section():
 
 
 def test_sections_keep_first_appearance_order():
-    """Not alphabetical: the file should mirror toctree order.
+    """
+    Not alphabetical: the file should mirror toctree order.
 
     Sorting would put ``API Reference`` before ``Getting Started`` for every
     project, which is backwards for anyone meeting the project for the first
