@@ -58,7 +58,8 @@ extensions = [
     # "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",
     # "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
     "sphinxcontrib.youtube",
-    "_sphinx_ai_assistant",
+    # "_sphinx_ext._sphinxcontrib_youtube",
+    "_sphinx_ext._sphinx_ai_assistant",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
