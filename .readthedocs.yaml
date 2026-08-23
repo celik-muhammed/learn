@@ -29,6 +29,8 @@ build:
         sphinx-rtd-theme
         sphinx-issues
         sphinxcontrib-youtube
+        beautifulsoup4
+        markdownify
         EOF
 
 # Build documentation in the "docs/" directory with Sphinx
