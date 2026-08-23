@@ -106,8 +106,8 @@ site with ``ai_assistant_generate_markdown = False``.
 
 Configure the default and whether readers may change it::
 
-    ai_assistant_copy_mode = "browser"     # or "static"
-    ai_assistant_copy_mode_toggle = True   # False pins the mode, hides the switch
+    ai_assistant_copy_mode = "browser"  # or "static"
+    ai_assistant_copy_mode_toggle = True  # False pins the mode, hides the switch
 
 Build pipeline
 --------------
@@ -600,7 +600,9 @@ CONVERSION_RULES = (
         "selector": "a.headerlink",
         "kind": "drop",
         "status": "implemented",
-        "evidence": "standard Sphinx permalink anchor; already dropped by the browser path",
+        "evidence": (
+            "standard Sphinx permalink anchor; already dropped by the browser path"
+        ),
     },
     # ---- sphinx-design, grounded in the published site ---------------------
     {
@@ -619,7 +621,9 @@ CONVERSION_RULES = (
         "selector": "div.sd-card",
         "kind": "passthrough",
         "status": "implemented",
-        "evidence": "dev/user_guide/index.html, dev/devel/index.html, dev/project/gallery.html",
+        "evidence": (
+            "dev/user_guide/index.html, dev/devel/index.html, dev/project/gallery.html"
+        ),
     },
     {
         "name": "inheritance-diagram",
@@ -636,12 +640,29 @@ CONVERSION_RULES = (
     # These carry no semantics a Markdown reader can use. Recording them as
     # explicit passthrough documents that they were considered, and keeps a
     # future generic div rule from accidentally giving them structure.
-    {"name": "row", "selector": "div.sd-row", "kind": "passthrough", "status": "implemented",
-     "evidence": "dev/user_guide/index.html renders div.sd-row.sd-row-cols-*"},
-    {"name": "column", "selector": "div.sd-col", "kind": "passthrough", "status": "implemented",
-     "evidence": "dev/user_guide/index.html renders div.sd-col.sd-d-flex-row"},
-    {"name": "container", "selector": "div.sd-container-fluid", "kind": "passthrough", "status": "implemented",
-     "evidence": "dev/user_guide/index.html renders div.sd-container-fluid.sd-sphinx-override"},
+    {
+        "name": "row",
+        "selector": "div.sd-row",
+        "kind": "passthrough",
+        "status": "implemented",
+        "evidence": "dev/user_guide/index.html renders div.sd-row.sd-row-cols-*",
+    },
+    {
+        "name": "column",
+        "selector": "div.sd-col",
+        "kind": "passthrough",
+        "status": "implemented",
+        "evidence": "dev/user_guide/index.html renders div.sd-col.sd-d-flex-row",
+    },
+    {
+        "name": "container",
+        "selector": "div.sd-container-fluid",
+        "kind": "passthrough",
+        "status": "implemented",
+        "evidence": (
+            "dev/user_guide/index.html renders div.sd-container-fluid.sd-sphinx-override"
+        ),
+    },
     # ---- sphinx-design tabs, dropdowns and rubrics --------------------------
     # Verified against dev/install/installation.html (10 sd-tab-set, 5 labels)
     # and dev/devel/guide_maintainer.html (3 sd-dropdown, 2 rubrics).
@@ -715,21 +736,62 @@ CONVERSION_RULES = (
     },
     # ---- planned: declared, inert, and asserted inert -----------------------
     # Each still needs rendered HTML before its selector can be written.
-    {"name": "grid", "selector": "div.sd-container-fluid", "kind": "passthrough", "status": "superseded",
-     "evidence": "the grid directive renders as sd-container-fluid/sd-row/sd-col; covered by the container, row and column rules"},
-    {"name": "tab-content", "selector": "div.sd-tab-content", "kind": "passthrough", "status": "implemented",
-     "evidence": "dev/install/installation.html; the panel body needs no wrapper of its own once its label is a heading"},
-    {"name": "button-link", "selector": "a.sd-btn", "kind": "passthrough", "status": "implemented",
-     "evidence": "dev/project/community.html renders a.sd-btn as a real anchor; the default link conversion already preserves text and href"},
-    {"name": "thumbnail", "selector": None, "kind": "passthrough", "status": "planned",
-     "evidence": "no sphx-glr-thumbcontainer markup in any fetched page; dev/index.html's img.img-thumbnail are sponsor logos, not sphinx_gallery thumbnails"},
-    {"name": "jupyterlite", "selector": None, "kind": "passthrough", "status": "planned",
-     "evidence": "dev/index.html has iframe.numpy-shell-frame, already covered by the video-embed rule; a dedicated label needs a real JupyterLite directive page"},
+    {
+        "name": "grid",
+        "selector": "div.sd-container-fluid",
+        "kind": "passthrough",
+        "status": "superseded",
+        "evidence": (
+            "the grid directive renders as sd-container-fluid/sd-row/sd-col; covered by the container, row and column rules"
+        ),
+    },
+    {
+        "name": "tab-content",
+        "selector": "div.sd-tab-content",
+        "kind": "passthrough",
+        "status": "implemented",
+        "evidence": (
+            "dev/install/installation.html; the panel body needs no wrapper of its own once its label is a heading"
+        ),
+    },
+    {
+        "name": "button-link",
+        "selector": "a.sd-btn",
+        "kind": "passthrough",
+        "status": "implemented",
+        "evidence": (
+            "dev/project/community.html renders a.sd-btn as a real anchor; the default link conversion already preserves text and href"
+        ),
+    },
+    {
+        "name": "thumbnail",
+        "selector": None,
+        "kind": "passthrough",
+        "status": "planned",
+        "evidence": (
+            "no sphx-glr-thumbcontainer markup in any fetched page; dev/index.html's img.img-thumbnail are sponsor logos, not sphinx_gallery thumbnails"
+        ),
+    },
+    {
+        "name": "jupyterlite",
+        "selector": None,
+        "kind": "passthrough",
+        "status": "planned",
+        "evidence": (
+            "dev/index.html has iframe.numpy-shell-frame, already covered by the video-embed rule; a dedicated label needs a real JupyterLite directive page"
+        ),
+    },
 )
 
 #: Rule kinds the converters know how to execute.
 CONVERSION_KINDS = (
-    "admonition", "link", "video", "fence", "drop", "heading", "unwrap",
+    "admonition",
+    "link",
+    "video",
+    "fence",
+    "drop",
+    "heading",
+    "unwrap",
     "passthrough",
 )
 
@@ -819,7 +881,11 @@ def _match_conversion_rule(el):
     return None
 
 
-def _render_conversion_rule(rule, el, text):
+def _render_conversion_rule(  # ruff: ignore[too-many-return-statements]
+    rule,
+    el,
+    text,
+):
     """Render an element according to a matched rule.
 
     Parameters
@@ -935,11 +1001,15 @@ def _video_link(src):
                 return label, src
             return label, watch + src[len(prefix) :]
     if PEERTUBE_EMBED_PATH in src:
-        return "PeerTube video", src.replace(PEERTUBE_EMBED_PATH, PEERTUBE_WATCH_PATH, 1)
+        return "PeerTube video", src.replace(
+            PEERTUBE_EMBED_PATH, PEERTUBE_WATCH_PATH, 1
+        )
     return "Video", src
 
 
-def _apply_conversion_rules(html_content):
+def _apply_conversion_rules(  # ruff: ignore[too-many-branches]
+    html_content,
+):
     """Rewrite the parsed HTML according to the shared rule table.
 
     Parameters
@@ -1149,7 +1219,10 @@ def _build_converter_class():
             This method reads (but never mutates) the original element.
             """
             rule = _match_conversion_rule(el)
-            if rule is not None and rule.get("kind") not in ("admonition", "passthrough"):
+            if rule is not None and rule.get("kind") not in (
+                "admonition",
+                "passthrough",
+            ):
                 return _render_conversion_rule(rule, el, text)
             classes: list[str] = list(el.get("class") or [])
             if "admonition" in classes:
@@ -2661,11 +2734,12 @@ def _validate_copy_mode(value):
     if value is None:
         return COPY_MODES[0]
     if not isinstance(value, str) or value not in COPY_MODES:
-        from sphinx.errors import ExtensionError
+        from sphinx.errors import (  # ruff: ignore[import-outside-top-level]
+            ExtensionError,
+        )
 
         raise ExtensionError(
-            "ai_assistant_copy_mode must be one of "
-            f"{COPY_MODES!r}, got {value!r}"
+            f"ai_assistant_copy_mode must be one of {COPY_MODES!r}, got {value!r}"
         )
     return value
 
@@ -3694,7 +3768,8 @@ LLMS_TXT_ROOT_FIRST = ("index.md", "README.md", "readme.md")
 
 
 def _llms_entry_title(markdown: str, fallback: str) -> str:
-    """Extract a human title from a Markdown document.
+    r"""
+    Extract a human title from a Markdown document.
 
     Parameters
     ----------
@@ -3736,7 +3811,8 @@ def _llms_entry_title(markdown: str, fallback: str) -> str:
 
 
 def _llms_entry_description(markdown: str, limit: int = 160) -> str:
-    """Extract a one-line description from a Markdown document.
+    r"""
+    Extract a one-line description from a Markdown document.
 
     Parameters
     ----------
@@ -3854,7 +3930,8 @@ def _llms_section_for(rel_posix: str, mapping: dict | None = None) -> str:
 
 
 def _render_llms_txt(project, summary, entries):
-    """Render the structured ``llms.txt`` body.
+    r"""
+    Render the structured ``llms.txt`` body.
 
     Parameters
     ----------
@@ -3885,9 +3962,13 @@ def _render_llms_txt(project, summary, entries):
 
     Examples
     --------
-    >>> _render_llms_txt("P", None, [
-    ...     {"section": "", "title": "Home", "url": "/index.md", "description": ""},
-    ... ])
+    >>> _render_llms_txt(
+    ...     "P",
+    ...     None,
+    ...     [
+    ...         {"section": "", "title": "Home", "url": "/index.md", "description": ""},
+    ...     ],
+    ... )
     '# P\n\n- [Home](/index.md)\n'
     """
     lines = [f"# {project}", ""]
@@ -4296,11 +4377,24 @@ def generate_markdown_files(app: Sphinx, exception: Exception | None) -> None:
         return
 
     if not _has_markdown_deps():
-        log.warning(
-            "AI Assistant: Markdown generation requires beautifulsoup4 and "
-            "markdownify.  Install them with: "
-            "pip install beautifulsoup4 markdownify"
+        missing = [
+            "beautifulsoup4" if name == "bs4" else name
+            for name in ("bs4", "markdownify")
+            if importlib.util.find_spec(name) is None
+        ]
+        detail = ", ".join(missing) or "beautifulsoup4, markdownify"
+        verb = "is" if len(missing) == 1 else "are"
+        message = (
+            "AI Assistant: ai_assistant_generate_markdown is True but "
+            f"{detail} {verb} not installed, so no page.md was written and "
+            "llms.txt will be skipped. Every .md URL on the published site "
+            "will return 404. Install with: pip install " + detail.replace(", ", " ")
         )
+        if _cfg_bool(app.config, "ai_assistant_strict", False):
+            from sphinx.errors import ExtensionError  # noqa: PLC0415
+
+            raise ExtensionError(message)
+        log.warning(message)
         return
 
     outdir = Path(builder.outdir)
@@ -4371,7 +4465,7 @@ def generate_markdown_files(app: Sphinx, exception: Exception | None) -> None:
     )
 
 
-def generate_llms_txt(  # noqa: PLR0911
+def generate_llms_txt(  # noqa: PLR0911  # ruff: ignore[too-many-branches]
     app: Sphinx, exception: Exception | None
 ) -> None:
     """Post-build hook: write ``llms.txt`` listing all generated ``.md`` URLs.
@@ -4451,8 +4545,7 @@ def generate_llms_txt(  # noqa: PLR0911
     fmt = _cfg_str(app.config, "ai_assistant_llms_txt_format") or LLMS_TXT_FORMATS[0]
     if fmt not in LLMS_TXT_FORMATS:
         log.warning(
-            "AI Assistant: ai_assistant_llms_txt_format=%r is not one of %r; "
-            "using %r.",
+            "AI Assistant: ai_assistant_llms_txt_format=%r is not one of %r; using %r.",
             fmt,
             LLMS_TXT_FORMATS,
             LLMS_TXT_FORMATS[0],
@@ -4500,9 +4593,13 @@ def generate_llms_txt(  # noqa: PLR0911
                     text = md_file.read_text(encoding="utf-8", errors="replace")
                 except OSError as exc:
                     # One unreadable page must not lose the whole index.
-                    log.warning("AI Assistant: cannot read %s for llms.txt: %s", rel_posix, exc)
+                    log.warning(
+                        "AI Assistant: cannot read %s for llms.txt: %s", rel_posix, exc
+                    )
                     text = ""
-                fallback = rel.stem.replace("-", " ").replace("_", " ").strip() or rel_posix
+                fallback = (
+                    rel.stem.replace("-", " ").replace("_", " ").strip() or rel_posix
+                )
                 entries.append(
                     {
                         "section": _llms_section_for(rel_posix, sections_map),
@@ -4623,7 +4720,8 @@ def _cfg_dict(config: Any, key: str) -> dict | None:
 
     Examples
     --------
-    >>> class C: mapping = {"apis": "API"}
+    >>> class C:
+    ...     mapping = {"apis": "API"}
     >>> _cfg_dict(C(), "mapping")
     {'apis': 'API'}
     >>> _cfg_dict(C(), "absent") is None
@@ -5436,9 +5534,7 @@ def add_ai_assistant_context(
             _cfg_str(app.config, "ai_assistant_copy_mode") or None
         ),
         # False hides the switch and pins Copy to copyMode.
-        "copyModeToggle": _cfg_bool(
-            app.config, "ai_assistant_copy_mode_toggle", True
-        ),
+        "copyModeToggle": _cfg_bool(app.config, "ai_assistant_copy_mode_toggle", True),
         # ---- shared conversion rules ----------------------------------------
         # The browser builds its Turndown rules from this list, so the two
         # conversion paths cannot drift apart: there is one table, not two.
@@ -6000,6 +6096,18 @@ def setup(app: Sphinx) -> dict[str, Any]:
     # Optional {path_prefix: "Section Title"} overrides. Without it, section
     # titles are derived from the first path segment.
     app.add_config_value("ai_assistant_llms_txt_sections", None, "html")
+    # ---- strict mode ------------------------------------------------------
+    # When True, a configuration that asks for something the environment cannot
+    # deliver fails the build instead of warning. Currently that means
+    # `ai_assistant_generate_markdown = True` with beautifulsoup4 or
+    # markdownify missing.
+    #
+    # Default False, because an optional feature quietly staying off is the
+    # right behaviour for a docs build that never asked for it. But a site that
+    # set generate_markdown=True *did* ask, and a warning inside a 1 133-page
+    # build log is not a signal anyone sees — the published site simply serves
+    # 404 for every page.md.
+    app.add_config_value("ai_assistant_strict", False, "html")
 
     # ---- AI panel (floating chat drawer) config ----------------------------
     #
