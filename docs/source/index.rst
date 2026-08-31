@@ -151,3 +151,17 @@
   * https://jupyterlite.github.io/javascript-kernel/lab/index.html
   * https://jupyterlite.github.io/p5-kernel/lab/index.html
   * https://jupyterlite.github.io/echo-kernel/lab/index.html
+
+.. raw:: html
+
+  <div>
+    <!-- Interactive Shell -->
+    <!-- src="https://jupyterlite.github.io/demo/repl/?toolbar=1&kernel=python&code=import%20numpy%20as%20np" -->
+    <!-- src="https://jupyterlite.github.io/demo/repl/#toolbar=1&kernel=python&execute=0&code=import+numpy+as+np" -->
+    <iframe
+      src="https://jupyterlite.github.io/demo/repl/#toolbar=1&kernel=python&execute=0&code=import+numpy+as+np"
+      width="100%" height="71vh"
+      style="height: 71vh; display: block;"
+    >Try the REPL!
+    </iframe>
+  </div>
