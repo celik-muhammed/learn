@@ -5,6 +5,9 @@
 Research Resources
 ==========================
 
+.. 
+  # https://numpy.org/learn/
+
 .. _ai_ml_research_engineer:
 
 -----------------------------
