@@ -1,5 +1,7 @@
 # scikitplot/_externals/_sphinx_ext/_sphinx_ai_assistant/_hf_spaces_proxy/_utils/_storage.py
 #
+# flake8: noqa: D213
+#
 # Authors: The scikit-plots developers
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -278,7 +280,9 @@ def review_title_for(receipt_id: str) -> str:
     return f"Dataset contribution {review_key_for(receipt_id)}"
 
 
-def review_description_for(review_identity: str, base_branch: str, reject_word: str = "close") -> str:
+def review_description_for(
+    review_identity: str, base_branch: str, reject_word: str = "close"
+) -> str:
     raw = str(review_identity or "")
     key = raw if re.fullmatch(r"[0-9a-f]{24}", raw) else review_key_for(raw)
     return (
@@ -1015,7 +1019,7 @@ class StorageCoordinator:
             return merged
 
     @staticmethod
-    def _review_from_hint(
+    def _review_from_hint(  # ruff: ignore[too-many-return-statements]
         target: StorageTarget,
         *,
         branch: str,
@@ -1024,7 +1028,11 @@ class StorageCoordinator:
     ) -> ReviewReceipt | None:
         if not isinstance(review_hint, dict):
             return None
-        raw = review_hint.get("review") if isinstance(review_hint.get("review"), dict) else review_hint
+        raw = (
+            review_hint.get("review")
+            if isinstance(review_hint.get("review"), dict)
+            else review_hint
+        )
         if not isinstance(raw, dict):
             return None
         review_id = str(raw.get("reviewId") or "").strip()
@@ -1057,8 +1065,10 @@ class StorageCoordinator:
             path=str((review_hint.get("paths") or {}).get(target.id) or ""),
         )
 
-    async def _refresh_review_target(
-        self, target: StorageTarget, review: ReviewReceipt
+    async def _refresh_review_target(  # ruff: ignore[too-many-branches, too-many-return-statements]
+        self,
+        target: StorageTarget,
+        review: ReviewReceipt,
     ) -> ReviewReceipt | None:
         """Refresh one known review directly by provider-native review ID."""
         if target.provider == "huggingface":
@@ -1076,8 +1086,12 @@ class StorageCoordinator:
                     return None
                 return replace(
                     review,
-                    review_url=str(getattr(details, "url", "") or review.review_url)[:2048],
-                    status=str(getattr(details, "status", "unknown") or "unknown").lower(),
+                    review_url=str(getattr(details, "url", "") or review.review_url)[
+                        :2048
+                    ],
+                    status=str(
+                        getattr(details, "status", "unknown") or "unknown"
+                    ).lower(),
                 )
             except ValueError:
                 return None
@@ -1086,7 +1100,8 @@ class StorageCoordinator:
                 if status == 404:  # ruff: ignore[magic-value-comparison]
                     return None
                 raise StorageWriteError(
-                    "HF_REVIEW_LOOKUP", transient=status is None or status in _TRANSIENT_STATUS
+                    "HF_REVIEW_LOOKUP",
+                    transient=status is None or status in _TRANSIENT_STATUS,
                 ) from exc
         if target.provider == "github":
             owner, repo = _repo_parts(target.repo)
@@ -1104,10 +1119,24 @@ class StorageCoordinator:
             if status == 404:  # ruff: ignore[magic-value-comparison]
                 return None
             if status != 200:  # ruff: ignore[magic-value-comparison]
-                raise StorageWriteError("GITHUB_REVIEW_LOOKUP", transient=status in _TRANSIENT_STATUS)
+                raise StorageWriteError(
+                    "GITHUB_REVIEW_LOOKUP", transient=status in _TRANSIENT_STATUS
+                )
             data = data or {}
-            state = "merged" if data.get("merged_at") else ("draft" if data.get("draft") and data.get("state") == "open" else str(data.get("state") or "unknown"))
-            return replace(review, review_url=str(data.get("html_url") or review.review_url)[:2048], status=state)
+            state = (
+                "merged"
+                if data.get("merged_at")
+                else (
+                    "draft"
+                    if data.get("draft") and data.get("state") == "open"
+                    else str(data.get("state") or "unknown")
+                )
+            )
+            return replace(
+                review,
+                review_url=str(data.get("html_url") or review.review_url)[:2048],
+                status=state,
+            )
         if target.provider == "gitlab":
             base = target.api_base or "https://gitlab.com/api/v4"
             project = quote(target.repo, safe="")
@@ -1121,14 +1150,23 @@ class StorageCoordinator:
             if status == 404:  # ruff: ignore[magic-value-comparison]
                 return None
             if status != 200:  # ruff: ignore[magic-value-comparison]
-                raise StorageWriteError("GITLAB_REVIEW_LOOKUP", transient=status in _TRANSIENT_STATUS)
+                raise StorageWriteError(
+                    "GITLAB_REVIEW_LOOKUP", transient=status in _TRANSIENT_STATUS
+                )
             data = data or {}
             state = str(data.get("state") or "unknown")
             if state == "opened":
                 state = "open"
-            return replace(review, review_url=str(data.get("web_url") or review.review_url)[:2048], status=state)
+            return replace(
+                review,
+                review_url=str(data.get("web_url") or review.review_url)[:2048],
+                status=state,
+            )
         workspace, repo = _repo_parts(target.repo)
-        headers = {"Authorization": f"Bearer {target.token}", "Accept": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {target.token}",
+            "Accept": "application/json",
+        }
         status, data = await self._request_bounded_json(
             "GET",
             f"https://api.bitbucket.org/2.0/repositories/{quote(workspace)}/{quote(repo)}/pullrequests/{quote(review.review_id)}",
@@ -1138,11 +1176,20 @@ class StorageCoordinator:
         if status == 404:  # ruff: ignore[magic-value-comparison]
             return None
         if status != 200:  # ruff: ignore[magic-value-comparison]
-            raise StorageWriteError("BITBUCKET_REVIEW_LOOKUP", transient=status in _TRANSIENT_STATUS)
+            raise StorageWriteError(
+                "BITBUCKET_REVIEW_LOOKUP", transient=status in _TRANSIENT_STATUS
+            )
         data = data or {}
         state = str(data.get("state") or "unknown").upper()
-        mapped = {"OPEN": "open", "MERGED": "merged", "DECLINED": "closed", "SUPERSEDED": "closed"}.get(state, state.lower())
-        html_url = (((data.get("links") or {}).get("html") or {}).get("href") or review.review_url)
+        mapped = {
+            "OPEN": "open",
+            "MERGED": "merged",
+            "DECLINED": "closed",
+            "SUPERSEDED": "closed",
+        }.get(state, state.lower())
+        html_url = ((data.get("links") or {}).get("html") or {}).get(
+            "href"
+        ) or review.review_url
         return replace(review, review_url=str(html_url)[:2048], status=mapped)
 
     async def _open_review_target(
@@ -1376,7 +1423,9 @@ class StorageCoordinator:
             raise StorageWriteError(
                 "GITHUB_REVIEW_BRANCH", transient=status in _TRANSIENT_STATUS
             )
-        await self._write_github(replace(target, branch=branch), path, content, f"{title} · revision 1")
+        await self._write_github(
+            replace(target, branch=branch), path, content, f"{title} · revision 1"
+        )
         pulls = f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}/pulls"
         status, data = await self._request_bounded_json(
             "POST",
@@ -1473,7 +1522,9 @@ class StorageCoordinator:
             raise StorageWriteError(
                 "GITLAB_REVIEW_BRANCH", transient=status in _TRANSIENT_STATUS
             )
-        await self._write_gitlab(replace(target, branch=branch), path, content, f"{title} · revision 1")
+        await self._write_gitlab(
+            replace(target, branch=branch), path, content, f"{title} · revision 1"
+        )
         mr_url = f"{base}/projects/{project}/merge_requests"
         status, data = await self._request_bounded_json(
             "POST",
@@ -2130,7 +2181,7 @@ class StorageCoordinator:
             "content": base64.b64encode(content).decode("ascii"),
             "branch": target.branch,
         }
-        if status == 200:
+        if status == 200:  # ruff: ignore[magic-value-comparison]
             sha = str((current or {}).get("sha") or "")
             if not sha:
                 raise StorageWriteError("GITHUB_REVIEW_UPDATE_SHA")
@@ -2163,7 +2214,11 @@ class StorageCoordinator:
             "commit_message": message,
             "content": content.decode("utf-8"),
         }
-        method = "PUT" if get_status == 200 else "POST"
+        method = (
+            "PUT"
+            if get_status == 200  # ruff: ignore[magic-value-comparison]
+            else "POST"
+        )
         write_status = await self._request_no_body(
             method, url, headers=headers, json=payload, timeout=20.0
         )

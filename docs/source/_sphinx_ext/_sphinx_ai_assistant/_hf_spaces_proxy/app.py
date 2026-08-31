@@ -2737,12 +2737,11 @@ def _cors_public_status() -> dict[str, Any]:
     return {
         # Backward-compatible singular fields refer to the primary project origin.
         "official_docs_origin": primary_default,
-        "official_docs_origin_allowed": (
-            wildcard or primary_default in _allowed_origins
-        ),
+        "official_docs_origin_allowed": wildcard or primary_default in _allowed_origins,
         "default_allowed_origin_count": len(_DEFAULT_ALLOWED_ORIGINS),
         "default_allowed_origins_allowed": (
-            wildcard or all(origin in _allowed_origins for origin in _DEFAULT_ALLOWED_ORIGINS)
+            wildcard
+            or all(origin in _allowed_origins for origin in _DEFAULT_ALLOWED_ORIGINS)
         ),
         "wildcard": wildcard,
         "allowed_origin_count": None if wildcard else len(_allowed_origins),
@@ -3169,11 +3168,17 @@ def _contribution_review_reference(
     maintainer to locate the native PR/MR or its stable review file.
     """
     storage = entry.get("storage") if isinstance(entry.get("storage"), dict) else {}
-    raw_review = storage.get("review") if isinstance(storage.get("review"), dict) else {}
+    raw_review = (
+        storage.get("review") if isinstance(storage.get("review"), dict) else {}
+    )
     paths = storage.get("paths") if isinstance(storage.get("paths"), dict) else {}
 
-    provider = str(getattr(review, "provider", "") or raw_review.get("provider") or "")[:32]
-    review_id = str(getattr(review, "review_id", "") or raw_review.get("reviewId") or "")[:32]
+    provider = str(getattr(review, "provider", "") or raw_review.get("provider") or "")[
+        :32
+    ]
+    review_id = str(
+        getattr(review, "review_id", "") or raw_review.get("reviewId") or ""
+    )[:32]
     path = str(getattr(review, "path", "") or "")
     if not path:
         target_id = str(raw_review.get("targetId") or "")
@@ -3223,7 +3228,7 @@ def _contribution_status_payload(entry: dict[str, Any]) -> dict[str, Any]:
         "physicalErasureGuaranteed": False,
         "physicalErasureScope": "not-guaranteed",
         "reviewRevision": max(
-            1, int(((entry.get("operation") or {}).get("reviewRevision") or 1))
+            1, int((entry.get("operation") or {}).get("reviewRevision") or 1)
         ),
         "expiresAt": (
             int(float(entry.get("expiresAt") or 0) * 1000)
@@ -3304,7 +3309,9 @@ async def _ensure_provider_review(entry: dict[str, Any]):
     if _STORAGE.primary is None:
         raise StorageWriteError("NO_PRIMARY_TARGET")
     receipt_id = str(entry.get("receiptId") or "")
-    storage_hint = entry.get("storage") if isinstance(entry.get("storage"), dict) else {}
+    storage_hint = (
+        entry.get("storage") if isinstance(entry.get("storage"), dict) else {}
+    )
     if isinstance(storage_hint.get("review"), dict):
         review = await _STORAGE.get_contribution_review(
             receipt_id, review_hint=storage_hint
@@ -3484,7 +3491,7 @@ def _contribution_replay_response(
         "reviewMode": CONTRIBUTION_REVIEW_MODE,
         "trainingEligible": str(entry.get("state") or "") == "eligible",
         "reviewRevision": max(
-            1, int(((entry.get("operation") or {}).get("reviewRevision") or 1))
+            1, int((entry.get("operation") or {}).get("reviewRevision") or 1)
         ),
     }
     if review_update:
@@ -3846,7 +3853,9 @@ async def update_pending_contribution(
         raise HTTPException(status_code=400, detail="Invalid JSON body.") from exc
     records = _validate_contribution_update_payload(payload)
     payload_digest = _canonical_payload_digest(payload)
-    operation = entry.get("operation") if isinstance(entry.get("operation"), dict) else {}
+    operation = (
+        entry.get("operation") if isinstance(entry.get("operation"), dict) else {}
+    )
     current_digest = str(operation.get("payloadDigest") or "")
 
     if current_digest and secrets.compare_digest(current_digest, payload_digest):
@@ -3856,7 +3865,8 @@ async def update_pending_contribution(
                 review = await _ensure_provider_review(entry)
             except StorageWriteError as exc:
                 raise HTTPException(
-                    status_code=503, detail="Contribution review could not be recovered."
+                    status_code=503,
+                    detail="Contribution review could not be recovered.",
                 ) from exc
         logger.info(json.dumps({"event": "contribute.review_duplicate_suppressed"}))
         return _contribution_replay_response(
@@ -3903,7 +3913,9 @@ async def update_pending_contribution(
                 commit_message=f"Update dataset contribution review (revision {next_revision})",
                 path_timestamp=float(entry.get("receivedAt") or _time.time()),
                 review_hint=(
-                    entry.get("storage") if isinstance(entry.get("storage"), dict) else None
+                    entry.get("storage")
+                    if isinstance(entry.get("storage"), dict)
+                    else None
                 ),
             )
         except StorageWriteError as exc:
@@ -3935,7 +3947,11 @@ async def update_pending_contribution(
             storage=(
                 review.storage_metadata()
                 if review is not None
-                else (entry.get("storage") if isinstance(entry.get("storage"), dict) else {})
+                else (
+                    entry.get("storage")
+                    if isinstance(entry.get("storage"), dict)
+                    else {}
+                )
             ),
         )
     except ContributionLedgerError as exc:
@@ -3952,9 +3968,12 @@ async def update_pending_contribution(
                 "event": "contribute.review_updated",
                 "rows": len(normalized),
                 "revision": int(
-                    ((updated.get("operation") or {}).get("reviewRevision") or next_revision)
+                    (updated.get("operation") or {}).get("reviewRevision")
+                    or next_revision
                 ),
-                "review_provider": getattr(review, "provider", None) if review else None,
+                "review_provider": (
+                    getattr(review, "provider", None) if review else None
+                ),
             }
         )
     )
@@ -4033,7 +4052,9 @@ async def delete_or_withdraw_contribution(  # ruff: ignore[too-many-branches]
                 close_result = await _STORAGE.close_contribution_review(
                     receipt_id,
                     review_hint=(
-                        entry.get("storage") if isinstance(entry.get("storage"), dict) else None
+                        entry.get("storage")
+                        if isinstance(entry.get("storage"), dict)
+                        else None
                     ),
                 )
                 logger.info(
@@ -4203,7 +4224,9 @@ async def promote_contribution(  # ruff: ignore[too-many-branches]
             merged_review = await _STORAGE.merge_contribution_review(
                 receipt_id,
                 review_hint=(
-                    entry.get("storage") if isinstance(entry.get("storage"), dict) else None
+                    entry.get("storage")
+                    if isinstance(entry.get("storage"), dict)
+                    else None
                 ),
             )
             if prepared_review is None:

@@ -715,22 +715,31 @@ class SQLiteContributionLedger:
                             "SELECT COALESCE(SUM(bytes), 0) FROM contribution_receipts WHERE state IN ('quarantined','promoting','promotion_uncertain','withdrawing')"
                         ).fetchone()[0]
                     )
-                    if pending_bytes - int(entry.get("bytes") or 0) + int(byte_count) > self.max_pending_bytes:
+                    if (
+                        pending_bytes - int(entry.get("bytes") or 0) + int(byte_count)
+                        > self.max_pending_bytes
+                    ):
                         raise ContributionLedgerError("PENDING_BYTE_CAPACITY")
                     operation = dict(entry.get("operation") or {})
                     operation["payloadDigest"] = str(payload_digest)
-                    operation["reviewRevision"] = int(operation.get("reviewRevision") or 1) + 1
+                    operation["reviewRevision"] = (
+                        int(operation.get("reviewRevision") or 1) + 1
+                    )
                     storage_json = (
                         json.dumps(storage, separators=(",", ":"))
                         if storage is not None
-                        else json.dumps(entry.get("storage") or {}, separators=(",", ":"))
+                        else json.dumps(
+                            entry.get("storage") or {}, separators=(",", ":")
+                        )
                     )
                     conn.execute(
                         """UPDATE contribution_receipts
                            SET records_json=?,bytes=?,dedup_keys_json=?,operation_json=?,row_count=?,storage_json=?,last_error='',updated_at=?
                            WHERE receipt_id=?""",
                         (
-                            json.dumps(records, ensure_ascii=False, separators=(",", ":")),
+                            json.dumps(
+                                records, ensure_ascii=False, separators=(",", ":")
+                            ),
                             int(byte_count),
                             json.dumps(dedup_keys, separators=(",", ":")),
                             json.dumps(operation, separators=(",", ":")),
