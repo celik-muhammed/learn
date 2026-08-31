@@ -48,8 +48,7 @@ def _assert_model_privacy_contract(src: str) -> None:
 
 
 def _mutate_redaction_rule(src: str, replacement: str) -> str:
-    """
-    Disable exactly one redaction rule selected by its semantic replacement.
+    """Disable exactly one redaction rule selected by its semantic replacement.
 
     Mutation tests should not depend on source-format trivia such as ``re.I``
     versus ``re.IGNORECASE``. The replacement label is the stable privacy
