@@ -51,6 +51,7 @@ Android
 #. |Learn C Programming| - Android App
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

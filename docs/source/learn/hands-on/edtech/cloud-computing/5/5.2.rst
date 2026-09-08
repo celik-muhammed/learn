@@ -426,6 +426,7 @@ Next, we'll build an image that includes a webserver and a Python
 script.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

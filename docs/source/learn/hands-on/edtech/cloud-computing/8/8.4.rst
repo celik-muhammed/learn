@@ -38,6 +38,7 @@ Then, you will be prompted to enter the passphrase if you added one to the key.
     Login prompt using a key
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

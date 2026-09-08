@@ -172,6 +172,7 @@ image build from this file.
 This file was influenced from https://github.com/dldl/sphinx-server
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

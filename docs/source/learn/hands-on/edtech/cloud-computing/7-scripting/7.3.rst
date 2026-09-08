@@ -258,6 +258,7 @@ run the commands, and provide minimal output.
     Connection: keep-alive
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

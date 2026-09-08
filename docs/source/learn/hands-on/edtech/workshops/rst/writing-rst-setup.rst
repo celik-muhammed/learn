@@ -88,6 +88,7 @@ Configure LiveReload
 .. _Docker and WSL 2: https://devblogs.microsoft.com/commandline/announcing-wsl-2/
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

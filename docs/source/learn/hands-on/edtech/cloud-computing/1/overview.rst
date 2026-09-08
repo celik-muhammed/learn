@@ -69,6 +69,7 @@ Optional configurations
  #. Add security to your VPS by changing the SSH port.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

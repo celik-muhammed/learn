@@ -394,6 +394,7 @@ destroying the pointer.
     126 32 71 111 111 100 98 121 101 33 10
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

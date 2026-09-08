@@ -199,6 +199,7 @@ Set path in Windows System
 .. |image25| image:: images/image25.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -50,6 +50,7 @@ using the same Dockerfile.
        python/flask          dev       df7d7ef24f24   About a minute ago   63MB
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

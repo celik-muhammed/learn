@@ -62,25 +62,76 @@
 
 ..
   • ☀️ 🌕 🌙 ✨
+  # YouTube <learn/resource/youtube/index.rst>
 
 ======================================================================
 🌕 Learning Hub • AI-Powered ✨
 ======================================================================
 
 .. toctree::
-	:maxdepth: 1
-	:caption: Project
-	:hidden:
+  :maxdepth: 1
+  :caption: Project
+  :hidden:
+  
+  scikit-plots <https://scikit-plots.github.io/dev/index.html>
+  Learn <learn/index.rst>
+  Hands-On <learn/hands-on/index.rst>
+  Kitchen Sink <learn/kitchen-sink/index.rst>
+  External <learn/resource/index.rst>
+  YouTube <learn/resource/youtube/index.rst>
 
-	scikit-plots <https://scikit-plots.github.io/dev/index.html>
-	Learn <learn/index.rst>
-	Tags <_tags/tagsindex.rst>
-
-	Code of Conduct <https://scikit-plots.github.io/dev/project/code_of_conduct.html>
+  Tags <_tags/tagsindex.rst>
+  Code of Conduct <https://scikit-plots.github.io/dev/project/code_of_conduct.html>
 	Community <https://scikit-plots.github.io/dev/project/community.html>
 	Developer's Guide <https://scikit-plots.github.io/dev/devel/index.html>
 	Governance Process <https://scikit-plots.github.io/dev/project/governance.html>
 	About Us | Project <https://scikit-plots.github.io/dev/project/index.html>
+
+
+.. raw:: html
+
+  <div>
+    <!-- Interactive Shell -->
+    <!-- src="https://jupyterlite.github.io/demo/repl/?toolbar=1&kernel=python&code=import%20numpy%20as%20np" -->
+    <!-- src="https://jupyterlite.github.io/demo/repl/#toolbar=1&kernel=python&execute=0&code=import+numpy+as+np" -->
+    <br>
+    <iframe
+      src="https://jupyterlite.github.io/demo/repl/#toolbar=1&kernel=python&execute=0&code=import+numpy+as+np"
+      width="100%" height="71vh"
+      style="height: 71vh; display: block;"
+    >Try the REPL!
+    </iframe>
+  </div>
+
+
+.. admonition:: jupyterlite (pyodide, xeus-python, c, c++)
+  :collapsible: closed
+
+  .. rubric:: jupyterlite lab pyodide:
+
+  * https://jupyterlite-pyodide-kernel.readthedocs.io/en/latest/_static/lab/index.html
+
+  .. rubric:: jupyterlite lab all-in-one-pyodide[pyodide, xpython, r, c, cpp, sqlite, js, p5]:
+
+  * https://jupyter.org/try-jupyter/lab/index.html
+  * https://jupyterlite.github.io/demo/lab/index.html
+  * https://jupyterlite.readthedocs.io/en/stable/_static/lab/index.html
+
+  .. rubric:: jupyterlite lab all-in-one-xeus[xpython, r, c, cpp, js]:
+
+  * https://jupyterlite-xeus.readthedocs.io/en/stable/lite/lab/index.html
+  * https://jupyterlite.github.io/xeus-lite-demo/lab/index.html
+
+  .. rubric:: jupyterlite lab terminal[pyodide]:
+
+  * https://jupyterlite.github.io/terminal/lab/index.html
+  * https://jupyterlite.github.io/cockle/
+
+  .. rubric:: jupyterlite lab misc:
+
+  * https://jupyterlite.github.io/javascript-kernel/lab/index.html
+  * https://jupyterlite.github.io/p5-kernel/lab/index.html
+  * https://jupyterlite.github.io/echo-kernel/lab/index.html
 
 
 .. seealso::
@@ -123,45 +174,9 @@
       - https://scikit-plots.github.io/dev/lite/repl/index.html?kernel=python&code=import%20this
 
 
-.. admonition:: jupyterlite (pyodide, xeus-python, c, c++)
-  :collapsible: closed
+..
+  .. admonition:: Source & License
+    :class: dropdown
 
-  .. rubric:: jupyterlite lab pyodide:
-
-  * https://jupyterlite-pyodide-kernel.readthedocs.io/en/latest/_static/lab/index.html
-
-  .. rubric:: jupyterlite lab all-in-one-pyodide[pyodide, xpython, r, c, cpp, sqlite, js, p5]:
-
-  * https://jupyter.org/try-jupyter/lab/index.html
-  * https://jupyterlite.github.io/demo/lab/index.html
-  * https://jupyterlite.readthedocs.io/en/stable/_static/lab/index.html
-
-  .. rubric:: jupyterlite lab all-in-one-xeus[xpython, r, c, cpp, js]:
-
-  * https://jupyterlite-xeus.readthedocs.io/en/stable/lite/lab/index.html
-  * https://jupyterlite.github.io/xeus-lite-demo/lab/index.html
-
-  .. rubric:: jupyterlite lab terminal[pyodide]:
-
-  * https://jupyterlite.github.io/terminal/lab/index.html
-  * https://jupyterlite.github.io/cockle/
-
-  .. rubric:: jupyterlite lab misc:
-
-  * https://jupyterlite.github.io/javascript-kernel/lab/index.html
-  * https://jupyterlite.github.io/p5-kernel/lab/index.html
-  * https://jupyterlite.github.io/echo-kernel/lab/index.html
-
-.. raw:: html
-
-  <div>
-    <!-- Interactive Shell -->
-    <!-- src="https://jupyterlite.github.io/demo/repl/?toolbar=1&kernel=python&code=import%20numpy%20as%20np" -->
-    <!-- src="https://jupyterlite.github.io/demo/repl/#toolbar=1&kernel=python&execute=0&code=import+numpy+as+np" -->
-    <iframe
-      src="https://jupyterlite.github.io/demo/repl/#toolbar=1&kernel=python&execute=0&code=import+numpy+as+np"
-      width="100%" height="71vh"
-      style="height: 71vh; display: block;"
-    >Try the REPL!
-    </iframe>
-  </div>
+    * **Source Code:** `GitHub Repository <https://github.com/example/repo>`_
+    * **License:** MIT License

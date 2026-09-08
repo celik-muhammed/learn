@@ -68,6 +68,7 @@ in the second argument. The process terminates immediately using that code.
     PID 22568 returned exit code '35'.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -213,6 +213,7 @@ we can change it without rebuilding the image.
 #. Open the URL in the browser that it works.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

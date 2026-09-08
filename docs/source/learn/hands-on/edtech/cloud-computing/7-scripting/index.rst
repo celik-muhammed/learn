@@ -18,6 +18,7 @@ Lab 7: Shell Scripting
    openvpn-script
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

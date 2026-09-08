@@ -18,6 +18,7 @@ Lab 3: Docker Compose and Volumes
    3.6
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

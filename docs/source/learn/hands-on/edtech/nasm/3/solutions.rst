@@ -282,6 +282,7 @@ Lab 3.4 Solutions
         ret                      ; Return from main back into C library wrapper
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

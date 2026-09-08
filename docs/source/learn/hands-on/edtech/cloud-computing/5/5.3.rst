@@ -445,6 +445,7 @@ Using ``docker run`` requires you to save a long command. It would be
 easier if we built a docker-compose.yml file.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

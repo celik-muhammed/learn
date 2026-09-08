@@ -41,7 +41,7 @@ Cheatsheet
         .. toctree::
             :maxdepth: 2
 
-            Md Cheatsheet <cheatsheet_md.rst>
+            Md • Cheatsheet <cheatsheet_md.rst>
 
     .. grid-item-card::
         :padding: 2
@@ -52,4 +52,4 @@ Cheatsheet
         .. toctree::
             :maxdepth: 2
 
-            RST Cheatsheet <cheatsheet_rst.rst>
+            RST • Cheatsheet <cheatsheet_rst.rst>

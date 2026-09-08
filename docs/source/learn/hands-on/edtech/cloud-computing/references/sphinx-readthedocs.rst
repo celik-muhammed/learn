@@ -9,6 +9,7 @@ Sphinx and Read the Docs
 .. include:: sphinx-readthedocs-content.rst
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

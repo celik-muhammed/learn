@@ -208,6 +208,7 @@ We will follow the installation instructions for the
        Connection: keep-alive
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

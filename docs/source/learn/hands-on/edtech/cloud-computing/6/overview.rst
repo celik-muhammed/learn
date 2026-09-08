@@ -38,6 +38,7 @@ I recommend the |Flask Tutorial| from Pallets Projects if you
 want to study this topic further.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

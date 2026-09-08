@@ -198,6 +198,7 @@ redirect-gateway def1
   This directive redirects all traffic through the VPN.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -3,17 +3,17 @@
 .. _hands-on-index:
 
 ======================================================================
-Hands-On (Practice) Materials
+Hands-On (Practice) Material
 ======================================================================
 
-.. important::
-
-   **✨ AI-assisted landing page.** This overview page was assembled with the
-   help of an AI language model. The lab material it links to is **not**
-   AI-generated: each collection is reproduced verbatim from a third-party
-   source under that source's own open license (see the per-page
-   *Source & license* notice on every mirrored page). Treat this landing
-   text as a starting point and verify anything you act on.
+..
+    .. important::
+    **✨ AI-assisted landing page.** This overview page was assembled with the
+    help of an AI language model. The lab material it links to is **not**
+    AI-generated: each collection is reproduced verbatim from a third-party
+    source under that source's own open license (see the per-page
+    *Source & license* notice on every mirrored page). Treat this landing
+    text as a starting point and verify anything you act on.
 
 Practical, hands-on laboratory collections mirrored from openly licensed
 sources, kept close to their originals so they can be used and extended

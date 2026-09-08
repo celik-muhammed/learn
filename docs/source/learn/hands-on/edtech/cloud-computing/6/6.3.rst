@@ -190,6 +190,7 @@ Fix the error, save the file, and then start the container again.
        . . .
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

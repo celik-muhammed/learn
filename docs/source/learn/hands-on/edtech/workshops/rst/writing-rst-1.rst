@@ -129,6 +129,7 @@ Text to add
           - Install Read the Docs Theme
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

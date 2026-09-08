@@ -269,6 +269,7 @@ Your third task is to close the file.
 .. |image8| image:: images/image3.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

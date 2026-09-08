@@ -166,6 +166,7 @@ Using function ``wp_set_password()``
    <a href="https://wp-cli.org/" target="_blank">WP-CLI</a>
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -1,4 +1,4 @@
-# scikitplot/_externals/_sphinx_ext/_sphinx_contrib/utils.py
+# scikitplot/_externals/_sphinx_ext/_sphinxcontrib_youtube/utils.py
 #
 # fmt: off
 # ruff: noqa
@@ -29,7 +29,65 @@ CONTROL_HEIGHT = 30
 
 THUMBNAIL_DIR = "_video_thumbnail"
 
+#: scikit-plots local patch: connect+read timeout, in seconds, for the latex
+#: thumbnail fetch. Bounded so a slow host cannot stall a docs build.
+DOWNLOAD_TIMEOUT = (5, 30)
+
+#: scikit-plots local patch: ceiling on thumbnails fetched in one build.
+#:
+#: The latex and texinfo builders fetch a thumbnail per video, because a PDF
+#: cannot embed a player. Per-request timeouts bound each call but *not* the
+#: aggregate: a 1200-video catalog is 1200 requests, and at the worst-case
+#: read timeout that is over eleven hours before the build gives up -- a job
+#: that looks hung rather than failed, which is the broken-pipe failure this
+#: whole design exists to avoid.
+#:
+#: Beyond this ceiling, remaining thumbnails are skipped with one warning
+#: naming the count and this setting. A PDF missing some video stills is a
+#: far better outcome than a CI job that never returns.
+DEFAULT_DOWNLOAD_LIMIT = 200
+
 # -- helper methods ------------------------------------------------------------
+
+
+# -- scikit-plots local patch: video reference normalisation -------------------
+# Upstream takes ``self.arguments[0]`` as an opaque video id and interpolates it
+# straight into the embed URL, so a pasted watch URL produced
+# ``.../embed/https://www.youtube.com/watch?v=ID`` -- a dead iframe, emitted with
+# no warning and a successful build.
+#
+# The URL grammar lives in one place (``youtube_catalog.reference``) rather than
+# being duplicated here, so the directive, the catalog and the sync tool can
+# never disagree about what a given URL means. The fallback keeps this vendored
+# extension usable standalone, at reduced capability, if that module is absent.
+
+from ..youtube_catalog.reference import (
+    ReferenceError as _ReferenceError,
+    parse_video_reference as _parse_video_reference,
+)
+
+
+def parse_youtube_id(value):
+    """
+    Normalise any single-video reference to its canonical id.
+
+    Parameters
+    ----------
+    value : str
+        A bare id or any YouTube URL naming one video.
+
+    Returns
+    -------
+    str
+        The canonical 11-character video id.
+
+    Raises
+    ------
+    ValueError
+        If the value names no single video.
+    """
+    return _parse_video_reference(value).video_id
+
 
 
 def get_size(d, key):
@@ -48,6 +106,33 @@ def css(d):
 
 
 # -- node and directive definition ---------------------------------------------
+
+
+def _merge_url_parameters(url_parameters, start_at):
+    """
+    Fold a start offset into an embed's query string.
+
+    Parameters
+    ----------
+    url_parameters : str
+        The author's explicit ``:url_parameters:`` value, e.g. ``"?rel=0"``.
+    start_at : int or None
+        Start offset in seconds, recovered from the pasted URL.
+
+    Returns
+    -------
+    str
+        The query string to append to the embed URL. An explicit
+        ``start``/``t`` written by the author always wins: the directive
+        option is a deliberate instruction, while the offset in a pasted URL
+        is incidental.
+    """
+    if start_at is None:
+        return url_parameters
+    if re.search(r"[?&](?:start|t)=", url_parameters):
+        return url_parameters
+    separator = "&" if url_parameters.startswith("?") else "?"
+    return f"{url_parameters}{separator}start={start_at}"
 
 
 class video(nodes.General, nodes.Element):
@@ -85,12 +170,31 @@ class Video(Directive):
         "align": directives.unchanged,
         "url_parameters": directives.unchanged,
         "privacy_mode": directives.unchanged,
+        # scikit-plots local patch: accessible name for the <iframe>.
+        "title": directives.unchanged,
     }
 
     def run(self):
         """Run the directive."""
         env = self.state.document.settings.env
-        video_id = self.arguments[0]
+        # scikit-plots local patch: accept watch/short/embed URLs, not just
+        # bare ids, and fail with a located error instead of a dead embed.
+        start_at = None
+        if self._platform == "youtube":
+            try:
+                reference = _parse_video_reference(self.arguments[0])
+            except (_ReferenceError, ValueError) as exc:
+                return [
+                    self.state_machine.reporter.error(
+                        f"youtube: {exc}", line=self.lineno
+                    )
+                ]
+            video_id = reference.video_id
+            # A `t=`/`start=` offset in the pasted URL is intent, not noise:
+            # carry it into the player instead of discarding it.
+            start_at = getattr(reference, "start", None)
+        else:
+            video_id = self.arguments[0]
         url = self._thumbnail_url.format(video_id)
         env.video_remote_images[url] = Path(THUMBNAIL_DIR, f"{video_id}.jpg")
         env.images.add_file("", env.video_remote_images[url])
@@ -99,7 +203,13 @@ class Video(Directive):
             aspect = self.options.get("aspect")
             m = re.match(r"(\d+):(\d+)", aspect)
             if m is None:
-                raise ValueError("invalid aspect ratio %r" % aspect)
+                # scikit-plots local patch: located error, not a traceback.
+                return [
+                    self.state_machine.reporter.error(
+                        f"invalid aspect ratio {aspect!r}, expected e.g. '16:9'",
+                        line=self.lineno,
+                    )
+                ]
             aspect = tuple(int(x) for x in m.groups())
         else:
             aspect = None
@@ -108,7 +218,13 @@ class Video(Directive):
         if "align" in self.options:
             align = self.options.get("align")
             if align not in alignment:
-                raise ValueError(f"invalid alignment choices are: {alignment}")
+                # scikit-plots local patch: located error, not a traceback.
+                return [
+                    self.state_machine.reporter.error(
+                        f"invalid alignment {align!r}, choices are: {alignment}",
+                        line=self.lineno,
+                    )
+                ]
         else:
             align = None
 
@@ -119,12 +235,15 @@ class Video(Directive):
 
         return [
             self._node(
-                id=self.arguments[0],
+                id=video_id,
+                title=self.options.get("title"),
                 aspect=aspect,
                 width=get_size(self.options, "width"),
                 height=get_size(self.options, "height"),
                 align=align,
-                url_parameters=self.options.get("url_parameters", ""),
+                url_parameters=_merge_url_parameters(
+                    self.options.get("url_parameters", ""), start_at
+                ),
                 privacy_mode=self.options.get("privacy_mode"),
                 platform=self._platform,
                 platform_url=self._platform_url,
@@ -193,6 +312,20 @@ def visit_video_node_html(self, node, platform_url_privacy=None, additional_attr
     if node["align"] is not None:
         div_style["text-align"] = node["align"]
     attrs["allowfullscreen"] = "true"
+    # -- scikit-plots local patch: accessibility + gallery performance -------
+    # `title` gives the frame an accessible name (WCAG 2.1 SC 4.1.2); without
+    # it a page of embeds is an unnavigable list of unnamed frames.
+    # `loading="lazy"` matters at gallery scale: a 100- or 1000-video page
+    # otherwise opens that many YouTube connections on first paint.
+    # `max-width` keeps the fixed-px default from overflowing a narrow
+    # `grid-item-card` on mobile without changing the desktop rendering.
+    attrs["title"] = node.get("title") or "{} video player".format(
+        node["platform"] or "embedded"
+    )
+    attrs["loading"] = "lazy"
+    if "max-width" not in attrs["style"]:
+        attrs["style"] = attrs["style"] + "; max-width: 100%"
+    # -- end scikit-plots local patch ----------------------------------------
     div_attrs = {
         "CLASS": "video_wrapper",
         "style": css(div_style),
@@ -264,7 +397,23 @@ def merge_download_images(app, env, docnames, other):
 
 
 def download_images(app, env):
-    """Download thumbnails for the latex build."""
+    """
+    Download thumbnails for the latex build.
+
+    Parameters
+    ----------
+    app : sphinx.application.Sphinx
+        The Sphinx application.
+    env : sphinx.environment.BuildEnvironment
+        The build environment carrying ``video_remote_images``.
+
+    Notes
+    -----
+    This is the only place a *documentation build* reaches the network, and
+    it runs for latex-family builders only. The number of requests is capped
+    (see :data:`DEFAULT_DOWNLOAD_LIMIT`) so the aggregate cost is bounded,
+    not just each individual call.
+    """
     # images should only be downloaded if the builder is Latex related
     if "latex" not in app.builder.name:
         return
@@ -276,18 +425,56 @@ def download_images(app, env):
     )
     msg = "Downloading remote images..."
     nb_images = len(env.video_remote_images)
+    # scikit-plots local patch: aggregate download budget. Mutable
+    # single-element lists rather than plain ints so the counters survive
+    # the `continue` branches below without a nonlocal declaration.
+    _limit = getattr(
+        app.config, "video_download_limit", DEFAULT_DOWNLOAD_LIMIT
+    )
+    _downloaded = [0]
+    _skipped = [0]
     for src in iterator(env.video_remote_images, msg, "brown", nb_images):
 
+        # scikit-plots local patch: bound the aggregate, not just each call.
+        if _downloaded[0] >= _limit:
+            _skipped[0] += 1
+            continue
         dst = Path(app.outdir) / env.video_remote_images[src]
         if not dst.is_file():
+            _downloaded[0] += 1
             logger.info(f"{src} -> {dst} (downloading)")
-            with open(dst, "wb") as f:
-                try:
-                    f.write(requests.get(src).content)
-                except requests.ConnectionError:
-                    logger.info(f'Cannot download "{src}"')
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            # -- scikit-plots local patch: bounded, fully-handled fetch ----
+            # Upstream calls `requests.get` with no timeout and catches only
+            # `ConnectionError`, so a hung or slow thumbnail host stalls the
+            # build indefinitely, and a read timeout / HTTP error / broken
+            # pipe propagates as an unhandled exception. It also wrote the
+            # response body unconditionally, so a 404 page was saved as a
+            # `.jpg`. Fetch first, validate, then write only on success.
+            try:
+                response = requests.get(src, timeout=DOWNLOAD_TIMEOUT)
+                response.raise_for_status()
+                payload = response.content
+            except (requests.RequestException, OSError) as exc:
+                logger.warning(f'Cannot download thumbnail "{src}": {exc}')
+                continue
+            try:
+                dst.write_bytes(payload)
+            except OSError as exc:
+                logger.warning(f'Cannot write thumbnail "{dst}": {exc}')
+            # -- end scikit-plots local patch ------------------------------
         else:
             logger.info(f"{src} -> {dst} (already in cache)")
+
+    # scikit-plots local patch: report the budget rather than truncating in
+    # silence -- a PDF quietly missing 1000 stills would look like a bug in
+    # the document, not a deliberate limit.
+    if _skipped[0]:
+        logger.warning(
+            f"video: fetched {_downloaded[0]} thumbnails and skipped "
+            f"{_skipped[0]} after reaching the download limit of {_limit}. "
+            f"Raise 'video_download_limit' in conf.py if the PDF needs them."
+        )
 
 
 def configure_image_download(app):
@@ -295,5 +482,7 @@ def configure_image_download(app):
     app.env.video_remote_images = {}
 
     output_dir = Path(app.outdir) / THUMBNAIL_DIR
-    output_dir.mkdir(exist_ok=True)
+    # scikit-plots local patch: `parents=True` -- `outdir` need not exist yet
+    # when `builder-inited` fires, which made this raise FileNotFoundError.
+    output_dir.mkdir(parents=True, exist_ok=True)
     app.config.html_static_path.append(str(output_dir))

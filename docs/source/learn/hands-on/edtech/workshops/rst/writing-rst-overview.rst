@@ -66,6 +66,7 @@ Overall Goal
     on a server and to serve the rendered content using Nginx.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

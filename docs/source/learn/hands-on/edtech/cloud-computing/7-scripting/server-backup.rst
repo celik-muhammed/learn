@@ -8,6 +8,7 @@ So, how do you back up a server?
 Please check back later....
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

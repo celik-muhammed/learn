@@ -125,6 +125,7 @@ Assembly-Compile Process
 .. |image20| image:: images/image20.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

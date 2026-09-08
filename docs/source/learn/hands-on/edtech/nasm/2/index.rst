@@ -425,6 +425,7 @@ multiplication and division.
        EIP = 5660C89B FLAGS = 0202
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

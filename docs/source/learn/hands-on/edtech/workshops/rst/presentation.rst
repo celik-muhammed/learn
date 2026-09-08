@@ -7,6 +7,7 @@ The presentation will be loaded closer to the conference date.
 .. _rst_workshop_2020:
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -116,6 +116,7 @@ First, use ``unlink`` and then test your code using ``remove``.
             system("echo \"some text\" > filename.txt");
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -28,6 +28,7 @@ and configure a VPN server.
    references/index
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

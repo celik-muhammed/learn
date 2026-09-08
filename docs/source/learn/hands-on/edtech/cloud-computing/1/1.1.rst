@@ -69,6 +69,7 @@ Run MobaXterm after you have extracted the zip file or installed it.
    .. image:: images/mobaxterm-connect-to-ssh.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

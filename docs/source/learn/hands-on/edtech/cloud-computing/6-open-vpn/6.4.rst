@@ -212,6 +212,7 @@ the settings are identical in both configs.
     user1/x.x.x.x:64668 Bad LZO decompression header byte: 69
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

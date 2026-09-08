@@ -491,8 +491,9 @@
     max-height: 100vh;
     max-height: 100dvh;
     border-radius: 0;
-    /* Sit above everything else on the page while fullscreen. */
-    z-index: 2147483647;
+    /* Sit above page/theme UI while leaving the CSS integer ceiling reserved
+     * for viewport-level assistant overlays such as attachment previews. */
+    z-index: 2147483500;
 }
 
 /* ─── Panel header ──────────────────────────────────────────────────────── */
@@ -511,6 +512,87 @@
     /* Explicitly visible so the absolutely-positioned export dropdown menu
      * is not clipped when a Sphinx theme injects overflow:hidden here.    */
     overflow: visible;
+}
+
+/* Run 82 — main header consumes the same single-row adaptive contract as
+ * slide-over sheets.  Branding remains visible; only secondary actions swap
+ * atomically for ⋮.  No viewport/device breakpoint is involved. */
+.ai-assistant-panel-header.ai-assistant-panel-header--adaptive {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) max-content 28px;
+    grid-template-areas: "menu title toolbar close";
+    align-items: center;
+    column-gap: 0.25rem;
+    row-gap: 0;
+    position: relative;
+}
+
+.ai-assistant-panel-header-menu {
+    grid-area: menu;
+    justify-self: start;
+}
+
+.ai-assistant-panel-header-brand {
+    grid-area: title;
+    min-width: 0;
+    justify-self: stretch;
+}
+
+.ai-assistant-panel-header-toolbar {
+    grid-area: toolbar;
+    min-width: max-content;
+    justify-self: end;
+    flex-wrap: nowrap;
+}
+
+.ai-assistant-panel-header-close {
+    grid-area: close;
+    justify-self: end;
+}
+
+.ai-assistant-panel-header-overflow {
+    grid-area: overflow;
+    display: none;
+    position: relative;
+    justify-self: end;
+    min-width: 0;
+}
+
+.ai-assistant-panel-header-overflow .ai-assistant-panel-subbar-overflow-btn {
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    margin-left: 0;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+.ai-assistant-panel-header.ai-assistant-panel-header--adaptive[data-panel-head-compact="true"] {
+    grid-template-columns: 28px minmax(0, 1fr) 28px 28px;
+    grid-template-areas: "menu title overflow close";
+}
+
+.ai-assistant-panel-header.ai-assistant-panel-header--adaptive[data-panel-head-compact="true"]
+    .ai-assistant-panel-header-toolbar {
+    display: none;
+}
+
+.ai-assistant-panel-header.ai-assistant-panel-header--adaptive[data-panel-head-compact="true"]
+    .ai-assistant-panel-header-overflow {
+    display: block;
+}
+
+/* Feature-flagged hamburger-off mode should not reserve an invisible 28px
+ * leading column.  It retains the same title/actions-or-overflow/close policy. */
+.ai-assistant-panel-header.ai-assistant-panel-header--adaptive.ai-assistant-panel-header--no-menu {
+    grid-template-columns: minmax(0, 1fr) max-content 28px;
+    grid-template-areas: "title toolbar close";
+}
+
+.ai-assistant-panel-header.ai-assistant-panel-header--adaptive.ai-assistant-panel-header--no-menu[data-panel-head-compact="true"] {
+    grid-template-columns: minmax(0, 1fr) 28px 28px;
+    grid-template-areas: "title overflow close";
 }
 
 .ai-assistant-panel-header-title {
@@ -589,9 +671,19 @@
     max-width: 14px      !important;
     min-height: 14px     !important;
     max-height: 14px     !important;
-    stroke: currentColor;
-    fill: none;
     flex-shrink: 0;
+}
+
+/* Preserve each SVG's native paint model.  Filled Octicons must not inherit
+ * the stroke-only paint used by Feather-style controls: stroking a filled
+ * 16px path is visibly soft at small sizes. */
+.ai-assistant-panel-icon-btn svg[fill="none"] {
+    fill: none !important;
+    stroke: currentColor !important;
+}
+.ai-assistant-panel-icon-btn svg[fill="currentColor"] {
+    fill: currentColor !important;
+    stroke: none !important;
 }
 
 .ai-assistant-panel-icon-btn:hover {
@@ -803,6 +895,72 @@
     }
 }
 
+/* ─── First-message privacy/status row ────────────────────────────────────
+ * Appears at the top of the transcript once onboarding is replaced by the
+ * first real message.  The copy is plain text; "More information" opens the
+ * existing Privacy & Responsibility sheet rather than duplicating policy UI.
+ */
+.ai-assistant-panel-chat-privacy {
+    align-self: stretch;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.48rem 0.62rem;
+    margin: 0 0 0.12rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d9dde2));
+    border-radius: 10px;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    background: color-mix(in srgb,
+        var(--pst-color-surface, var(--color-background-primary, #fff)) 92%,
+        var(--pst-color-primary, var(--color-brand-primary, #2980b9)) 8%);
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #666));
+    font-size: 0.74rem;
+    line-height: 1.38;
+}
+.ai-assistant-panel-chat-privacy-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: 0.03rem;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #777));
+}
+.ai-assistant-panel-chat-privacy-icon svg {
+    width: 100%;
+    height: 100%;
+}
+.ai-assistant-panel-chat-privacy-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.ai-assistant-panel-chat-privacy-more {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    font: inherit;
+    font-weight: 600;
+    line-height: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.14em;
+    cursor: pointer;
+}
+.ai-assistant-panel-chat-privacy-more:hover { text-decoration-thickness: 2px; }
+.ai-assistant-panel-chat-privacy-more:focus { outline: none; }
+.ai-assistant-panel-chat-privacy-more:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+[data-bs-theme="dark"] .ai-assistant-panel-chat-privacy {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.13);
+}
+
 /* ─── Message bubbles ────────────────────────────────────────────────────── */
 
 .ai-assistant-panel-bubble {
@@ -873,6 +1031,12 @@
        room left on that line and wraps onto its own row underneath it. */
     flex-wrap: wrap;
     padding: 0.625rem 0.75rem;
+    /* Run 84: when the panel sits edge-to-edge on mobile/landscape, keep the
+     * composer controls clear of notches and the home indicator.  Desktop env()
+     * values are zero, so these preserve the existing spacing there. */
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(0.625rem, env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(
         --pst-color-border,
         var(--color-foreground-border, #e1e4e5)
@@ -893,10 +1057,13 @@
  *     the hover gap, destroying hover continuity as the cursor moves into the popup.
  */
 .ai-assistant-panel-input-group {
+    position: relative;          /* slash palette + inline hint anchor */
     display: flex;
     flex-direction: column;    /* Claude-style: textarea on top, action bar below */
     align-items: stretch;
     flex: 1 1 auto;
+    min-width: 0;              /* attachment strip must scroll, never widen footer */
+    max-width: 100%;
     border: 1px solid var(
         --pst-color-border,
         var(--color-foreground-border, #c8c8c8)
@@ -946,6 +1113,171 @@
 
 .ai-assistant-panel-input::placeholder {
     color: var(--pst-color-text-muted, var(--color-foreground-secondary, #aaa));
+}
+
+/* Run 102 — slash command autocomplete.  The textarea remains the sole text
+ * editor; these are non-layout overlays anchored by input-group position:relative.
+ * The palette opens upward because the composer owns the bottom edge of the
+ * panel. JS caps max-height against #ai-assistant-panel-body for short panels. */
+.ai-assistant-panel-slash-inline-hint {
+    position: absolute;
+    z-index: 2;
+    top: 0.6rem;
+    left: calc(0.65rem + 0.58em);
+    max-width: calc(100% - 3rem);
+    overflow: hidden;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #8a8f98));
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0.72;
+    user-select: none;
+}
+.ai-assistant-panel-slash-inline-hint[hidden] { display: none !important; }
+
+.ai-assistant-panel-slash-command-menu {
+    position: absolute;
+    left: 0.35rem;
+    bottom: calc(100% + 0.45rem);
+    z-index: 1096;
+    display: flex;
+    flex-direction: column;
+    width: min(34rem, calc(100% - 0.7rem));
+    min-width: min(15rem, calc(100% - 0.7rem));
+    max-height: 24rem;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 10px;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.ai-assistant-panel-slash-command-menu[hidden] { display: none !important; }
+[data-bs-theme="dark"] .ai-assistant-panel-slash-command-menu {
+    box-shadow: 0 -14px 34px rgba(0, 0, 0, 0.48), 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+.ai-assistant-panel-slash-command-head,
+.ai-assistant-panel-slash-command-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex: 0 0 auto;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.68rem;
+    line-height: 1.2;
+}
+.ai-assistant-panel-slash-command-head {
+    padding: 0.46rem 0.58rem 0.34rem;
+    border-bottom: 1px solid var(--pst-color-border, var(--color-foreground-border, #e5e7eb));
+}
+.ai-assistant-panel-slash-command-head strong {
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    font-size: 0.72rem;
+    font-weight: 650;
+}
+.ai-assistant-panel-slash-command-list {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 0.3rem;
+}
+.ai-assistant-panel-slash-command-item {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.54rem 0.52rem;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    text-align: left;
+    cursor: pointer;
+}
+.ai-assistant-panel-slash-command-item:hover,
+.ai-assistant-panel-slash-command-item[data-highlighted="true"] {
+    background: rgba(128, 128, 128, 0.12);
+}
+.ai-assistant-panel-slash-command-item:focus { outline: none; }
+.ai-assistant-panel-slash-command-icon {
+    width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 5px;
+    background: rgba(128, 128, 128, 0.07);
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #666));
+    font: 750 0.82rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ai-assistant-panel-slash-command-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+.ai-assistant-panel-slash-command-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 650 0.8rem/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ai-assistant-panel-slash-command-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.68rem;
+    line-height: 1.3;
+}
+.ai-assistant-panel-slash-command-arg {
+    flex: 0 0 auto;
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.1rem 0.34rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 999px;
+    background: rgba(128, 128, 128, 0.07);
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.62rem;
+    font-weight: 600;
+}
+.ai-assistant-panel-slash-command-empty {
+    padding: 0.72rem 0.58rem;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.74rem;
+    text-align: center;
+}
+.ai-assistant-panel-slash-command-foot {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding: 0.34rem 0.58rem 0.42rem;
+    border-top: 1px solid var(--pst-color-border, var(--color-foreground-border, #e5e7eb));
+}
+.ai-assistant-panel-slash-command-foot span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.16rem;
+}
+.ai-assistant-panel-slash-command-foot kbd {
+    min-width: 1.15rem;
+    padding: 0.06rem 0.2rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.07);
+    color: inherit;
+    font: inherit;
+    font-size: 0.62rem;
+    text-align: center;
 }
 
 /* Icon buttons inside the input group action bar (attach, model, mic, send) */
@@ -1254,7 +1586,7 @@
 
 .ai-assistant-pdf-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: stretch;
     width: 100%;
     min-width: 0;
@@ -1707,9 +2039,25 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
 .ai-assistant-panel-bubble-action svg {
     width: 13px;
     height: 13px;
-    stroke: currentColor;
-    fill: none;
     flex-shrink: 0;
+}
+.ai-assistant-panel-bubble-action svg[fill="none"] {
+    fill: none !important;
+    stroke: currentColor !important;
+}
+.ai-assistant-panel-bubble-action svg[fill="currentColor"] {
+    fill: currentColor !important;
+    stroke: none !important;
+}
+/* syncRetry is authored on a native 16px Octicon grid.  Render it 1:1 rather
+ * than downscaling to 13px, which lands path edges on fractional CSS pixels. */
+.ai-assistant-panel-bubble-action--retry svg[viewBox="0 0 16 16"] {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
 }
 .ai-assistant-panel-bubble-action:focus         { outline: none; }
 .ai-assistant-panel-bubble-action:focus-visible {
@@ -1867,6 +2215,185 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     justify-content: flex-start;
     padding: 0.25rem 0.5rem;
     border-radius: 5px;
+}
+
+/* Run 171: quick model changer lives inline inside the canonical answer menu.
+ * The outer popup remains the sole positioning boundary, so expanding this
+ * list cannot spawn a second viewport-clipping popover. */
+.ai-assistant-panel-bubble-action-more-menu--has-models {
+    min-width: 14rem;
+}
+.ai-assistant-panel-bubble-action--model-toggle {
+    gap: 0.42rem;
+}
+.ai-assistant-panel-bubble-action--model-toggle > span:not(.ai-assistant-panel-bubble-action-more-chevron) {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+}
+.ai-assistant-panel-bubble-action--model-toggle[aria-expanded="true"] {
+    background: var(--pst-color-surface, var(--color-background-secondary, #f0f1f3));
+}
+.ai-assistant-panel-bubble-model-list {
+    display: none;
+    flex-direction: column;
+    gap: 0.12rem;
+    padding: 0.22rem 0.18rem 0.3rem;
+    border-top: 1px solid var(--pst-color-border, var(--color-foreground-border, #e1e4e5));
+}
+.ai-assistant-panel-bubble-model-list[data-open="true"] { display: flex; }
+.ai-assistant-panel-bubble-model-heading {
+    padding: 0.28rem 0.44rem 0.2rem;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #68707a));
+    font-size: 0.69rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+}
+.ai-assistant-panel-bubble-model-option {
+    display: grid;
+    grid-template-columns: 0.72rem minmax(0, 1fr) 0.9rem;
+    align-items: center;
+    gap: 0.48rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.42rem 0.46rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a));
+    text-align: left;
+    cursor: pointer;
+}
+.ai-assistant-panel-bubble-model-option:hover,
+.ai-assistant-panel-bubble-model-option:focus-visible {
+    background: var(--pst-color-on-background, var(--color-background-secondary, #f0f0f0));
+}
+.ai-assistant-panel-bubble-model-option:focus { outline: none; }
+.ai-assistant-panel-bubble-model-option:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: -1px;
+}
+.ai-assistant-panel-bubble-model-provider {
+    width: 0.58rem;
+    height: 0.58rem;
+    border-radius: 50%;
+    background: var(--ai-badge-default, #8a9099);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.09);
+}
+.ai-assistant-panel-bubble-model-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.04rem;
+}
+.ai-assistant-panel-bubble-model-copy strong {
+    overflow: hidden;
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ai-assistant-panel-bubble-model-copy small {
+    overflow: hidden;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #6c737d));
+    font-size: 0.65rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ai-assistant-panel-bubble-model-check {
+    display: inline-flex;
+    visibility: hidden;
+    width: 0.9rem;
+    height: 0.9rem;
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+}
+.ai-assistant-panel-bubble-model-check svg { width: 100%; height: 100%; }
+.ai-assistant-panel-bubble-model-option[aria-checked="true"]
+    .ai-assistant-panel-bubble-model-check { visibility: visible; }
+.ai-assistant-panel-bubble-model-config {
+    grid-template-columns: 0.9rem minmax(0, 1fr);
+    margin-top: 0.12rem;
+    border-top: 1px solid var(--pst-color-border, var(--color-foreground-border, #e1e4e5));
+    border-radius: 0 0 6px 6px;
+}
+.ai-assistant-panel-bubble-model-config > svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #68707a));
+}
+[data-bs-theme="dark"] .ai-assistant-panel-bubble-action--model-toggle[aria-expanded="true"],
+[data-bs-theme="dark"] .ai-assistant-panel-bubble-model-option:hover,
+[data-bs-theme="dark"] .ai-assistant-panel-bubble-model-option:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+}
+[data-bs-theme="dark"] .ai-assistant-panel-bubble-model-list,
+[data-bs-theme="dark"] .ai-assistant-panel-bubble-model-config {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Run 89: contextual utilities live in the canonical answer-action menu.
+ * Bookmark is answer-scoped and immediately visible; Home is a lower-frequency
+ * global destination disclosed inline under a second-level More row.  Keep this
+ * inline instead of spawning another floating submenu so the existing panel-body
+ * boundary coordinator remains the single positioning authority. */
+.ai-assistant-panel-bubble-action-more-sep {
+    height: 1px;
+    margin: 0.18rem 0.2rem;
+    background: var(--pst-color-border, var(--color-foreground-border, #e1e4e5));
+}
+
+.ai-assistant-panel-bubble-action--bookmark[aria-pressed="true"] {
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+}
+
+.ai-assistant-panel-bubble-action--secondary-toggle {
+    gap: 0.42rem;
+}
+.ai-assistant-panel-bubble-action--secondary-toggle > span:not(.ai-assistant-panel-bubble-action-more-chevron) {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+}
+.ai-assistant-panel-bubble-action-more-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+.ai-assistant-panel-bubble-action-more-chevron svg {
+    width: 0.7rem;
+    height: 0.7rem;
+    transition: transform 0.15s ease;
+}
+.ai-assistant-panel-bubble-action--secondary-toggle[aria-expanded="true"]
+    .ai-assistant-panel-bubble-action-more-chevron svg {
+    transform: rotate(180deg);
+}
+
+.ai-assistant-panel-bubble-action-more-secondary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin: 0.05rem 0 0.05rem 0.45rem;
+    padding: 0.08rem 0 0.08rem 0.35rem;
+    border-left: 2px solid var(--pst-color-border, var(--color-foreground-border, #e1e4e5));
+}
+.ai-assistant-panel-bubble-action-more-secondary[hidden] {
+    display: none !important;
+}
+.ai-assistant-panel-bubble-action-more-secondary
+    .ai-assistant-panel-bubble-action {
+    padding-left: 0.42rem;
+}
+
+@media (pointer: coarse) {
+    .ai-assistant-panel-bubble-action-more-menu
+        .ai-assistant-panel-bubble-action {
+        min-height: 2.5rem;
+    }
 }
 
 /* ─── Listen (TTS) button state ──────────────────────────────────────────────
@@ -2447,15 +2974,229 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     border-bottom: 1px solid
         var(--pst-color-border, var(--color-foreground-border, #e1e4e5));
     flex-shrink: 0;
-    /* Defensive fallback for very narrow viewports now that the sheet
-       toolbar (new chat / export / minimize / maximize) can add ~150px of
-       fixed-width chrome alongside the hamburger + close buttons — see
-       .ai-assistant-panel-sheet-toolbar below. Wraps to a second line
-       instead of overflowing if min-width:0 on the title (below) still
-       isn't enough room. */
-    flex-wrap: wrap;
-    row-gap: 0.35rem;
 }
+
+/* Run 81 — single-row adaptive sheet-header architecture.
+ *
+ * A sheet header has four semantic regions in its regular state:
+ *
+ *   [menu] [title................] [new · export · min · resize] [close]
+ *
+ * When those regions no longer fit while preserving a readable title budget,
+ * JavaScript marks that *individual header* data-sheet-head-compact="true".
+ * The action cluster then swaps atomically for a vertical-overflow control:
+ *
+ *   [menu] [title...................................] [⋮] [close]
+ *
+ * The important invariant is height: compact mode remains exactly one header
+ * row. This avoids the Run-80 two-row solution, which consumed scarce vertical
+ * space on short phones, landscape devices, browser zoom, and manually short
+ * desktop panels. The ⋮ menu is panel-bounded and scrollable instead.
+ */
+.ai-assistant-panel-privacy-head.ai-assistant-panel-sheet-head-layout {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) max-content 28px;
+    grid-template-areas: "menu title toolbar close";
+    align-items: center;
+    column-gap: 0.25rem;
+    row-gap: 0;
+    /* Header owns anchored compact menus; no overflow clipping. */
+    position: relative;
+    overflow: visible;
+}
+
+.ai-assistant-panel-sheet-head-menu {
+    grid-area: menu;
+    justify-self: start;
+}
+
+.ai-assistant-panel-sheet-head-title {
+    grid-area: title;
+    min-width: 0;
+    justify-self: stretch;
+}
+
+.ai-assistant-panel-sheet-head-toolbar {
+    grid-area: toolbar;
+    min-width: max-content;
+    justify-self: end;
+    flex-wrap: nowrap;
+}
+
+.ai-assistant-panel-sheet-head-close {
+    grid-area: close;
+    justify-self: end;
+}
+
+/* Compact action anchor is always present so the transition is atomic, but is
+ * removed from layout until the fit controller marks this header compact. */
+.ai-assistant-panel-sheet-head-overflow {
+    grid-area: overflow;
+    display: none;
+    position: relative;
+    justify-self: end;
+    min-width: 0;
+}
+
+.ai-assistant-panel-sheet-head-overflow .ai-assistant-panel-subbar-overflow-btn {
+    /* Reuse the established ⋮ control visual language, but sheet-header
+     * visibility is governed by the wrapper rather than subbar train-collapse. */
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    margin-left: 0;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+/* Fit-based compact state. No second row: toolbar is replaced, not wrapped. */
+.ai-assistant-panel-privacy-head.ai-assistant-panel-sheet-head-layout[data-sheet-head-compact="true"] {
+    grid-template-columns: 28px minmax(0, 1fr) 28px 28px;
+    grid-template-areas: "menu title overflow close";
+}
+
+.ai-assistant-panel-privacy-head.ai-assistant-panel-sheet-head-layout[data-sheet-head-compact="true"]
+    .ai-assistant-panel-sheet-head-toolbar {
+    display: none;
+}
+
+.ai-assistant-panel-privacy-head.ai-assistant-panel-sheet-head-layout[data-sheet-head-compact="true"]
+    .ai-assistant-panel-sheet-head-overflow {
+    display: block;
+}
+
+/* Safe-area padding is orthogonal to compactness. It therefore applies to all
+ * sheet headers on phone-sized viewports without forcing a second row. */
+@media (max-width: 480px) {
+    .ai-assistant-panel-header.ai-assistant-panel-header--adaptive,
+    .ai-assistant-panel-privacy-head.ai-assistant-panel-sheet-head-layout {
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+    }
+}
+
+/* Sheet action overflow popover. The same semantic actions as the wide toolbar
+ * are rebuilt from shared factories; no business logic is duplicated. The menu
+ * stays inside the panel's available vertical space via JS max-height and uses
+ * scrolling as the last resort on very short devices. */
+.ai-assistant-panel-sheet-overflow-menu {
+    z-index: 1022;
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    left: auto;
+    width: min(13rem, calc(100vw - 1rem));
+    min-width: 11.5rem;
+    max-width: calc(100vw - 1rem);
+    flex-direction: column;
+    gap: 0.12rem;
+    padding: 0.35rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background: var(--pst-color-surface,
+                    var(--color-background-primary, #fff));
+    color: var(--pst-color-text-base,
+               var(--color-foreground-primary, #1a1a1a));
+    border: 1px solid var(--pst-color-border,
+                          var(--color-foreground-border, #e1e4e5));
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14),
+                0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.ai-assistant-panel-sheet-overflow-menu[data-open="true"] {
+    display: flex;
+}
+
+.ai-assistant-panel-sheet-overflow-item,
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.55rem;
+    width: 100%;
+    min-height: 2rem;
+    padding: 0.4rem 0.5rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    font-size: 0.72rem;
+    line-height: 1.3;
+}
+
+.ai-assistant-panel-sheet-overflow-item:hover,
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger:hover {
+    background: rgba(127, 127, 127, 0.12);
+}
+
+.ai-assistant-panel-sheet-overflow-item:focus-visible,
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: -1px;
+}
+
+.ai-assistant-panel-sheet-overflow-item > span:first-child,
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+    overflow: hidden;
+}
+
+.ai-assistant-panel-sheet-overflow-item > span:first-child svg,
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger > span:first-child svg {
+    width: 1rem !important;
+    height: 1rem !important;
+    max-width: 1rem !important;
+    max-height: 1rem !important;
+}
+
+.ai-assistant-panel-sheet-overflow-label,
+.ai-assistant-export-trigger-label {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The export picker becomes an inline disclosure inside the compact ⋮ menu.
+ * This avoids a second sideways flyout that would exceed a 320px/375px panel,
+ * and the parent menu's max-height/scrolling handles small-height devices. */
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-dropdown {
+    display: block;
+    width: 100%;
+}
+
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger {
+    height: auto;
+}
+
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-trigger-chevron {
+    margin-left: auto;
+}
+
+.ai-assistant-panel-sheet-overflow-menu .ai-assistant-export-menu {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.2rem;
+    box-shadow: none;
+    border-radius: 6px;
+    max-height: none;
+}
+
 .ai-assistant-panel-privacy-head strong {
     font-size: 0.95rem;
     color: var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a));
@@ -2786,7 +3527,7 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
    transform-origin: right center (inherited from base) keeps the right edge pinned
    so the carriage squishes from its LEFT side toward the tunnel mouth on the right.
    translateX drifts the whole carriage (including the pinned right edge) into the
-   ⋯ button's territory so it visually disappears behind it.
+   ⋮ button's territory so it visually disappears behind it.
    Departure easing: ease-in — carriage starts slow then accelerates into the tunnel. */
 .ai-assistant-panel-subbar-right > button[data-overflow-hidden] {
     max-width:     0 !important;
@@ -3030,11 +3771,12 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     opacity: 0.6;
 }
 
-/* ── Small-screen icon-only fallback ──────────────────────────────────────
- * Mirrors the model-link sub-bar pattern: always in the DOM, visibility
- * toggled by CSS at ≤ 575 px (same breakpoint as .ai-assistant-panel-
- * model-link-label collapse).  The icon is 15 × 15 px to match the other
- * .ai-assistant-panel-footer-btn SVG icons in the same action bar. */
+/* ── Compact model-picker icon ────────────────────────────────────────────
+ * Always present in the DOM. Run 83/84 made the footer representation
+ * panel-fit-owned rather than viewport-owned: the icon appears only when
+ * data-footer-compact=true. The effort chip deliberately survives that
+ * contraction so the compact control still answers both “which model?” and
+ * “which effort?”. The icon is 15 × 15 px to match the other footer icons. */
 .ai-assistant-panel-inline-picker-icon {
     display: none;              /* hidden at wide widths — full pill shown */
     align-items: center;
@@ -3191,12 +3933,9 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     height: 0.95rem;
 }
 
-/* On narrow viewports collapse the right-cluster labels — keep icons only.
- * Hamburger preserves access to every entry-point.
- *
- * Also collapses the footer inline model picker from its full pill form
- * (dot + label + chevron) to a single model icon — same breakpoint, same
- * logic as .ai-assistant-panel-model-link-label above. */
+/* On narrow viewports collapse the sub-bar right-cluster labels — keep icons
+ * only.  The COMPOSER below deliberately does not use this viewport breakpoint:
+ * Run 84 makes its model picker panel-fit-owned on phone, tablet, and desktop. */
 @media (max-width: 575px) {
     /* Sub-bar right-cluster: hide text labels, keep icons.
      * ep-btn-label is excluded — it manages its own collapse via [data-narrow]. */
@@ -3205,35 +3944,52 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     .ai-assistant-panel-share-link span:not([aria-hidden]) {
         display: none;
     }
+}
 
-    /* Footer inline model picker: collapse pill → bare icon button.
-     * Reset the pill chrome (border, min-width, padding) so the button
-     * looks and feels like the other icon-only footer buttons (mic, send). */
-    .ai-assistant-panel-inline-model-picker {
-        min-width: unset;
-        max-width: unset;
-        border: none;
-        border-radius: 6px;
-        padding: 0.35rem 0.4rem;    /* matches .ai-assistant-panel-footer-btn */
-        background: transparent;
-    }
-    /* Show the model SVG icon (hidden by default above) */
-    .ai-assistant-panel-inline-picker-icon {
-        display: inline-flex;
-    }
-    /* Hide the pill-only elements: dot, label, chevron */
-    .ai-assistant-panel-inline-picker-dot,
-    .ai-assistant-panel-inline-picker-label,
-    .ai-assistant-panel-inline-picker-chev {
-        display: none;
-    }
+
+/* Run 83/84 — panel-owned footer contraction.
+ *
+ * data-footer-compact is the single model-picker representation authority on
+ * every device.  A roomy landscape phone/tablet may therefore keep the full
+ * pill, while a manually narrowed desktop panel uses the icon-only form.
+ * Initial fit runs after DOM connection; ResizeObserver (or the Run 84 window/
+ * visualViewport fallback) owns subsequent changes. */
+.ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-model-picker {
+    min-width: unset;
+    max-width: unset;
+    border: none;
+    border-radius: 6px;
+    padding: 0.35rem 0.4rem;
+    background: transparent;
+}
+.ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-picker-icon {
+    display: inline-flex;
+}
+.ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-picker-dot,
+.ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-picker-label,
+.ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-picker-chev {
+    display: none;
+}
+
+/* Run 85 — preserve effort visibility in the compact model control.
+ * The chip may contain administrator-defined labels, so compact mode gives it
+ * a bounded, ellipsising flex slot instead of assuming every label is “High”.
+ * The host button's aria-label continues to carry the complete effort label. */
+.ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-picker-effort {
+    display: inline-block;
+    min-width: 0;
+    max-width: 4.25rem;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ─── Right overflow toggle button ──────────────────────────────────────────
    Fades in progressively as items collapse; JS sets [data-overflow-visible]
    once any right-cluster item is hidden.  opacity + max-width participates in
    the same transition system as the cluster buttons above, with a 60 ms delay
-   so items begin squeezing before the ⋯ button appears — creating a natural
+   so items begin squeezing before the ⋮ button appears — creating a natural
    "one thing hides, then the menu appears" sequence rather than a simultaneous
    swap.  margin-left: -0.5rem when hidden cancels the parent flex gap so the
    button takes zero effective space in the layout while collapsed.           */
@@ -3390,6 +4146,11 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     align-items: center;
     gap: 0.1rem;
     margin-left: auto;
+    /* Run 83: this is a flex item inside a user-resizable panel.  Without
+     * min-width:0 its min-content width (notably the model pill) can force the
+     * whole composer wider than the panel on a wide desktop viewport. */
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* Attach (+) button: square, matches other footer buttons. */
@@ -3739,6 +4500,184 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
 .ai-assistant-panel-bubble--user {
     border-radius: 1.1rem 1.1rem 0.2rem 1.1rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+
+/* Run 106 — consumed one-turn files move into the owning user turn.
+ *
+ * Persistent PAGE/MD context remains in the composer shelf; ordinary uploads
+ * are staged only until Send, then represented here as immutable metadata.
+ * No file bytes or attachment body text are rendered into the transcript UI.
+ */
+.ai-assistant-panel-bubble--user[data-has-turn-attachments="true"] {
+    width: min(88%, 34rem);
+    min-width: min(20rem, 88%);
+    padding: 0.45rem;
+}
+.ai-assistant-panel-user-turn-files {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0 0 0.45rem;
+    padding: 0.42rem;
+    border: 1px solid rgba(255,255,255,0.24);
+    border-radius: 0.78rem;
+    background: rgba(255,255,255,0.10);
+}
+.ai-assistant-panel-user-turn-files-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+    color: rgba(255,255,255,0.92);
+    font-size: 0.68rem;
+    line-height: 1.2;
+}
+.ai-assistant-panel-user-turn-files-head strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: inherit;
+    font-weight: 700;
+}
+.ai-assistant-panel-user-turn-files-head > span {
+    flex: 0 0 auto;
+    min-width: 1.35rem;
+    padding: 0.12rem 0.38rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.16);
+    text-align: center;
+    font-size: 0.62rem;
+    font-weight: 750;
+}
+.ai-assistant-panel-user-turn-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    min-width: 0;
+}
+.ai-assistant-panel-user-turn-file {
+    display: flex;
+    align-items: center;
+    gap: 0.48rem;
+    min-width: 0;
+    padding: 0.34rem 0.4rem;
+    border-radius: 0.58rem;
+    background: rgba(255,255,255,0.10);
+}
+.ai-assistant-panel-user-turn-file[hidden] { display: none !important; }
+.ai-assistant-panel-user-turn-file-badge {
+    flex: 0 0 auto;
+    max-width: 4.4rem;
+    padding: 0.15rem 0.34rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.17);
+    color: #fff;
+    font-size: 0.56rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.03em;
+}
+.ai-assistant-panel-user-turn-file-copy {
+    min-width: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.08rem;
+}
+.ai-assistant-panel-user-turn-file-copy strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 650;
+    line-height: 1.2;
+}
+.ai-assistant-panel-user-turn-file-copy small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(255,255,255,0.76);
+    font-size: 0.6rem;
+    line-height: 1.25;
+}
+.ai-assistant-panel-user-turn-files-toggle,
+.ai-assistant-panel-user-turn-question-toggle {
+    align-self: flex-start;
+    min-height: 1.65rem;
+    padding: 0.18rem 0.4rem;
+    border: 0;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: rgba(255,255,255,0.90);
+    font: inherit;
+    font-size: 0.64rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.ai-assistant-panel-user-turn-files-toggle:hover,
+.ai-assistant-panel-user-turn-question-toggle:hover {
+    background: rgba(255,255,255,0.13);
+}
+.ai-assistant-panel-user-turn-files-toggle:focus-visible,
+.ai-assistant-panel-user-turn-question-toggle:focus-visible {
+    outline: 2px solid rgba(255,255,255,0.94);
+    outline-offset: 1px;
+}
+.ai-assistant-panel-user-turn-question-wrap {
+    min-width: 0;
+}
+.ai-assistant-panel-user-turn-question {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+.ai-assistant-panel-user-turn-question[data-collapsed="true"] {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 7;
+}
+.ai-assistant-panel-user-turn-question[data-collapsed="false"] {
+    display: block;
+    overflow: visible;
+}
+.ai-assistant-panel-bubble--user[data-has-turn-attachments="true"] .ai-assistant-panel-user-turn-question-wrap {
+    padding: 0.08rem 0.3rem 0.22rem;
+}
+@media (hover: none), (pointer: coarse) {
+    .ai-assistant-panel-user-turn-files-toggle,
+    .ai-assistant-panel-user-turn-question-toggle {
+        min-height: 40px;
+        min-width: 40px;
+    }
+}
+@media (max-width: 480px) {
+    .ai-assistant-panel-bubble--user[data-has-turn-attachments="true"] {
+        width: 92%;
+        min-width: 0;
+    }
+    .ai-assistant-panel-user-turn-file-copy small {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-user-turn-files-toggle,
+    .ai-assistant-panel-user-turn-question-toggle {
+        transition: none;
+    }
 }
 
 /* Assistant bubble: left-anchored, subtle border */
@@ -5405,6 +6344,44 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     transform: rotate(180deg);
 }
 
+/* Run 84 — touch/coarse-pointer composer contract.
+ * Touch has no reliable hover discovery, so microphone options must be visible
+ * without hover.  Footer controls also receive dense-but-usable 40px targets;
+ * the panel-fit controller measures their REAL sizes, so this does not re-open
+ * the overflow bug fixed in Run 83.  The desktop hover bridge is disabled on
+ * touch because it would otherwise create an invisible hit strip above the mic. */
+@media (hover: none), (pointer: coarse) {
+    .ai-assistant-panel-footer-btn,
+    .ai-assistant-panel-inline-model-picker {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+    }
+    .ai-assistant-panel-footer-btn--attach,
+    .ai-assistant-panel-footer-btn--send {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    .ai-assistant-mic-expand-wrapper,
+    .ai-assistant-mic-wrapper:hover .ai-assistant-mic-expand-wrapper {
+        width: 2.5rem;
+    }
+    .ai-assistant-mic-expand-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        opacity: 1;
+    }
+    .ai-assistant-mic-wrapper::before {
+        display: none;
+    }
+    .ai-assistant-mic-popup-row--hold,
+    .ai-assistant-panel-attach-menu-item {
+        min-height: 44px;
+    }
+    .ai-assistant-panel-attach-menu-shortcut {
+        display: none;
+    }
+}
+
 /* ─── Popup container ────────────────────────────────────────────────────── */
 /*
  * bottom: calc(100% + 0.45rem)  — floats above the action bar with a gap.
@@ -5423,7 +6400,17 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     flex-direction: column;
     gap: 0;
 
-    min-width: 330px;   /* 100 bars×2px + 99 gaps×1px = 299px; net content ≈ 303px after padding */
+    /* Run 84: 330px remains the roomy target, but JS supplies a panel-
+     * bounded inline width for narrow phones/tablets/resized desktop panels.
+     * The viewport max is a defensive no-JS/early-paint fallback. */
+    width: min(330px, calc(100vw - 1rem));
+    min-width: 0;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     padding: 0.3rem;
 
     background: var(
@@ -5560,9 +6547,17 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     display: flex;
     align-items: flex-end;
     gap: 1px;
+    width: 100%;
+    min-width: 0;
     height: 24px;
-    /* 100 bars × 2px + 99 gaps × 1px = 299px — popup min-width is 330px (≈ 303px net) */
-    overflow: hidden;   /* clip any sub-pixel overflow on fractional viewports */
+    /* 100 bars × 2px + 99 gaps × 1px = 299px at the roomy size. */
+    overflow: hidden;   /* clip only fractional rounding overflow */
+}
+/* Preserve all 100 VU zones in a panel-bounded popup instead of clipping the
+ * high-level red zone off the right edge.  0.5px gaps reduce the full strip
+ * to ~249.5px, which fits the 300px minimum panel after popup padding. */
+.ai-assistant-mic-popup[data-compact="true"] .ai-assistant-mic-level-bars {
+    gap: 0.5px;
 }
 
 /* ─── Individual bar: JS-driven height from AnalyserNode, smooth transition ─── */
@@ -5807,7 +6802,7 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
          .ai-assistant-mic-devices-header-icon
          .ai-assistant-mic-devices-header-label
        .ai-assistant-mic-device-list
-         .ai-assistant-mic-device-item ×N  (role=menuitemradio)
+         .ai-assistant-mic-device-item ×N  (role=radio)
            .ai-assistant-mic-device-name
            .ai-assistant-mic-device-check
    State:
@@ -5877,17 +6872,30 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
 
 /* ─── Device list container ──────────────────────────────────────────────── */
 /*
- * max-height + overflow-y:auto → compact scroll for 4+ devices.
- * overscroll-behavior:contain   → prevents page scroll while scrolling list.
+ * Content-sized for the normal Default / Communications / physical-device
+ * set.  The old 130px cap was smaller than the observed ~157-160px five-row
+ * content and left the last microphone partly outside the interactive
+ * scrollport.  Only genuinely long device lists should scroll.
+ *
+ * min-height is intentionally only loader-sized; populated refreshes keep the
+ * previous rows mounted and use an atomic JS swap, so a hard 160px floor is not
+ * needed (and would waste space for denied/one-device states).
  */
 
 .ai-assistant-mic-device-list {
     display: flex;
     flex-direction: column;
     gap: 0;
-    max-height: 130px;
+    height: auto;
+    min-height: 2.5rem;
+    max-height: min(24rem, 46vh);
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    position: relative;
+    z-index: 1;
+    transition: none;
 }
 
 /* Thin custom scrollbar — keeps the popup visually tight */
@@ -5909,10 +6917,29 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
 }
 
 
+
+.ai-assistant-mic-device-group-label {
+    flex: 0 0 auto;
+    padding: 0.32rem 0.55rem 0.18rem;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #777));
+}
+
 /* ─── Individual device row ──────────────────────────────────────────────── */
 
 .ai-assistant-mic-device-item {
     display: flex;
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 2.4rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     align-items: center;
     gap: 0.3rem;
     padding: 0.28rem 0.55rem;
@@ -5922,6 +6949,12 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     user-select: none;
     outline: none;
     transition: background-color 0.1s ease;
+}
+
+@media (pointer: coarse) {
+    .ai-assistant-mic-device-item {
+        min-height: 44px;
+    }
 }
 
 .ai-assistant-mic-device-item:hover {
@@ -5991,7 +7024,17 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     );
 }
 
-/* Selected item — slightly bolder to reinforce the active state */
+/* Selected item — the whole row, not only the checkmark, reads as active. */
+.ai-assistant-mic-device-item[aria-checked="true"] {
+    background: rgba(0, 0, 0, 0.045);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.10);
+}
+
+[data-bs-theme="dark"] .ai-assistant-mic-device-item[aria-checked="true"] {
+    background: rgba(255, 255, 255, 0.075);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+}
+
 .ai-assistant-mic-device-item[aria-checked="true"] .ai-assistant-mic-device-name {
     font-weight: 500;
 }
@@ -6061,6 +7104,34 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     opacity: 1;
 }
 
+
+
+.ai-assistant-mic-device-unavailable {
+    color: var(--pst-color-danger, #c0392b);
+}
+
+.ai-assistant-mic-device-capability {
+    margin: 0.28rem 0.55rem 0;
+    font-size: 0.61rem;
+    line-height: 1.35;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #777));
+    /* Informational status only. Never let this paragraph intercept a device
+       row if browser/font rounding makes their painted boxes touch/overlap. */
+    pointer-events: none;
+    position: relative;
+    z-index: 0;
+}
+
+.ai-assistant-mic-shortcut-kbd {
+    margin-left: auto;
+    padding: 0.05rem 0.28rem;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 4px;
+    font: inherit;
+    font-size: 0.62rem;
+    line-height: 1.25;
+    opacity: 0.72;
+}
 
 /* ─── Loading and empty states ───────────────────────────────────────────── */
 
@@ -6209,6 +7280,29 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
     width: 13px;
     height: 13px;
     color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+}
+
+
+.ai-assistant-mic-perm-allow {
+    flex: 0 0 auto;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    padding: 0.12rem 0.42rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ai-assistant-mic-perm-allow:hover,
+.ai-assistant-mic-perm-allow:focus-visible {
+    background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.ai-assistant-mic-perm-allow:disabled {
+    opacity: 0.55;
+    cursor: progress;
 }
 
 /* Denied → red icon */
@@ -6745,8 +7839,13 @@ ol.ai-assistant-mic-perm-settings-legacy-body[aria-hidden="true"] {
     justify-content: flex-end;      /* newest bars anchored to RIGHT edge     */
     gap: 2px;
     height: 20px;
-    flex-shrink: 0;
-    overflow: hidden;               /* clips oldest (left) bars on narrow vp  */
+    /* Run 83: the waveform is decorative capacity, not a control.  It must be
+     * the first footer consumer allowed to surrender width.  min-width:0 plus
+     * flex-shrink:1 lets overflow:hidden clip the oldest bars without moving
+     * attach/model/mic/send outside the panel. */
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;               /* clips oldest (left) bars when constrained */
     max-width: 0;
     opacity: 0;
     transition: max-width 0.22s ease, opacity 0.18s ease;
@@ -8206,9 +9305,23 @@ ol.ai-assistant-mic-perm-settings-legacy-body[aria-hidden="true"] {
     max-width: 14px   !important;  /* Layer 2: clamp survives max-width:100% */
     min-height: 14px  !important;
     max-height: 14px  !important;
-    stroke: currentColor;
-    fill: none;
     flex-shrink: 0;
+}
+.ai-assistant-export-trigger > span:first-child svg[fill="none"] {
+    fill: none !important;
+    stroke: currentColor !important;
+}
+.ai-assistant-export-trigger > span:first-child svg[fill="currentColor"] {
+    /* Link mode is a native 16x16 filled Octicon.  Keep a 1:1 CSS-pixel grid
+     * for crisp edges instead of shrinking it to the 14px stroke-icon size. */
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+    fill: currentColor !important;
+    stroke: none !important;
 }
 
 /* Keep the icon at the muted colour used by sibling header buttons. */
@@ -8298,6 +9411,16 @@ ol.ai-assistant-mic-perm-settings-legacy-body[aria-hidden="true"] {
 .ai-assistant-export-menu-mode-icon svg {
     width: 14px;
     height: 14px;
+}
+.ai-assistant-export-menu-mode-icon svg[fill="none"] {
+    fill: none !important;
+    stroke: currentColor !important;
+}
+.ai-assistant-export-menu-mode-icon svg[fill="currentColor"] {
+    width: 16px !important;
+    height: 16px !important;
+    fill: currentColor !important;
+    stroke: none !important;
 }
 
 .ai-assistant-export-menu-mode-label {
@@ -12969,13 +14092,12 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     /* Responsive range instead of one flat min-width. Absolutely-positioned
      * with only `right` set (no `left`), so this already shrink-to-fits its
      * content between the two bounds — no explicit `width` needed:
-     *   • min-width: 190px  — floor so the two toggle rows never feel
+     *   • min-width: 190px  — floor so compact action rows never feel
      *                         cramped, even now that the anchor (the
      *                         collapsed icon-only Copy button) is narrower
      *                         than it used to be.
-     *   • max-width: min(230px, 100vw - 2rem) — ceiling that keeps the
-     *                         "🔮 Coming soon: Flag · Correct · Bookmark"
-     *                         row readable on normal screens, but yields to
+     *   • max-width: min(250px, 100vw - 2rem) — ceiling that keeps the
+     *                         long action labels readable on normal screens, but yields to
      *                         `calc(100vw - 2rem)` on a narrow phone
      *                         viewport so `right: 0` can never push this
      *                         past the left edge of the screen — the
@@ -12984,7 +14106,7 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
      *                         smaller anchor.
      */
     min-width: 190px;
-    max-width: min(230px, calc(100vw - 2rem));
+    max-width: min(250px, calc(100vw - 2rem));
     padding: 0.35rem;
     background: var(--pst-color-surface, var(--color-background-primary, #fff));
     border: 1px solid var(--pst-color-border, var(--color-foreground-border, #e1e4e5));
@@ -13034,14 +14156,29 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.35rem 0.45rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.38rem 0.45rem;
+    border: 0;
     border-radius: 0.45rem;
+    background: transparent;
     color: var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a));
+    font: inherit;
     font-size: 0.78rem;
-    cursor: default;
-}
-.ai-assistant-fbk-popup-row[role="button"] {
+    line-height: 1.2;
+    text-align: left;
     cursor: pointer;
+    touch-action: manipulation;
+}
+.ai-assistant-fbk-popup-row:focus {
+    outline: none;
+}
+.ai-assistant-fbk-popup-row:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: -2px;
+}
+.ai-assistant-fbk-popup-row[aria-pressed="true"] .ai-assistant-fbk-popup-icon {
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
 }
 .ai-assistant-fbk-popup-row:hover {
     background: rgba(0, 0, 0, 0.04);
@@ -13060,6 +14197,12 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     font-size: 0.76rem;
     line-height: 1.35;
     color: var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a));
+}
+
+@media (pointer: coarse) {
+    .ai-assistant-fbk-popup-row {
+        min-height: 2.5rem;
+    }
 }
 /* Hairline separator between rows */
 .ai-assistant-fbk-popup-hint {
@@ -13108,14 +14251,6 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 .ai-assistant-fbk-popup-mini-pill[aria-checked="true"]
     .ai-assistant-fbk-popup-mini-pill-thumb {
     transform: translateX(0.85rem);
-}
-/* Future features placeholder row */
-.ai-assistant-fbk-popup-future {
-    opacity: 0.45;
-    cursor: default;
-    font-size: 0.70rem;
-    padding: 0.25rem 0.45rem;
-    color: var(--pst-color-text-muted, #888);
 }
 /* Existing inline feedback block: hidden by default, revealed by expand btn */
 .ai-assistant-panel-feedback--inline:not(.ai-assistant-panel-feedback--revealed) {
@@ -13245,9 +14380,21 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     max-width: 14px  !important;
     min-height: 14px !important;
     max-height: 14px !important;
-    stroke: currentColor;
-    fill: none;
     flex-shrink: 0;
+}
+.ai-assistant-share-export-trigger-icon svg[fill="none"] {
+    fill: none !important;
+    stroke: currentColor !important;
+}
+.ai-assistant-share-export-trigger-icon svg[fill="currentColor"] {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+    fill: currentColor !important;
+    stroke: none !important;
 }
 
 /* ─── Trigger RHS: mode badge + chevron ──────────────────────────────────── */
@@ -13653,6 +14800,16 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 .ai-assistant-share-export-mode-icon svg {
     width: 14px;
     height: 14px;
+}
+.ai-assistant-share-export-mode-icon svg[fill="none"] {
+    fill: none !important;
+    stroke: currentColor !important;
+}
+.ai-assistant-share-export-mode-icon svg[fill="currentColor"] {
+    width: 16px !important;
+    height: 16px !important;
+    fill: currentColor !important;
+    stroke: none !important;
 }
 
 .ai-assistant-share-export-mode-label {
@@ -15854,12 +17011,13 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     opacity: 0.82;
 }
 
-/* Narrow screens: both host buttons collapse to icon-only, so the chip goes
- * with the label and chevron it sits between. Same breakpoint, same rule
- * block ordering as those elements — see the @media (max-width: 575px)
- * collapse rules above. */
+/* The footer effort badge is persistent state, not verbose decoration.
+ * Run 85: do NOT hide .ai-assistant-panel-inline-picker-effort by viewport.
+ * The footer is panel-fit-owned, so a phone with room may show the full pill
+ * and a narrow desktop may show the compact icon + effort badge. The sub-bar
+ * model-link badge remains viewport-collapsible because that separate sub-bar
+ * still has its own narrow-label policy. */
 @media (max-width: 575px) {
-    .ai-assistant-panel-inline-picker-effort,
     .ai-assistant-panel-model-link-effort {
         display: none;
     }
@@ -16455,7 +17613,8 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
    expand inline so the same popover works from either left or right anchor
    without a flyout escaping a narrow panel. */
 .ai-assistant-panel-hamburger-more-btn {
-    grid-template-columns: 0.95rem minmax(0, 1fr) 1.55rem;
+    /* O keycap + disclosure chevron share the trailing rail. */
+    grid-template-columns: 0.95rem minmax(0, 1fr) 2.3rem;
 }
 .ai-assistant-panel-hamburger-more-btn .ai-assistant-panel-hamburger-item-icon {
     width: 0.95rem;
@@ -16464,12 +17623,31 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     line-height: 1;
     letter-spacing: 0.04em;
 }
+.ai-assistant-panel-hamburger-more-tail {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    justify-content: flex-end;
+    gap: 0.2rem;
+    min-width: 1.55rem;
+}
+.ai-assistant-panel-hamburger-more-tail > .ai-assistant-kbd-group {
+    width: auto;
+    justify-content: center;
+}
+.ai-assistant-panel-hamburger-more-tail .ai-assistant-kbd {
+    box-sizing: border-box;
+    width: 1.35rem;
+    min-width: 1.35rem;
+    padding-left: 0;
+    padding-right: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 .ai-assistant-panel-hamburger-more-chevron {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.55rem;
-    justify-self: end;
+    width: 0.65rem;
     font-size: 0.55rem;
     line-height: 1;
     transform: rotate(0deg);
@@ -16500,7 +17678,7 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     margin-right: 0.25rem;
 }
 
-/* Bottom hint: panel chord on the left, single-letter E on the right. */
+/* Bottom hint: panel chord on the left, Escape on the right. */
 .ai-assistant-panel-hamburger-kbd-row {
     width: 100%;
     box-sizing: border-box;
@@ -16514,15 +17692,15 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     border-left: 1px solid rgba(127, 127, 127, 0.2);
 }
 
-/* Match the footer E cap to the exact accelerator rail used by menu rows. */
+/* Escape is wider than the single-letter accelerator rail; keep it compact but readable. */
 .ai-assistant-panel-hamburger-kbd-exit > .ai-assistant-kbd-group {
-    width: 1.55rem;
+    width: auto;
     justify-content: center;
 }
 .ai-assistant-panel-hamburger-kbd-exit .ai-assistant-kbd {
     box-sizing: border-box;
-    width: 1.35rem;
-    min-width: 1.35rem;
+    width: auto;
+    min-width: 2.1rem;
     padding-left: 0;
     padding-right: 0;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -17992,7 +19170,38 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 @media (max-width: 720px) {
     .ai-assistant-panel-feedback-channel-grid { grid-template-columns: 1fr; }
 }
-.ai-assistant-panel-feedback-activity-actions { margin-top: 4px; }
+
+.ai-assistant-panel-feedback-activity-actions {
+    margin-top: 6px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.ai-assistant-panel-feedback-activity-forget-all {
+    flex: 0 0 auto;
+    padding: 0.22rem 0.48rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
+}
+.ai-assistant-panel-feedback-activity-forget {
+    margin-inline-start: auto;
+}
+@media (max-width: 720px) {
+    .ai-assistant-panel-feedback-activity-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+    }
+    .ai-assistant-panel-feedback-activity-actions .ai-assistant-panel-ep-io-btn {
+        width: 100%;
+        margin-inline-start: 0;
+    }
+    .ai-assistant-panel-feedback-activity-forget-all {
+        max-width: 9rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
 
 /* Run 46 — feedback review payload/model evidence */
 .ai-assistant-fbk-popup-icon svg {
@@ -18015,4 +19224,2232 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     min-width: 0;
     overflow-wrap: anywhere;
     color: var(--pst-color-text-muted, #64748b);
+}
+
+/* Run 47 — Feedback workspace UX parity with Dataset contribution
+   -----------------------------------------------------------------
+   Feedback now follows the same review rhythm as contribution:
+   Current Q&A → Privacy channels + optional note → Inspect payload →
+   Consent & manage.  Channel permissions remain independent. */
+.ai-assistant-panel-feedback-workspace-body {
+    gap: 0.85rem;
+    padding-bottom: 1.5rem;
+}
+
+.ai-assistant-panel-feedback-channel-card {
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+}
+
+.ai-assistant-panel-feedback-channel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.ai-assistant-panel-feedback-channel-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+}
+
+.ai-assistant-panel-feedback-channel-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 0.82rem;
+    line-height: 1;
+}
+
+.ai-assistant-panel-feedback-channel-toggle {
+    flex: 0 0 auto;
+}
+
+.ai-assistant-panel-feedback-channel-status {
+    margin: 0.35rem 0 0;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #6b7280));
+    font-size: 0.69rem;
+    line-height: 1.42;
+    text-wrap: pretty;
+}
+
+.ai-assistant-panel-feedback-note {
+    margin-top: 0.65rem;
+}
+
+.ai-assistant-panel-feedback-note textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.ai-assistant-panel-feedback-consent-actions {
+    align-items: stretch;
+    margin-top: 0.55rem;
+}
+
+.ai-assistant-panel-feedback-consent-actions .ai-assistant-panel-ep-io-btn {
+    flex: 1 1 100%;
+    min-height: 2.35rem;
+    font-weight: 650;
+}
+
+.ai-assistant-panel-feedback-lifecycle {
+    margin-top: 0.7rem;
+}
+
+.ai-assistant-panel-feedback-lifecycle .ai-assistant-panel-feedback-review-line {
+    margin: 0.2rem 0 0.5rem;
+}
+
+@media (max-width: 720px) {
+    .ai-assistant-panel-feedback-channel-head {
+        align-items: flex-start;
+    }
+    .ai-assistant-panel-feedback-channel-toggle {
+        margin-top: 0.05rem;
+    }
+}
+
+/* Run 48 — review Content & privacy parity
+   ----------------------------------------
+   Feedback and Dataset contribution share the same compact disclosure/preset
+   surface as Share, but only expose fields that map to their actual review
+   contracts. Required/forbidden fields are visibly locked. */
+.ai-assistant-panel-review-content-privacy {
+    border: 1px solid rgba(127,127,127,.22);
+    border-radius: .8rem;
+    padding: 0 .72rem;
+    background: var(--pst-color-surface, var(--color-background-primary, transparent));
+}
+.ai-assistant-panel-review-content-privacy .ai-assistant-conv-share-collapse-toggle {
+    padding: .72rem 0;
+}
+.ai-assistant-panel-review-content-privacy .ai-assistant-conv-share-collapse-panel {
+    border-top: 1px solid rgba(127,127,127,.14);
+    padding-top: .68rem;
+}
+.ai-assistant-panel-review-content-grid {
+    margin-bottom: .12rem;
+}
+.ai-assistant-panel-review-content-locked-option {
+    opacity: .72;
+}
+.ai-assistant-panel-review-content-locked-option input {
+    cursor: not-allowed;
+}
+.ai-assistant-panel-review-content-privacy [data-content-privacy-option]:focus-visible,
+.ai-assistant-panel-review-content-privacy button:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.ai-assistant-panel-storage-preview-hint {
+    margin-top: .55rem;
+    padding: .45rem .55rem;
+    border: 1px dashed rgba(127,127,127,.26);
+    border-radius: .55rem;
+}
+.ai-assistant-panel-storage-preview {
+    margin-top: .45rem;
+}
+
+/* Run 51 — centralized Feedback controls + JSON/JSONL inspector
+   -------------------------------------------------------------
+   One visible owner per feedback permission; payload formats are persistent
+   tabbed views instead of a row of show/hide actions. JSONL is expanded only
+   for local readability while copy/download remains strict NDJSON. */
+.ai-assistant-panel-payload-inspector-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    margin-top: .15rem;
+}
+.ai-assistant-panel-payload-inspector-toolbar .ai-assistant-panel-contribution-size {
+    margin-left: auto;
+}
+.ai-assistant-panel-payload-format-tabs {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(4.3rem, 1fr));
+    gap: .18rem;
+    padding: .2rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d1d5db));
+    border-radius: .72rem;
+    background: var(--pst-color-on-background, var(--color-background-secondary, #f6f8fa));
+}
+.ai-assistant-panel-payload-format-btn {
+    min-height: 2rem;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-weight: 650;
+}
+.ai-assistant-panel-payload-format-btn[aria-selected="true"] {
+    border-color: var(--pst-color-border, var(--color-foreground-border, #d1d5db)) !important;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff)) !important;
+    color: var(--pst-color-primary, var(--color-brand-primary, #2563eb));
+    box-shadow: 0 1px 2px rgba(0,0,0,.06) !important;
+}
+.ai-assistant-panel-payload-inspector-intro {
+    margin-bottom: .55rem;
+    text-wrap: pretty;
+}
+.ai-assistant-panel-payload-views {
+    min-width: 0;
+}
+.ai-assistant-panel-payload-view[hidden] {
+    display: none !important;
+}
+.ai-assistant-panel-payload-view {
+    min-width: 0;
+    padding: .72rem;
+    border: 1px solid rgba(127,127,127,.22);
+    border-radius: .78rem;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 96%, transparent);
+}
+.ai-assistant-panel-payload-view-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    margin-bottom: .35rem;
+}
+.ai-assistant-panel-payload-view-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .42rem;
+    min-width: 0;
+}
+.ai-assistant-panel-payload-view-title strong {
+    font-size: .76rem;
+}
+.ai-assistant-panel-payload-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.35rem;
+    padding: 0 .42rem;
+    border: 1px solid rgba(127,127,127,.22);
+    border-radius: 999px;
+    color: var(--pst-color-text-muted, #64748b);
+    font-size: .62rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+.ai-assistant-panel-payload-code {
+    margin-top: .5rem;
+    white-space: pre;
+    overflow-wrap: normal;
+    word-break: normal;
+    line-height: 1.52;
+}
+.ai-assistant-panel-payload-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .4rem;
+    margin-top: .5rem;
+}
+.ai-assistant-panel-payload-actions .ai-assistant-panel-ep-io-btn {
+    min-width: 5.4rem;
+}
+.ai-assistant-panel-feedback-telemetry-details {
+    margin-top: .75rem;
+    padding-top: .65rem;
+    border-top: 1px solid rgba(127,127,127,.18);
+}
+.ai-assistant-panel-feedback-telemetry-details summary {
+    cursor: pointer;
+    color: var(--pst-color-text-muted, #64748b);
+    font-size: .7rem;
+    font-weight: 650;
+}
+.ai-assistant-panel-feedback-review-idle {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .72rem .78rem;
+    border: 1px dashed rgba(127,127,127,.3);
+    border-radius: .72rem;
+    background: var(--pst-color-on-background, var(--color-background-secondary, #f6f8fa));
+}
+.ai-assistant-panel-feedback-review-idle strong {
+    font-size: .75rem;
+}
+.ai-assistant-panel-feedback-review-idle span {
+    color: var(--pst-color-text-muted, #64748b);
+    font-size: .69rem;
+    line-height: 1.45;
+    text-wrap: pretty;
+}
+
+@media (max-width: 720px) {
+    .ai-assistant-panel-payload-inspector-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .ai-assistant-panel-payload-inspector-toolbar .ai-assistant-panel-contribution-size {
+        align-self: flex-start;
+        margin-left: 0;
+    }
+    .ai-assistant-panel-payload-format-tabs {
+        width: 100%;
+    }
+    .ai-assistant-panel-payload-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+    .ai-assistant-panel-payload-actions .ai-assistant-panel-ep-io-btn {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* Run 52 — inspector readability + keyboard accessibility
+   -------------------------------------------------------
+   JSON/JSONL are true tabs with roving focus. The visible code is a local,
+   syntax-emphasized audit view; copy/download still uses the original strict
+   serialized bytes rather than the styled DOM. */
+.ai-assistant-panel-payload-format-btn:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2563eb));
+    outline-offset: 2px;
+}
+.ai-assistant-panel-payload-code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-variant-ligatures: none;
+}
+.ai-assistant-panel-json-token--key {
+    color: var(--pst-color-primary, var(--color-brand-primary, #2563eb));
+    font-weight: 650;
+}
+.ai-assistant-panel-json-token--string {
+    color: var(--pst-color-success, #16803a);
+}
+.ai-assistant-panel-json-token--number {
+    color: var(--pst-color-warning, #b45309);
+    font-variant-numeric: tabular-nums;
+}
+.ai-assistant-panel-json-token--boolean {
+    color: var(--pst-color-secondary, #7c3aed);
+    font-weight: 650;
+}
+.ai-assistant-panel-json-token--null {
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #6b7280));
+    font-style: italic;
+}
+.ai-assistant-panel-json-token--punct {
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #6b7280));
+}
+
+/* ─── Composer attachment menu + staged files (Run 60) ────────────────────
+ * The + menu is owned by the footer action bar but opens upward over the
+ * scrollable panel body. JS caps max-height against #ai-assistant-panel-body
+ * so a long/localised menu stays inside the assistant rather than escaping
+ * the panel or forcing the footer off-screen. */
+.ai-assistant-panel-attach-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.ai-assistant-panel-attach-menu {
+    position: absolute;
+    left: -0.3rem;
+    bottom: calc(100% + 0.5rem);
+    z-index: 1094;
+    width: min(324px, calc(100vw - 2rem));
+    min-width: min(272px, calc(100vw - 2rem));
+    max-height: 18rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.35rem;
+    box-sizing: border-box;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 10px;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08);
+    scrollbar-width: thin;
+}
+.ai-assistant-panel-attach-menu[hidden] { display: none !important; }
+
+[data-bs-theme="dark"] .ai-assistant-panel-attach-menu {
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.46), 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.ai-assistant-panel-attach-menu-label {
+    padding: 0.25rem 0.5rem 0.2rem;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.68rem;
+    font-weight: 650;
+    line-height: 1.2;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    user-select: none;
+}
+.ai-assistant-panel-attach-menu-label--secondary {
+    margin-top: 0.3rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--pst-color-border, var(--color-foreground-border, #e5e7eb));
+}
+
+.ai-assistant-panel-attach-menu-item {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.5rem;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    text-align: left;
+    cursor: pointer;
+}
+.ai-assistant-panel-attach-menu-item:hover,
+.ai-assistant-panel-attach-menu-item:focus-visible {
+    background: rgba(128, 128, 128, 0.11);
+}
+.ai-assistant-panel-attach-menu-item:focus { outline: none; }
+.ai-assistant-panel-attach-menu-item:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: -2px;
+}
+.ai-assistant-panel-attach-menu-item:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.ai-assistant-panel-attach-menu-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #666));
+}
+.ai-assistant-panel-attach-menu-icon svg {
+    width: 1.08rem;
+    height: 1.08rem;
+    display: block;
+}
+.ai-assistant-panel-attach-menu-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.13rem;
+}
+.ai-assistant-panel-attach-menu-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.ai-assistant-panel-attach-menu-copy small {
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.68rem;
+    line-height: 1.3;
+}
+.ai-assistant-panel-attach-menu-shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.18rem;
+    flex: 0 0 auto;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+}
+.ai-assistant-panel-attach-menu-shortcut kbd {
+    min-width: 1.25rem;
+    padding: 0.08rem 0.22rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.07);
+    color: inherit;
+    font: inherit;
+    font-size: 0.64rem;
+    line-height: 1.25;
+    text-align: center;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+
+/* Run 101 — Skills disclosure inside the composer + menu.
+ * Keep it inline instead of spawning a right-side floating submenu: the parent
+ * attach surface already owns panel-edge and short-height positioning, so an
+ * inline child is deterministic on phone, tablet, and manually narrowed
+ * desktop panels. */
+.ai-assistant-panel-attach-menu-item--skills-toggle {
+    position: relative;
+}
+.ai-assistant-panel-attach-menu-chevron {
+    width: 1rem;
+    height: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    transform: rotate(-90deg);
+    transition: transform 120ms ease;
+}
+.ai-assistant-panel-attach-menu-chevron svg {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+.ai-assistant-panel-attach-menu-item--skills-toggle[aria-expanded="true"] .ai-assistant-panel-attach-menu-chevron {
+    transform: rotate(0deg);
+}
+.ai-assistant-panel-attach-skills-menu {
+    margin: 0.05rem 0 0.25rem 1.8rem;
+    padding: 0.1rem 0 0.1rem 0.38rem;
+    border-left: 1px solid var(--pst-color-border, var(--color-foreground-border, #e5e7eb));
+}
+.ai-assistant-panel-attach-skills-menu[hidden] {
+    display: none !important;
+}
+.ai-assistant-panel-attach-menu-item--skills-child {
+    padding-top: 0.48rem;
+    padding-bottom: 0.48rem;
+}
+.ai-assistant-panel-attach-menu-command {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 5px;
+    background: rgba(128, 128, 128, 0.07);
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #666));
+    font: 700 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-attach-menu-chevron { transition: none; }
+}
+
+/* Run 62 — body-bounded file drag/drop affordance.  The overlay is appended
+ * to the fixed panel root and JS positions it exactly over the current body
+ * scrollport.  It never owns file parsing: drop delegates to the same staging
+ * pipeline as the picker/Alt+U path. */
+.ai-assistant-panel-attachment-drop-overlay {
+    position: absolute;
+    z-index: 1105;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0.8rem;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,.86);
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 86%, transparent);
+    backdrop-filter: blur(4px);
+}
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-drop-overlay {
+    background: rgba(18,18,18,.82);
+    background: color-mix(in srgb, var(--pst-color-surface, #171717) 86%, transparent);
+}
+.ai-assistant-panel-attachment-drop-overlay[hidden] { display: none !important; }
+.ai-assistant-panel-attachment-drop-card {
+    width: min(100%, 19rem);
+    min-height: 9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    padding: 1rem;
+    box-sizing: border-box;
+    border: 2px dashed var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    border-radius: 12px;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,.12);
+}
+.ai-assistant-panel-attachment-drop-icon {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+}
+.ai-assistant-panel-attachment-drop-icon svg { width: 1.75rem; height: 1.75rem; }
+.ai-assistant-panel-attachment-drop-card strong {
+    font-size: 0.9rem;
+    line-height: 1.25;
+}
+.ai-assistant-panel-attachment-drop-card span:last-child {
+    max-width: 15.5rem;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.69rem;
+    line-height: 1.45;
+    text-wrap: pretty;
+}
+.ai-assistant-panel-attachment-drop-overlay[data-full="true"] .ai-assistant-panel-attachment-drop-card {
+    border-color: var(--pst-color-warning, #b45309);
+}
+.ai-assistant-panel-attachment-drop-overlay[data-full="true"] .ai-assistant-panel-attachment-drop-icon {
+    color: var(--pst-color-warning, #b45309);
+}
+@media (prefers-reduced-motion: no-preference) {
+    .ai-assistant-panel[data-attachment-drag="true"] .ai-assistant-panel-attachment-drop-card {
+        animation: ai-assistant-attachment-drop-pulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes ai-assistant-attachment-drop-pulse {
+        from { transform: scale(.992); }
+        to { transform: scale(1); }
+    }
+}
+
+/* Claude-style staged attachment cards.  The tray is one horizontal row so
+ * the composer does not grow indefinitely as files are added. */
+.ai-assistant-panel-attachments {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.55rem;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.45rem 0.55rem 0.58rem;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y pinch-zoom;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(128, 128, 128, 0.42) transparent;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.55rem;
+    transition: box-shadow 140ms ease;
+}
+.ai-assistant-panel-attachments::-webkit-scrollbar { height: 6px; }
+.ai-assistant-panel-attachments::-webkit-scrollbar-track { background: transparent; }
+.ai-assistant-panel-attachments::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(128, 128, 128, 0.38);
+}
+/* Inset edge shadows make hidden cards discoverable without adding permanent
+ * arrow controls. They appear only on sides that still have scrollable content. */
+.ai-assistant-panel-attachments[data-overflow-start]:not([data-overflow-end]) {
+    box-shadow: inset 14px 0 12px -14px rgba(0, 0, 0, 0.38);
+}
+.ai-assistant-panel-attachments[data-overflow-end]:not([data-overflow-start]) {
+    box-shadow: inset -14px 0 12px -14px rgba(0, 0, 0, 0.38);
+}
+.ai-assistant-panel-attachments[data-overflow-start][data-overflow-end] {
+    box-shadow: inset 14px 0 12px -14px rgba(0, 0, 0, 0.38),
+                inset -14px 0 12px -14px rgba(0, 0, 0, 0.38);
+}
+.ai-assistant-panel-attachments[hidden] { display: none !important; }
+
+.ai-assistant-panel-attachment-tile {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex: 0 0 120px;
+    scroll-snap-align: start;
+    border-radius: 10px;
+}
+
+.ai-assistant-panel-attachment-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: inherit;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.055);
+}
+.ai-assistant-panel-attachment-card:hover {
+    border-color: color-mix(in srgb, var(--pst-color-primary, #2980b9) 42%, var(--pst-color-border, #d8dce1));
+    box-shadow: 0 4px 13px rgba(0, 0, 0, 0.10);
+}
+.ai-assistant-panel-attachment-card:focus { outline: none; }
+.ai-assistant-panel-attachment-card:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: 2px;
+}
+
+.ai-assistant-panel-attachment-card-body {
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.35rem;
+    padding: 0.72rem;
+}
+.ai-assistant-panel-attachment-card-name {
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.ai-assistant-panel-attachment-card-meta {
+    min-width: 0;
+    margin-top: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.62rem;
+    line-height: 1.25;
+}
+.ai-assistant-panel-attachment-card-badge {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 0.16rem 0.42rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: 999px;
+    background: rgba(128, 128, 128, 0.11);
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #616161));
+    font-size: 0.59rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: 0.035em;
+}
+
+/* Visible documentation-context cards share the attachment shelf while
+ * remaining semantically distinct from one-turn file uploads. */
+.ai-assistant-panel-attachment-tile[data-kind="page"] .ai-assistant-panel-attachment-card {
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 5%, var(--pst-color-surface, #fff));
+    border-color: color-mix(in srgb, var(--pst-color-primary, #2980b9) 30%, var(--pst-color-border, #d8dce1));
+}
+.ai-assistant-panel-attachment-tile[data-context-role="current"] .ai-assistant-panel-attachment-card {
+    border-style: dashed;
+}
+.ai-assistant-panel-attachment-tile[data-kind="page"] .ai-assistant-panel-attachment-card-badge {
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 12%, transparent);
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+}
+.ai-assistant-panel-page-context-note {
+    border-inline-start: 3px solid color-mix(in srgb, var(--pst-color-primary, #2980b9) 45%, transparent);
+}
+
+.ai-assistant-panel-attachment-thumb-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    background: rgba(128, 128, 128, 0.045);
+}
+
+.ai-assistant-panel-attachment-remove {
+    position: absolute;
+    top: -0.35rem;
+    right: -0.35rem;
+    z-index: 2;
+    width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.22rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 50%;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    cursor: pointer;
+    box-shadow: 0 2px 7px rgba(0, 0, 0, 0.13);
+    opacity: 0;
+    transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+.ai-assistant-panel-attachment-remove svg {
+    width: 0.72rem;
+    height: 0.72rem;
+    display: block;
+}
+.ai-assistant-panel-attachment-tile:hover .ai-assistant-panel-attachment-remove,
+.ai-assistant-panel-attachment-tile:focus-within .ai-assistant-panel-attachment-remove,
+.ai-assistant-panel-attachment-remove:focus-visible {
+    opacity: 1;
+}
+.ai-assistant-panel-attachment-remove:hover,
+.ai-assistant-panel-attachment-remove:focus-visible {
+    background: rgba(128, 128, 128, 0.14);
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+}
+.ai-assistant-panel-attachment-remove:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: 1px;
+}
+
+/* Viewport-level local attachment preview.  The layer is appended to
+ * document.body so it can expand beyond a narrow/minimized assistant panel on
+ * desktop, tablet and mobile while remaining a local-only inspection surface. */
+.ai-assistant-panel-attachment-preview-layer {
+    position: fixed;
+    inset: 0;
+    /* Must remain above the maximized assistant panel (2147483500).  Reserve
+     * the CSS integer ceiling for this viewport-level modal layer so header
+     * controls such as #ai-assistant-panel-maximize can never cover it. */
+    z-index: 2147483647;
+    overflow: hidden;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(2px);
+    overscroll-behavior: contain;
+    touch-action: none;
+}
+.ai-assistant-panel-attachment-preview-layer[hidden] { display: none !important; }
+
+.ai-assistant-panel-attachment-preview {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(720px, calc(100vw - 1rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    max-width: calc(100vw - 1rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    max-height: calc(100dvh - 1rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 12px;
+    background: var(--pst-color-surface, var(--color-background-primary, #fff));
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    box-shadow: 0 18px 52px rgba(0, 0, 0, 0.28), 0 3px 10px rgba(0, 0, 0, 0.13);
+}
+
+@media (max-width: 640px) {
+    .ai-assistant-panel-attachment-preview {
+        width: calc(100vw - 0.75rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+        max-width: calc(100vw - 0.75rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+        max-height: calc(100dvh - 0.75rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        border-radius: 10px;
+    }
+    .ai-assistant-panel-attachment-preview-body { padding: 0.6rem; }
+    .ai-assistant-panel-attachment-preview-code { max-height: calc(100dvh - 8.5rem); }
+    .ai-assistant-panel-attachment-preview-image { max-height: calc(100dvh - 8.5rem); }
+}
+
+.ai-assistant-panel-attachment-preview-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.75rem 0.72rem 0.62rem 0.9rem;
+    border-bottom: 1px solid var(--pst-color-border, var(--color-foreground-border, #e5e7eb));
+    cursor: grab;
+    user-select: none;
+}
+.ai-assistant-panel-attachment-preview-head[data-grabbing="true"] { cursor: grabbing; }
+.ai-assistant-panel-attachment-preview-heading {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.ai-assistant-panel-attachment-preview-title {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: inherit;
+    font-size: 0.88rem;
+    font-weight: 650;
+    line-height: 1.3;
+}
+.ai-assistant-panel-attachment-preview-meta {
+    margin: 0.22rem 0 0;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.66rem;
+    line-height: 1.35;
+}
+.ai-assistant-panel-attachment-preview-close {
+    width: 1.9rem;
+    height: 1.9rem;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-preview-close svg { width: 1rem; height: 1rem; }
+.ai-assistant-panel-attachment-preview-close:hover { background: rgba(128, 128, 128, 0.12); color: inherit; }
+.ai-assistant-panel-attachment-preview-close:focus { outline: none; }
+.ai-assistant-panel-attachment-preview-close:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: 1px;
+}
+
+.ai-assistant-panel-attachment-preview-body {
+    min-height: 8rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 0.75rem;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
+}
+.ai-assistant-panel-attachment-preview-code {
+    max-height: min(70vh, 28rem);
+    margin: 0;
+    padding: 0.75rem;
+    overflow: auto;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #e5e7eb));
+    border-radius: 8px;
+    background: var(--pst-color-on-background, var(--color-background-secondary, rgba(128,128,128,0.06)));
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    font-family: var(--pst-font-family-monospace, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 0.68rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.ai-assistant-panel-attachment-preview-note {
+    margin: 0.55rem 0 0;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.67rem;
+    line-height: 1.4;
+}
+.ai-assistant-panel-attachment-preview-image-wrap {
+    min-height: 8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+}
+.ai-assistant-panel-attachment-preview-image {
+    display: block;
+    max-width: 100%;
+    max-height: min(60vh, 30rem);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+}
+.ai-assistant-panel-attachment-preview-caption {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.67rem;
+    text-align: center;
+}
+.ai-assistant-panel-attachment-preview-fallback {
+    min-height: min(15rem, 48vh);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 1rem;
+    text-align: center;
+}
+.ai-assistant-panel-attachment-preview-fallback p {
+    max-width: 30rem;
+    margin: 0;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #71717a));
+    font-size: 0.76rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+.ai-assistant-panel-attachment-preview-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    padding: 0.45rem 0.72rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 7px;
+    background: rgba(128, 128, 128, 0.08);
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
+    font-size: 0.73rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-preview-download:hover { background: rgba(128, 128, 128, 0.14); }
+.ai-assistant-panel-attachment-preview-download:focus { outline: none; }
+.ai-assistant-panel-attachment-preview-download:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: 2px;
+}
+
+@media (hover: none), (pointer: coarse) {
+    .ai-assistant-panel-attachment-remove { opacity: 1; }
+}
+
+@media (max-width: 480px) {
+    .ai-assistant-panel-slash-command-menu {
+        left: 0.25rem;
+        width: calc(100% - 0.5rem);
+        min-width: 0;
+    }
+    .ai-assistant-panel-slash-command-copy small,
+    .ai-assistant-panel-slash-command-arg,
+    .ai-assistant-panel-slash-command-foot { display: none; }
+    .ai-assistant-panel-slash-command-item { min-height: 44px; }
+    .ai-assistant-panel-attach-menu {
+        width: min(310px, calc(100vw - 1.5rem));
+        min-width: min(250px, calc(100vw - 1.5rem));
+    }
+    .ai-assistant-panel-attach-menu-copy small { display: none; }
+    .ai-assistant-panel-attachment-tile { width: 108px; height: 108px; flex-basis: 108px; }
+}
+
+/* Run 63 — async attachment staging is explicit composer state. */
+.ai-assistant-panel-attachment-stage-status {
+    min-height: 1.15rem;
+    margin: .1rem .2rem .2rem;
+    font-size: .72rem;
+    line-height: 1.25;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #6b7280));
+}
+.ai-assistant-panel-attachment-stage-status[hidden] { display: none !important; }
+#ai-assistant-panel-send[data-attachment-pending] {
+    cursor: progress;
+    opacity: .6;
+}
+.ai-assistant-panel-attachment-replay {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin: .1rem .2rem .25rem;
+    padding: .35rem .5rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d8dce1));
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, var(--pst-color-primary, #2980b9) 8%);
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #6b7280));
+    font-size: .7rem;
+    line-height: 1.3;
+}
+.ai-assistant-panel-attachment-replay[hidden] { display: none !important; }
+.ai-assistant-panel-attachment-replay-remove {
+    flex: 0 0 auto;
+    padding: .15rem .35rem;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-replay-remove:hover,
+.ai-assistant-panel-attachment-replay-remove:focus-visible {
+    background: rgba(128,128,128,.12);
+}
+
+/* Run 76 — iOS/WebKit attachment picker reliability.
+ * Keep the native file input rendered but visually clipped instead of using
+ * hidden/display:none. This preserves a dependable user-activation target on
+ * iPhone browsers (all of which use WebKit) while keeping it out of layout. */
+.ai-assistant-panel-file-input {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Run 100 — adaptive Skill Studio / advanced Agent Skill Generator
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ai-assistant-panel-skill-scroll { padding-bottom: 1rem; }
+.ai-assistant-panel-skill-hero {
+    margin: .8rem 1rem .1rem; padding: .78rem; display: flex; gap: .68rem;
+    align-items: flex-start; border: 1px solid var(--pst-color-border, #d0d7de);
+    border-radius: 11px; background: var(--pst-color-on-background, #f6f8fa);
+}
+.ai-assistant-panel-skill-hero-icon { width: 1.35rem; height: 1.35rem; flex: 0 0 auto; color: var(--pst-color-primary, #2563eb); }
+.ai-assistant-panel-skill-hero-icon svg { width: 100%; height: 100%; }
+.ai-assistant-panel-skill-hero span:last-child { min-width: 0; display:flex; flex-direction:column; gap:.22rem; }
+.ai-assistant-panel-skill-hero strong { font-size:.84rem; line-height:1.3; }
+.ai-assistant-panel-skill-hero small { font-size:.68rem; line-height:1.42; color:var(--pst-color-text-muted,#6a737d); }
+
+.ai-assistant-panel-skill-modes { display:grid; grid-template-columns:1fr 1fr; gap:3px; padding:3px; border-radius:9px; background:var(--pst-color-on-background,#f0f1f2); }
+.ai-assistant-panel-skill-modes--three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.ai-assistant-panel-skill-modes button { min-width:0; border:0; border-radius:7px; padding:.44rem .45rem; font:inherit; font-size:.73rem; background:transparent; color:inherit; cursor:pointer; }
+.ai-assistant-panel-skill-modes button[aria-pressed="true"] { background:var(--pst-color-surface,#fff); box-shadow:0 1px 3px rgba(0,0,0,.12); font-weight:650; }
+.ai-assistant-panel-skill-complexity { margin-top:.42rem; padding:.35rem .48rem; border-radius:7px; font-size:.65rem; line-height:1.35; color:var(--pst-color-text-muted,#6a737d); background:color-mix(in srgb,var(--pst-color-primary,#2563eb) 6%,transparent); }
+
+.ai-assistant-panel-skill-field { display:flex; flex-direction:column; gap:.28rem; margin:.58rem 0; font-size:.72rem; min-width:0; }
+.ai-assistant-panel-skill-field > span { font-weight:650; color:var(--pst-color-text-base,#1f2328); }
+.ai-assistant-panel-skill-select { width:100%; min-height:2rem; }
+textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; font-family:inherit; line-height:1.45; }
+.ai-assistant-panel-skill-guided textarea.ai-assistant-panel-skill-input,
+.ai-assistant-panel-skill-advanced textarea.ai-assistant-panel-skill-input { min-height:5rem; }
+.ai-assistant-panel-skill-field-meta { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.ai-assistant-panel-skill-field-meta > span { font-size:.62rem; color:var(--pst-color-text-muted,#6a737d); }
+.ai-assistant-panel-skill-profile-hint { margin-top:-.08rem; color:var(--pst-color-text-muted,#6a737d); font-size:.64rem; line-height:1.35; }
+
+.ai-assistant-panel-skill-source-tools { display:flex; align-items:center; justify-content:space-between; gap:.55rem; margin-bottom:.45rem; }
+.ai-assistant-panel-skill-source-buttons { display:flex; flex-wrap:wrap; gap:.28rem; }
+.ai-assistant-panel-skill-small-btn, .ai-assistant-panel-skill-action {
+    border:1px solid var(--pst-color-border,#d0d7de); background:var(--pst-color-surface,#fff); color:inherit;
+    border-radius:7px; padding:.36rem .5rem; font:inherit; font-size:.69rem; cursor:pointer;
+}
+.ai-assistant-panel-skill-small-btn:hover, .ai-assistant-panel-skill-action:hover { background:var(--pst-color-on-background,#f6f8fa); }
+.ai-assistant-panel-skill-source-count { flex:0 0 auto; font-size:.66rem; color:var(--pst-color-text-muted,#6a737d); }
+.ai-assistant-panel-skill-sources { display:flex; flex-direction:column; gap:.38rem; }
+.ai-assistant-panel-skill-source-row {
+    display:grid; grid-template-columns:auto minmax(0,1fr) minmax(7.8rem,auto) auto; gap:.46rem; align-items:center;
+    padding:.5rem .55rem; border:1px solid var(--pst-color-border,#d8dee4); border-radius:9px;
+    transition:border-color .15s ease,background .15s ease;
+}
+.ai-assistant-panel-skill-source-row:has(input:checked) { border-color:var(--pst-color-primary,#2563eb); background:color-mix(in srgb,var(--pst-color-primary,#2563eb) 6%,transparent); }
+.ai-assistant-panel-skill-source-copy { min-width:0; display:flex; flex-direction:column; gap:.09rem; cursor:pointer; }
+.ai-assistant-panel-skill-source-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.73rem; }
+.ai-assistant-panel-skill-source-copy small { color:var(--pst-color-text-muted,#6a737d); font-size:.62rem; line-height:1.3; }
+.ai-assistant-panel-skill-source-role { min-width:0; max-width:10rem; padding:.28rem .35rem; border:1px solid var(--pst-color-border,#d0d7de); border-radius:6px; background:var(--pst-color-surface,#fff); color:inherit; font:inherit; font-size:.62rem; }
+.ai-assistant-panel-skill-source-badge { font-size:.56rem; font-weight:750; letter-spacing:.05em; color:var(--pst-color-text-muted,#6a737d); }
+.ai-assistant-panel-skill-empty { margin:.3rem 0; font-size:.68rem; color:var(--pst-color-text-muted,#6a737d); }
+.ai-assistant-panel-skill-sheet:not([data-skill-mode="advanced"]) .ai-assistant-panel-skill-source-role { display:none; }
+.ai-assistant-panel-skill-sheet:not([data-skill-mode="advanced"]) .ai-assistant-panel-skill-source-row { grid-template-columns:auto minmax(0,1fr) auto; }
+
+.ai-assistant-panel-skill-details, .ai-assistant-panel-skill-validation {
+    border:1px solid var(--pst-color-border,#d8dee4); border-radius:9px; padding:.15rem .58rem .45rem; margin:.48rem 0;
+}
+.ai-assistant-panel-skill-details summary, .ai-assistant-panel-skill-validation summary { cursor:pointer; padding:.42rem 0; font-size:.73rem; font-weight:650; }
+.ai-assistant-panel-skill-check { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.5rem; align-items:start; margin:.55rem 0; cursor:pointer; }
+.ai-assistant-panel-skill-check input { margin-top:.16rem; }
+.ai-assistant-panel-skill-check span { display:flex; flex-direction:column; gap:.08rem; }
+.ai-assistant-panel-skill-check strong { font-size:.7rem; }
+.ai-assistant-panel-skill-check small { font-size:.62rem; line-height:1.35; color:var(--pst-color-text-muted,#6a737d); }
+
+.ai-assistant-panel-skill-status { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.5rem; }
+.ai-assistant-panel-skill-status span { border-radius:999px; padding:.17rem .42rem; font-size:.6rem; background:var(--pst-color-on-background,#f0f1f2); }
+.ai-assistant-panel-skill-status span[data-ok="false"] { color:#b42318; background:rgba(180,35,24,.08); }
+.ai-assistant-panel-skill-generate { width:100%; display:flex; align-items:center; justify-content:center; gap:.4rem; border:0; border-radius:8px; padding:.58rem .7rem; font:inherit; font-size:.76rem; font-weight:650; color:#fff; background:var(--pst-color-primary,#2563eb); cursor:pointer; }
+.ai-assistant-panel-skill-generate:disabled { opacity:.5; cursor:not-allowed; }
+.ai-assistant-panel-skill-generate svg { width:1rem; height:1rem; }
+
+.ai-assistant-panel-skill-tree { margin:.55rem 0 0; max-height:12rem; overflow:auto; padding:.58rem; border-radius:8px; background:var(--pst-color-on-background,#f6f8fa); font:.65rem/1.45 'SFMono-Regular','Consolas','Liberation Mono',monospace; white-space:pre; }
+.ai-assistant-panel-skill-anatomy { max-height:none; white-space:pre-wrap; color:var(--pst-color-text-muted,#6a737d); }
+.ai-assistant-panel-skill-preview { box-sizing:border-box; width:100%; min-height:20rem; margin-top:.55rem; resize:vertical; padding:.68rem; border:1px solid var(--pst-color-border,#d0d7de); border-radius:8px; background:var(--pst-color-surface,#fff); color:inherit; font:.67rem/1.45 'SFMono-Regular','Consolas','Liberation Mono',monospace; }
+.ai-assistant-panel-skill-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.35rem; margin-top:.45rem; }
+.ai-assistant-panel-skill-action { min-width:0; white-space:normal; }
+.ai-assistant-panel-skill-validation-body { display:flex; flex-direction:column; gap:.45rem; padding-bottom:.2rem; }
+.ai-assistant-panel-skill-validation-metrics { display:flex; flex-wrap:wrap; gap:.28rem; }
+.ai-assistant-panel-skill-validation-metrics span { border-radius:999px; padding:.14rem .38rem; font-size:.59rem; background:var(--pst-color-on-background,#f0f1f2); }
+.ai-assistant-panel-skill-validation-body ul { margin:.05rem 0 .1rem; padding-left:1.15rem; font-size:.64rem; line-height:1.45; }
+.ai-assistant-panel-skill-validation-body .is-error { color:#b42318; }
+.ai-assistant-panel-skill-validation-body .is-warning { color:#9a6700; }
+.ai-assistant-panel-skill-validation-body code { align-self:flex-start; max-width:100%; overflow:auto; padding:.28rem .42rem; border-radius:6px; background:var(--pst-color-on-background,#f6f8fa); font-size:.62rem; }
+.ai-assistant-panel-skill-validation-body small { color:var(--pst-color-text-muted,#6a737d); font-size:.6rem; line-height:1.35; }
+
+[data-bs-theme="dark"] .ai-assistant-panel-skill-hero,
+[data-bs-theme="dark"] .ai-assistant-panel-skill-tree,
+[data-bs-theme="dark"] .ai-assistant-panel-skill-modes,
+[data-bs-theme="dark"] .ai-assistant-panel-skill-complexity { background:rgba(255,255,255,.05); }
+[data-bs-theme="dark"] .ai-assistant-panel-skill-modes button[aria-pressed="true"],
+[data-bs-theme="dark"] .ai-assistant-panel-skill-preview,
+[data-bs-theme="dark"] .ai-assistant-panel-skill-small-btn,
+[data-bs-theme="dark"] .ai-assistant-panel-skill-action,
+[data-bs-theme="dark"] .ai-assistant-panel-skill-source-role { background:rgba(255,255,255,.07); }
+
+@media (max-width: 520px) {
+    .ai-assistant-panel-skill-source-row { grid-template-columns:auto minmax(0,1fr) auto; }
+    .ai-assistant-panel-skill-source-role { grid-column:2 / -1; width:100%; max-width:none; }
+    .ai-assistant-panel-skill-sheet:not([data-skill-mode="advanced"]) .ai-assistant-panel-skill-source-role { display:none; }
+    .ai-assistant-panel-skill-source-tools { align-items:flex-start; }
+}
+@media (max-width: 420px) {
+    .ai-assistant-panel-skill-actions { grid-template-columns:1fr; }
+    .ai-assistant-panel-skill-source-row { padding:.52rem .45rem; }
+    .ai-assistant-panel-skill-modes button { font-size:.68rem; padding:.42rem .3rem; }
+    .ai-assistant-panel-skill-source-buttons { gap:.2rem; }
+}
+@media (pointer:coarse) {
+    .ai-assistant-panel-skill-small-btn,
+    .ai-assistant-panel-skill-action,
+    .ai-assistant-panel-skill-modes button,
+    .ai-assistant-panel-skill-source-role { min-height:2.5rem; }
+}
+
+/* Run 109 — exact turn provenance uses the same attachment-card anatomy as
+ * the composer. PAGE/MD/FILE are all one-turn transport selections; saved pin
+ * state is a source-library concern, not a request-persistence concern. */
+.ai-assistant-panel-bubble--user[data-has-turn-attachments="true"] {
+    width: min(90%, 42rem);
+    min-width: min(20rem, 90%);
+}
+.ai-assistant-panel-user-turn-attachments {
+    margin: -0.1rem -0.15rem 0.5rem;
+    width: calc(100% + 0.3rem);
+    max-width: calc(100% + 0.3rem);
+    padding: 0.28rem 0.3rem 0.5rem;
+    border-radius: 0.8rem;
+    background: rgba(255,255,255,0.08);
+}
+.ai-assistant-panel-user-turn-attachments .ai-assistant-panel-attachment-tile {
+    width: 116px;
+    height: 116px;
+    flex-basis: 116px;
+}
+.ai-assistant-panel-user-turn-attachments .ai-assistant-panel-attachment-card {
+    box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+}
+@media (max-width: 480px) {
+    .ai-assistant-panel-bubble--user[data-has-turn-attachments="true"] {
+        width: 94%;
+        min-width: 0;
+    }
+    .ai-assistant-panel-user-turn-attachments .ai-assistant-panel-attachment-tile {
+        width: 104px;
+        height: 104px;
+        flex-basis: 104px;
+    }
+}
+
+
+/* Run 111 — scalable attachment batch summary + metadata-first resource manager. */
+.ai-assistant-panel-attachment-batch-summary {
+    flex: 0 0 auto;
+    width: min(280px, calc(100vw - 2rem));
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.72rem 0.78rem;
+    border: 1px dashed color-mix(in srgb, var(--pst-color-primary, #2980b9) 38%, var(--pst-color-border, #d8dce1));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 4%, var(--pst-color-surface, #fff));
+}
+.ai-assistant-panel-attachment-batch-summary-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+}
+.ai-assistant-panel-attachment-batch-summary-copy strong {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+.ai-assistant-panel-attachment-batch-summary-copy span {
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.64rem;
+    line-height: 1.3;
+}
+.ai-assistant-panel-attachment-batch-summary-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.32rem;
+}
+.ai-assistant-panel-attachment-batch-summary-actions button,
+.ai-assistant-panel-attachment-manager-btn,
+.ai-assistant-panel-attachment-manager-clear {
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 7px;
+    background: var(--pst-color-surface, #fff);
+    color: var(--pst-color-text-base, #1f2328);
+    padding: 0.34rem 0.52rem;
+    font: inherit;
+    font-size: 0.66rem;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-batch-summary-actions button:hover,
+.ai-assistant-panel-attachment-manager-btn:hover,
+.ai-assistant-panel-attachment-manager-clear:hover {
+    background: rgba(128, 128, 128, 0.1);
+}
+.ai-assistant-panel-attachment-more-card {
+    border-style: dashed;
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 3%, var(--pst-color-surface, #fff));
+}
+.ai-assistant-panel-attachment-more-count {
+    margin: auto 0 0;
+    font-size: 0.78rem;
+    line-height: 1.2;
+}
+
+.ai-assistant-panel-attachment-manager-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    display: grid;
+    place-items: center;
+    padding: max(0.5rem, env(safe-area-inset-top, 0px))
+             max(0.5rem, env(safe-area-inset-right, 0px))
+             max(0.5rem, env(safe-area-inset-bottom, 0px))
+             max(0.5rem, env(safe-area-inset-left, 0px));
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(2px);
+    overscroll-behavior: contain;
+}
+.ai-assistant-panel-attachment-manager-layer[hidden] { display: none !important; }
+.ai-assistant-panel-attachment-manager {
+    width: min(820px, 100%);
+    max-height: min(82dvh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 12px;
+    background: var(--pst-color-surface, #fff);
+    color: var(--pst-color-text-base, #1f2328);
+    box-shadow: 0 18px 52px rgba(0,0,0,.28), 0 3px 10px rgba(0,0,0,.13);
+}
+.ai-assistant-panel-attachment-manager-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.82rem 0.9rem 0.7rem;
+    border-bottom: 1px solid var(--pst-color-border, #d8dce1);
+}
+.ai-assistant-panel-attachment-manager-head h3 {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.3;
+}
+.ai-assistant-panel-attachment-manager-count {
+    margin: 0.18rem 0 0;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.66rem;
+}
+.ai-assistant-panel-attachment-manager-close {
+    width: 1.9rem;
+    height: 1.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-manager-close:hover { background: rgba(128,128,128,.12); }
+.ai-assistant-panel-attachment-manager-close svg { width: 1rem; height: 1rem; }
+.ai-assistant-panel-attachment-manager-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(130px, auto);
+    gap: 0.55rem;
+    padding: 0.7rem 0.9rem;
+}
+.ai-assistant-panel-attachment-manager-search,
+.ai-assistant-panel-attachment-manager-filter {
+    min-width: 0;
+    height: 2.15rem;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 7px;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    padding: 0 0.62rem;
+    font: inherit;
+    font-size: 0.72rem;
+}
+.ai-assistant-panel-attachment-manager-omitted {
+    margin: 0 0.9rem 0.55rem;
+    padding: 0.48rem 0.6rem;
+    border-radius: 7px;
+    background: rgba(245, 158, 11, 0.10);
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.67rem;
+    line-height: 1.4;
+}
+.ai-assistant-panel-attachment-manager-list {
+    min-height: 8rem;
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 0 0.9rem 0.7rem;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+.ai-assistant-panel-attachment-manager-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.58rem 0.1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
+}
+.ai-assistant-panel-attachment-manager-info {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+.ai-assistant-panel-attachment-manager-badge {
+    flex: 0 0 auto;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: 999px;
+    background: rgba(128,128,128,.11);
+    padding: 0.16rem 0.42rem;
+    font-size: 0.59rem;
+    font-weight: 700;
+}
+.ai-assistant-panel-attachment-manager-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+.ai-assistant-panel-attachment-manager-copy strong {
+    overflow-wrap: anywhere;
+    font-size: 0.72rem;
+    line-height: 1.3;
+}
+.ai-assistant-panel-attachment-manager-copy span {
+    color: var(--pst-color-text-muted, #71717a);
+    overflow-wrap: anywhere;
+    font-size: 0.63rem;
+    line-height: 1.35;
+}
+.ai-assistant-panel-attachment-manager-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.35rem;
+}
+.ai-assistant-panel-attachment-manager-btn--danger,
+.ai-assistant-panel-attachment-manager-clear {
+    color: var(--pst-color-danger, #b42318);
+}
+.ai-assistant-panel-attachment-manager-foot {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.65rem 0.9rem 0.8rem;
+    border-top: 1px solid var(--pst-color-border, #d8dce1);
+}
+.ai-assistant-panel-attachment-manager-empty {
+    margin: 1.5rem 0;
+    text-align: center;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.72rem;
+}
+@media (max-width: 640px) {
+    .ai-assistant-panel-attachment-manager-controls { grid-template-columns: 1fr; }
+    .ai-assistant-panel-attachment-manager-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .ai-assistant-panel-attachment-manager-actions { width: 100%; }
+    .ai-assistant-panel-attachment-manager-actions button { flex: 1 1 0; }
+}
+
+
+/* Run 114 — verified local PDF actions without native plug-in iframes. */
+.ai-assistant-panel-attachment-preview-pdf-note {
+    margin-top: 0;
+    padding: 0.52rem 0.62rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-primary, #2980b9) 24%, var(--pst-color-border, #d8dce1));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 5%, transparent);
+}
+.ai-assistant-panel-attachment-preview-pdf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.55rem 0;
+}
+.ai-assistant-panel-attachment-preview-pdf-safe {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px dashed var(--pst-color-border, #d8dce1);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 94%, var(--pst-color-primary, #2980b9));
+}
+.ai-assistant-panel-attachment-preview-pdf-safe p {
+    margin: 0;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+/* Run 113 — bounded directory / ZIP inventory and explicit import selection. */
+.ai-assistant-panel-attachment-import {
+    width: min(900px, 100%);
+}
+.ai-assistant-panel-attachment-import-notice {
+    margin: 0.7rem 0.9rem 0;
+    padding: 0.52rem 0.62rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-primary, #2980b9) 24%, var(--pst-color-border, #d8dce1));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 5%, transparent);
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.66rem;
+    line-height: 1.4;
+}
+.ai-assistant-panel-attachment-import-selection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0 0.9rem 0.65rem;
+}
+.ai-assistant-panel-attachment-import-selection-actions button,
+.ai-assistant-panel-attachment-import-add {
+    min-height: 2rem;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 7px;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    padding: 0.3rem 0.64rem;
+    font: inherit;
+    font-size: 0.68rem;
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-import-selection-actions button:hover,
+.ai-assistant-panel-attachment-import-add:hover:not(:disabled) {
+    background: rgba(128,128,128,.12);
+}
+.ai-assistant-panel-attachment-import-selection-actions button:disabled,
+.ai-assistant-panel-attachment-import-add:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+.ai-assistant-panel-attachment-import-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.58rem 0.1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-import-row[data-rejected="true"] {
+    opacity: .62;
+    cursor: not-allowed;
+}
+.ai-assistant-panel-attachment-import-row input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--pst-color-primary, #2980b9);
+}
+.ai-assistant-panel-attachment-import-selected {
+    min-width: 0;
+    flex: 1 1 auto;
+    margin: 0;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.66rem;
+    line-height: 1.35;
+}
+.ai-assistant-panel-attachment-import .ai-assistant-panel-attachment-manager-foot {
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.ai-assistant-panel-attachment-import-add {
+    flex: 0 0 auto;
+    background: var(--pst-color-primary, #2980b9);
+    border-color: var(--pst-color-primary, #2980b9);
+    color: #fff;
+    font-weight: 650;
+}
+.ai-assistant-panel-attachment-import-add:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 88%, #000);
+}
+@media (max-width: 640px) {
+    .ai-assistant-panel-attachment-import-row {
+        grid-template-columns: auto auto minmax(0, 1fr);
+        align-items: start;
+    }
+    .ai-assistant-panel-attachment-import .ai-assistant-panel-attachment-manager-foot {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .ai-assistant-panel-attachment-import-add { width: 100%; }
+}
+
+/* Run 122 — bounded historical/composer Resource Manager pagination. */
+.ai-assistant-panel-attachment-manager-paging {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding: 0 0.9rem 0.55rem;
+}
+.ai-assistant-panel-attachment-manager-paging button:disabled {
+    opacity: .45;
+    cursor: default;
+}
+@media (max-width: 640px) {
+    .ai-assistant-panel-attachment-manager-paging button { flex: 1 1 0; }
+}
+
+.ai-assistant-panel-attachment-preview-media-wrap {
+    display: grid;
+    gap: .6rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ai-assistant-panel-attachment-preview-media {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: min(62dvh, 36rem);
+    border-radius: .7rem;
+    background: #000;
+}
+
+.ai-assistant-panel-attachment-preview-media:is(audio) {
+    min-height: 3rem;
+    background: transparent;
+}
+
+/* Run 140 — reader-authorized selective ZIP edit workspace. */
+.ai-assistant-panel-attachment-preview-zip-edit {
+    border-color: color-mix(in srgb, var(--pst-color-primary, #2980b9) 45%, var(--pst-color-border, #d8dce1));
+}
+.ai-assistant-panel-zip-edit {
+    width: min(980px, 100%);
+    max-height: min(92dvh, 900px);
+}
+.ai-assistant-panel-zip-edit-notice {
+    display: grid;
+    gap: 0.22rem;
+    margin: 0.72rem 0.9rem 0;
+    padding: 0.62rem 0.7rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-primary, #2980b9) 28%, var(--pst-color-border, #d8dce1));
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 5%, var(--pst-color-surface, #fff));
+    font-size: 0.69rem;
+    line-height: 1.42;
+}
+.ai-assistant-panel-zip-edit-notice span {
+    color: var(--pst-color-text-muted, #71717a);
+}
+.ai-assistant-panel-zip-edit-list {
+    min-height: 10rem;
+    max-height: min(32dvh, 300px);
+}
+.ai-assistant-panel-zip-edit-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.58rem 0.1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
+    cursor: pointer;
+}
+.ai-assistant-panel-zip-edit-row[data-disabled="true"] {
+    opacity: .58;
+    cursor: not-allowed;
+}
+.ai-assistant-panel-zip-edit-row input[type="checkbox"],
+.ai-assistant-panel-zip-edit-consent input[type="checkbox"],
+.ai-assistant-panel-zip-edit-review input[type="checkbox"],
+.ai-assistant-panel-zip-edit-proposal-head input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--pst-color-primary, #2980b9);
+}
+.ai-assistant-panel-zip-edit-request,
+.ai-assistant-panel-zip-edit-proposals {
+    display: grid;
+    gap: 0.58rem;
+    padding: 0.72rem 0.9rem;
+    border-top: 1px solid var(--pst-color-border, #d8dce1);
+}
+.ai-assistant-panel-zip-edit-request > label:first-child {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+.ai-assistant-panel-zip-edit-request textarea {
+    width: 100%;
+    min-height: 4.5rem;
+    max-height: 12rem;
+    resize: vertical;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 8px;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    padding: 0.58rem 0.62rem;
+    font: inherit;
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+.ai-assistant-panel-zip-edit-consent,
+.ai-assistant-panel-zip-edit-review {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.48rem;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.67rem;
+    line-height: 1.4;
+    cursor: pointer;
+}
+.ai-assistant-panel-zip-edit-primary,
+.ai-assistant-panel-zip-edit-proposals-head button {
+    min-height: 2.08rem;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 8px;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    padding: 0.36rem 0.7rem;
+    font: inherit;
+    font-size: 0.69rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+.ai-assistant-panel-zip-edit-primary {
+    justify-self: start;
+    border-color: var(--pst-color-primary, #2980b9);
+    background: var(--pst-color-primary, #2980b9);
+    color: #fff;
+}
+.ai-assistant-panel-zip-edit-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--pst-color-primary, #2980b9) 88%, #000);
+}
+.ai-assistant-panel-zip-edit-proposals-head button:hover:not(:disabled) {
+    background: rgba(128,128,128,.11);
+}
+.ai-assistant-panel-zip-edit-primary:disabled,
+.ai-assistant-panel-zip-edit-proposals-head button:disabled {
+    opacity: .48;
+    cursor: not-allowed;
+}
+.ai-assistant-panel-zip-edit-proposals-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+.ai-assistant-panel-zip-edit-proposal-list {
+    display: grid;
+    gap: 0.62rem;
+}
+.ai-assistant-panel-zip-edit-proposal {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 97%, var(--pst-color-primary, #2980b9));
+}
+.ai-assistant-panel-zip-edit-proposal-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.5rem;
+    padding: 0.58rem 0.65rem;
+    cursor: pointer;
+}
+.ai-assistant-panel-zip-edit-proposal-head > span {
+    min-width: 0;
+    display: grid;
+    gap: 0.12rem;
+}
+.ai-assistant-panel-zip-edit-proposal-head strong {
+    overflow-wrap: anywhere;
+    font-size: 0.7rem;
+}
+.ai-assistant-panel-zip-edit-proposal-head small {
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: 0.61rem;
+    line-height: 1.35;
+}
+.ai-assistant-panel-zip-edit-diff {
+    max-height: 18rem;
+    margin: 0;
+    overflow: auto;
+    padding: 0.68rem;
+    border-top: 1px solid var(--pst-color-border, #d8dce1);
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 94%, #000);
+    color: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.66rem;
+    line-height: 1.42;
+    tab-size: 4;
+}
+.ai-assistant-panel-zip-edit-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.68rem 0.9rem 0.82rem;
+    border-top: 1px solid var(--pst-color-border, #d8dce1);
+}
+.ai-assistant-panel-zip-edit-status {
+    min-width: 0;
+    margin: 0;
+    color: var(--pst-color-text-muted, #71717a);
+    overflow-wrap: anywhere;
+    font-size: 0.66rem;
+    line-height: 1.4;
+}
+.ai-assistant-panel-zip-edit-status[data-tone="error"] { color: var(--pst-color-danger, #b42318); }
+.ai-assistant-panel-zip-edit-status[data-tone="ok"] { color: var(--pst-color-success, #1f7a4d); }
+.ai-assistant-panel-zip-edit-status[data-tone="working"] { color: var(--pst-color-primary, #2980b9); }
+
+/* Run 144 — ephemeral provider-artifact lifecycle controls. */
+.ai-assistant-panel-zip-edit-cancel-generation {
+    min-height: 2rem;
+    padding: 0.38rem 0.68rem;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 0.45rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.68rem;
+    cursor: pointer;
+}
+.ai-assistant-panel-zip-edit-cancel-generation:not([disabled]):hover {
+    border-color: var(--pst-color-primary, #2980b9);
+}
+.ai-assistant-panel-zip-edit-proposal[data-lifecycle-state="applied"] {
+    opacity: 0.82;
+}
+.ai-assistant-panel-zip-edit-layer [disabled] { cursor: not-allowed; }
+@media (max-width: 640px) {
+    .ai-assistant-panel-zip-edit {
+        max-height: calc(100dvh - 1rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+    .ai-assistant-panel-zip-edit-row { align-items: start; }
+    .ai-assistant-panel-zip-edit-proposals-head,
+    .ai-assistant-panel-zip-edit-foot {
+        align-items: stretch;
+        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+    .ai-assistant-panel-zip-edit-proposals-head { display: grid; }
+    .ai-assistant-panel-zip-edit-primary,
+    .ai-assistant-panel-zip-edit-proposals-head button { width: 100%; justify-self: stretch; }
+}
+
+/* Run 141 — typed ZIP edit inputs: editable SVG + capability-gated media references. */
+.ai-assistant-panel-zip-edit-row[data-lane="svg"] .ai-assistant-panel-attachment-manager-badge {
+    border-style: double;
+}
+.ai-assistant-panel-zip-edit-row[data-lane="media-reference"] .ai-assistant-panel-attachment-manager-badge {
+    border-style: dashed;
+}
+.ai-assistant-panel-zip-edit-row[data-lane="media-reference"] .ai-assistant-panel-attachment-manager-copy > span {
+    font-style: italic;
+}
+
+/* Run 142 — reader-supplied binary replacement review lane. */
+.ai-assistant-panel-zip-edit-row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+.ai-assistant-panel-zip-edit-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .35rem;
+}
+.ai-assistant-panel-zip-edit-row-actions button,
+.ai-assistant-panel-zip-edit-binary-actions button {
+    min-height: 1.85rem;
+    border: 1px solid var(--pst-color-border, #d8dce1);
+    border-radius: 7px;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    padding: .28rem .52rem;
+    font: inherit;
+    font-size: .63rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+.ai-assistant-panel-zip-edit-row-actions button:hover:not(:disabled),
+.ai-assistant-panel-zip-edit-binary-actions button:hover:not(:disabled) {
+    background: rgba(128,128,128,.1);
+}
+.ai-assistant-panel-zip-edit-row[data-lane="binary-local"] .ai-assistant-panel-attachment-manager-badge {
+    border-style: solid;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--pst-color-success, #1f7a4d) 45%, transparent);
+}
+.ai-assistant-panel-zip-edit-proposal[data-lane="binary-local"] {
+    border-color: color-mix(in srgb, var(--pst-color-success, #1f7a4d) 36%, var(--pst-color-border, #d8dce1));
+}
+.ai-assistant-panel-zip-edit-binary-review {
+    display: grid;
+    gap: .5rem;
+    padding: .62rem;
+    border-top: 1px solid var(--pst-color-border, #d8dce1);
+}
+.ai-assistant-panel-zip-edit-binary-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+}
+.ai-assistant-panel-zip-edit-binary-side {
+    min-width: 0;
+    margin: 0;
+    padding: .45rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 96%, #000);
+}
+.ai-assistant-panel-zip-edit-binary-side figcaption {
+    margin-bottom: .4rem;
+    color: var(--pst-color-text-muted, #71717a);
+    overflow-wrap: anywhere;
+    font-size: .61rem;
+    line-height: 1.35;
+}
+.ai-assistant-panel-zip-edit-binary-side img,
+.ai-assistant-panel-zip-edit-binary-side video {
+    display: block;
+    width: 100%;
+    max-height: 16rem;
+    object-fit: contain;
+    border-radius: 6px;
+    background: rgba(128,128,128,.08);
+}
+.ai-assistant-panel-zip-edit-binary-side audio {
+    width: 100%;
+    min-height: 2.8rem;
+}
+.ai-assistant-panel-zip-edit-binary-note {
+    margin: 0;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .62rem;
+    line-height: 1.4;
+}
+.ai-assistant-panel-zip-edit-binary-actions {
+    display: flex;
+    gap: .4rem;
+    padding: 0 .62rem .62rem;
+}
+@media (max-width: 640px) {
+    .ai-assistant-panel-zip-edit-row {
+        grid-template-columns: auto auto minmax(0, 1fr);
+    }
+    .ai-assistant-panel-zip-edit-row-actions {
+        grid-column: 2 / -1;
+        justify-content: stretch;
+    }
+    .ai-assistant-panel-zip-edit-row-actions button { width: 100%; }
+    .ai-assistant-panel-zip-edit-binary-pair { grid-template-columns: 1fr; }
+    .ai-assistant-panel-zip-edit-binary-actions { display: grid; grid-template-columns: 1fr; }
+}
+
+/* Run 143 — explicitly advertised provider-generated binary candidates. */
+.ai-assistant-panel-zip-edit-row[data-lane="binary-provider"] .ai-assistant-panel-attachment-manager-badge {
+    border-style: double;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--pst-color-accent, #6f42c1) 42%, transparent);
+}
+.ai-assistant-panel-zip-edit-proposal[data-lane="binary-provider"] {
+    border-color: color-mix(in srgb, var(--pst-color-accent, #6f42c1) 34%, var(--pst-color-border, #d8dce1));
+}
+.ai-assistant-panel-zip-edit-generate {
+    border-style: double !important;
+}
+
+
+/* Run 172 — observable turn activity and latest-revision file previews. */
+.ai-assistant-panel-activity {
+    margin: .35rem .28rem .72rem;
+    color: var(--pst-color-text-base, inherit);
+}
+.ai-assistant-panel-activity-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+}
+.ai-assistant-panel-activity-toggle {
+    display: flex;
+    align-items: center;
+    gap: .42rem;
+    min-width: 0;
+    min-height: 2rem;
+    flex: 1 1 auto;
+    border: 0;
+    border-radius: 8px;
+    padding: .3rem .42rem;
+    background: transparent;
+    color: var(--pst-color-text-muted, #71717a);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.ai-assistant-panel-activity-toggle:hover,
+.ai-assistant-panel-activity-toggle:focus-visible {
+    color: var(--pst-color-text-base, inherit);
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, #808080 12%);
+}
+.ai-assistant-panel-activity-toggle:focus { outline: none; }
+.ai-assistant-panel-activity-toggle:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--pst-color-primary, #4f46e5) 42%, transparent);
+}
+.ai-assistant-panel-activity-icon,
+.ai-assistant-panel-activity-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+.ai-assistant-panel-activity-icon svg { width: .92rem; height: .92rem; }
+.ai-assistant-panel-activity-caret {
+    margin-left: auto;
+    transition: transform 140ms ease;
+}
+.ai-assistant-panel-activity-caret svg { width: .78rem; height: .78rem; }
+.ai-assistant-panel-activity[data-open="false"] .ai-assistant-panel-activity-caret { transform: rotate(-90deg); }
+.ai-assistant-panel-activity-summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .74rem;
+    font-weight: 620;
+}
+.ai-assistant-panel-activity-stop {
+    flex: 0 0 auto;
+    min-height: 1.85rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 82%, transparent);
+    border-radius: 999px;
+    padding: .22rem .62rem;
+    background: transparent;
+    color: var(--pst-color-text-muted, #71717a);
+    font: inherit;
+    font-size: .67rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+.ai-assistant-panel-activity-stop:hover,
+.ai-assistant-panel-activity-stop:focus-visible {
+    color: var(--pst-color-danger, #b42318);
+    border-color: color-mix(in srgb, var(--pst-color-danger, #b42318) 45%, var(--pst-color-border, #d8dce1));
+    background: color-mix(in srgb, var(--pst-color-danger, #b42318) 8%, transparent);
+}
+.ai-assistant-panel-activity-stop:focus { outline: none; }
+.ai-assistant-panel-activity[data-state]:not([data-state="running"]) .ai-assistant-panel-activity-stop { display: none; }
+.ai-assistant-panel-activity-panel {
+    margin: .15rem 0 0 .42rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 86%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 97%, #808080 3%);
+}
+.ai-assistant-panel-activity[data-open="false"] .ai-assistant-panel-activity-panel { display: none; }
+.ai-assistant-panel-activity-note {
+    margin: 0;
+    padding: .52rem .68rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 75%, transparent);
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .62rem;
+    line-height: 1.45;
+}
+.ai-assistant-panel-activity-list { display: grid; }
+.ai-assistant-panel-activity-step {
+    display: grid;
+    grid-template-columns: 1.05rem minmax(0, 1fr);
+    align-items: start;
+    gap: .42rem;
+    min-width: 0;
+    padding: .52rem .68rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 63%, transparent);
+}
+.ai-assistant-panel-activity-step:last-child { border-bottom: 0; }
+.ai-assistant-panel-activity-step-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.05rem;
+    min-height: 1.15rem;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .66rem;
+    line-height: 1;
+}
+.ai-assistant-panel-activity-step[data-state="running"] .ai-assistant-panel-activity-step-indicator {
+    animation: ai-assistant-panel-activity-pulse 1.1s ease-in-out infinite;
+}
+.ai-assistant-panel-activity-step[data-state="error"] .ai-assistant-panel-activity-step-indicator,
+.ai-assistant-panel-activity-step[data-kind="warning"] .ai-assistant-panel-activity-step-indicator { color: var(--pst-color-warning, #b54708); }
+.ai-assistant-panel-activity-step-content { min-width: 0; }
+.ai-assistant-panel-activity-step-label {
+    display: block;
+    min-width: 0;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .69rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.ai-assistant-panel-activity-step-detail {
+    margin-top: .18rem;
+    color: color-mix(in srgb, var(--pst-color-text-muted, #71717a) 88%, transparent);
+    font-size: .62rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.ai-assistant-panel-activity-file-step { align-items: center; }
+.ai-assistant-panel-activity-file-link {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .45rem;
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    border-radius: 7px;
+    padding: .18rem .26rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.ai-assistant-panel-activity-file-link:hover,
+.ai-assistant-panel-activity-file-link:focus-visible { background: color-mix(in srgb, var(--pst-color-surface, #fff) 82%, #808080 18%); }
+.ai-assistant-panel-activity-file-link:focus { outline: none; }
+.ai-assistant-panel-activity-file-link .ai-assistant-panel-activity-step-label {
+    color: var(--pst-color-text-base, inherit);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ai-assistant-panel-activity-file-meta {
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .61rem;
+    white-space: nowrap;
+}
+@keyframes ai-assistant-panel-activity-pulse {
+    0%, 100% { opacity: .45; transform: scale(.92); }
+    50% { opacity: 1; transform: scale(1.04); }
+}
+.ai-assistant-panel-changed-files {
+    display: grid;
+    gap: .48rem;
+    margin: .8rem .12rem .2rem;
+    padding: .68rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 88%, transparent);
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 97%, #808080 3%);
+}
+.ai-assistant-panel-changed-files-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .75rem;
+    min-width: 0;
+}
+.ai-assistant-panel-changed-files-head strong { font-size: .72rem; font-weight: 700; }
+.ai-assistant-panel-changed-files-head span {
+    min-width: 0;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .6rem;
+    text-align: right;
+}
+.ai-assistant-panel-changed-files-list { display: grid; gap: .35rem; }
+.ai-assistant-panel-changed-file {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: .35rem;
+}
+.ai-assistant-panel-changed-file-preview {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 8px;
+    padding: .45rem .52rem;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.ai-assistant-panel-changed-file-preview:hover,
+.ai-assistant-panel-changed-file-preview:focus-visible {
+    border-color: color-mix(in srgb, var(--pst-color-primary, #4f46e5) 38%, var(--pst-color-border, #d8dce1));
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 94%, var(--pst-color-primary, #4f46e5) 6%);
+}
+.ai-assistant-panel-changed-file-preview:focus { outline: none; }
+.ai-assistant-panel-changed-file-icon { display: inline-flex; width: 1rem; color: var(--pst-color-text-muted, #71717a); }
+.ai-assistant-panel-changed-file-icon svg { width: 1rem; height: 1rem; }
+.ai-assistant-panel-changed-file-copy { display: grid; min-width: 0; }
+.ai-assistant-panel-changed-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .68rem;
+    font-weight: 650;
+}
+.ai-assistant-panel-changed-file-meta { color: var(--pst-color-text-muted, #71717a); font-size: .59rem; line-height: 1.35; }
+.ai-assistant-panel-changed-file-open { color: var(--pst-color-text-muted, #71717a); font-size: .6rem; font-weight: 650; }
+.ai-assistant-panel-changed-file-download,
+.ai-assistant-panel-changed-files-download-all {
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 82%, transparent);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    padding: .38rem .55rem;
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+.ai-assistant-panel-changed-file-download:hover,
+.ai-assistant-panel-changed-files-download-all:hover { background: rgba(128,128,128,.09); }
+.ai-assistant-panel-changed-files-download-all { justify-self: start; }
+@media (max-width: 560px) {
+    .ai-assistant-panel-activity { margin-left: .08rem; margin-right: .08rem; }
+    .ai-assistant-panel-changed-files-head { align-items: flex-start; flex-direction: column; gap: .15rem; }
+    .ai-assistant-panel-changed-files-head span { text-align: left; }
+    .ai-assistant-panel-changed-file { grid-template-columns: 1fr; }
+    .ai-assistant-panel-changed-file-download { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-activity-caret { transition: none; }
+    .ai-assistant-panel-activity-step[data-state="running"] .ai-assistant-panel-activity-step-indicator { animation: none; }
+}
+.ai-assistant-panel-activity-file-link[data-artifact-unavailable],
+.ai-assistant-panel-changed-file-preview[data-artifact-unavailable],
+.ai-assistant-panel-changed-file-download[data-artifact-unavailable] {
+    border-color: color-mix(in srgb, var(--pst-color-warning, #b54708) 32%, var(--pst-color-border, #d8dce1));
+}
+.ai-assistant-panel-activity-file-link[data-artifact-unavailable] .ai-assistant-panel-activity-file-meta,
+.ai-assistant-panel-changed-file-preview[data-artifact-unavailable] .ai-assistant-panel-changed-file-meta,
+.ai-assistant-panel-changed-file-download[data-artifact-unavailable] {
+    color: var(--pst-color-warning, #b54708);
+}
+.ai-assistant-panel-changed-file-download[data-artifact-unavailable] {
+    opacity: .72;
 }

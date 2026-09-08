@@ -78,6 +78,7 @@ During this lab, you will learn how to:
     internet.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

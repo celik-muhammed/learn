@@ -16,6 +16,7 @@ Lab 4: Modifying a Dockerfile
 ..   4.4
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

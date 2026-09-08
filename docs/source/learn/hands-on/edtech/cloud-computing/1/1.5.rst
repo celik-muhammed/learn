@@ -409,6 +409,7 @@ a ``user`` account, you can configure Docker to run without out using
        sudo newgrp docker
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -166,6 +166,7 @@ Reference
   - `Raw RST <https://raw.githubusercontent.com/readthedocs/sphinx_rtd_theme/a3ab477aaa23f3b7ab7d62c7abc2cc74102ab2b8/docs/demo/lists_tables.rst>`_
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

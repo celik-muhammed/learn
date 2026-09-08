@@ -177,6 +177,7 @@ We will talk more about how to use a reverse proxy in a later lab.
    .. image:: images/welcome-to-nginx.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

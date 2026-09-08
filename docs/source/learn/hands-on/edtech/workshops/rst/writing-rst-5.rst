@@ -181,6 +181,7 @@ Text to Add
             * Delete file ``conf.py`` to run ``quickstart`` again.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

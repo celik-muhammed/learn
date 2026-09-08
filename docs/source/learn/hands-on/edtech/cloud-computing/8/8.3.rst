@@ -35,6 +35,7 @@ is secure. Changing a password is simple!
     because the hacker was using it for illegal activity.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

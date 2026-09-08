@@ -66,6 +66,7 @@ Create a file called ``lab8.2.c`` for this task.
    - Verifying that the file is empty.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

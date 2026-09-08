@@ -51,16 +51,34 @@ extensions = [
     'sphinx.ext.mathjax',  # Render mathematical expressions using MathJax.
     'sphinx.ext.viewcode',  # Add links to highlighted source code
     # Third-party extensions (load after built-ins and matplotlib/IPython)
+    # sphinx-design extension (the modern replacement for sphinx-panels) or sphinx-togglebutton.
+    # "sphinx_togglebutton",
+    # "sphinx_copybutton",
     "sphinx_design",  # Add design components and elements to documentation. Add directive type "dropdown" "grid"
     'sphinx_issues',
     "sphinx_tabs.tabs",  # Tabbed content extension
     "sphinx_tags",  # Needs to be loaded *after* autodoc.
-    # "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",
-    # "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
-    "sphinxcontrib.youtube",
-    # "_sphinx_ext._sphinxcontrib_youtube",
+    # "sphinx_favicon",
+    # "sphinx.ext.todo",
+    # "sphinxext.rediraffe",
+    # "myst_parser",
+    # "ablog",
+    # "sphinxcontrib.youtube",
+    "_sphinx_ext._sphinxcontrib_youtube",
+    "_sphinx_ext.youtube_catalog",
     "_sphinx_ext._sphinx_ai_assistant",
+    "_sphinx_ext._pydata_sphinx_theme.gallery_directive",
+    "_sphinx_ext._pydata_sphinx_theme.component_directive",
 ]
+
+# -- Sitemap -----------------------------------------------------------------
+
+# ReadTheDocs has its own way of generating sitemaps, etc.
+# if not os.environ.get("READTHEDOCS"):
+#     extensions += ["sphinx_sitemap"]
+#     html_baseurl = os.environ.get("SITEMAP_URL_BASE", "http://127.0.0.1:8000/")
+#     sitemap_locales = [None]
+#     sitemap_url_scheme = "{link}"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -104,7 +122,7 @@ html_theme = "pydata_sphinx_theme"  # scikit-learn like
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 # https://pydata-sphinx-theme.readthedocs.io/en/v0.8.1/user_guide/configuring.html#configure-project-logo
-html_logo = "_static/logos/scikit-plots-logo.svg"
+html_logo = "_static/logos/scikit-plots-logo.svg"  # default unless override html_theme_options
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -122,12 +140,71 @@ html_copy_source = True
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    # -- General configuration ------------------------------------------------
+    # alternative way to set twitter and github header icons
+    # "github_url": "https://github.com/pydata/pydata-sphinx-theme",
+    # "twitter_url": "https://twitter.com/PyData",
+    # "logo": {
+    #     "text": "PyData Theme",
+    #     "image_dark": "_static/logo-dark.svg",
+    # },
+    "logo": {
+        "text": "scikit-plots Learn",
+        # "image_dark": "_static/logos/scikit-plots-logo.svg",
+    },
+    # "logo": {
+    #     "alt_text": "scikit-plots homepage",
+    #     "image_light": "logos/scikit-plots-logo-small.png",
+    #     "image_dark": "logos/scikit-plots-logo-small.png",
+    #     "image_relative": "logos/scikit-plots-logo-small.png",
+    # },
+    # "use_edit_page_button": True,  # False
+    "search_bar_text": "Search the docs ...",
+    "show_toc_level": 1,
+    # -- Header and Footer Settings -------------------------------------------
+    "header_links_before_dropdown": 6,
+    "header_dropdown_text": "More",
+    # [left, content, right] For testing that the navbar items align properly
+    "navbar_align": "left",
+    # "show_nav_level": 2,
+
+    # "announcement": "https://raw.githubusercontent.com/pydata/pydata-sphinx-theme/main/docs/_templates/custom-template.html",
+    # "show_version_warning_banner": True,
+    # "navbar_center": ["version-switcher", "navbar-nav"],
+    # "navbar_start": ["navbar-logo"],
+    # "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    # "navbar_persistent": ["search-button"],
+    # "primary_sidebar_end": ["custom-template", "sidebar-ethical-ads"],
+    # "article_footer_items": ["test", "test"],
+    # "content_footer_items": ["test", "test"],
+    # "footer_start": ["copyright"],
+    # "footer_center": ["sphinx-version"],
+    # "secondary_sidebar_items": {
+    #     "**/*": ["page-toc", "edit-this-page", "sourcelink"],
+    #     "examples/no-sidebar": [],
+    # },
+    # "switcher": {
+    #     "json_url": json_url,
+    #     "version_match": version_match,
+    # },
+    # "back_to_top_button": False,
+    # "search_as_you_type": True,
+
+    # -- Appearance Settings --------------------------------------------------
+    "pygments_light_style": "sas",  # "github-light", "tango", "default"
+    "pygments_dark_style": "monokai",  # "github-dark", "monokai", "friendly"
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_css_files = ["styles/custom.css"]
+html_js_files = [
+    ("custom-icons.js", {"defer": "defer"}),
+]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -198,6 +275,43 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+
+# -- MyST options ------------------------------------------------------------
+
+# This allows us to use ::: to denote directives, useful for admonitions
+# myst_enable_extensions = ["colon_fence", "linkify", "substitution"]
+# myst_heading_anchors = 2
+# myst_substitutions = {"rtd": "[Read the Docs](https://readthedocs.org/)"}
+
+# -- Ablog options -----------------------------------------------------------
+
+# blog_path = "examples/blog/index"
+# blog_authors = {
+#     "pydata": ("PyData", "https://pydata.org"),
+#     "jupyter": ("Jupyter", "https://jupyter.org"),
+# }
+
+# -- sphinx_ext_graphviz options ---------------------------------------------
+
+# graphviz_output_format = "svg"
+# inheritance_graph_attrs = {
+#     "rankdir": "LR",
+#     "fontsize": 14,
+#     "ratio": "compress",
+# }
+
+# -- sphinx_togglebutton options ---------------------------------------------
+# togglebutton_hint = str(_("Click to expand"))
+# togglebutton_hint_hide = str(_("Click to collapse"))
+
+# -- Sphinx-copybutton options ---------------------------------------------
+# Exclude copy button from appearing over notebook cell numbers by using :not()
+# The default copybutton selector is `div.highlight pre`
+# https://github.com/executablebooks/sphinx-copybutton/blob/master/sphinx_copybutton/__init__.py#L82
+# copybutton_exclude = ".linenos, .gp"
+# copybutton_selector = ":not(.prompt) > div.highlight pre"
+
+# todo_include_todos = True
 
 # -- Sphinx-Issues configuration --
 

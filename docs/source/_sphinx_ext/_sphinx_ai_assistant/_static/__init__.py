@@ -33,7 +33,7 @@ Notes
 3. Assign the result to a new ``_SVG_<NAME>`` constant below.
 4. Add an entry to ``_PROVIDER_META`` (for providers) or ``_ICON_META``
    (for panel action icons).
-5. Add a corresponding test in ``tests/test___init__.py``.
+5. Add a corresponding test in ``tests/_static/test___init__.py``.
 
 **Security note** — Icons are injected only as ``src`` attributes on
 ``<img>`` elements (via the Python extension) or as ``data:`` URIs
@@ -418,8 +418,8 @@ _SVG_DATASET: str = (
 )
 
 
-# GitHub Octicon "share" — dedicated export Share-link mode action.
-# Mirrors ai-assistant.js ICONS.linkMode and share-link.svg.
+# GitHub Octicon "share" (filled, 16x16 viewBox) — export Link mode action.
+# Mirrors ai-assistant.js ICONS.linkMode and share-link.svg geometry.
 _SVG_SHARE_LINK: str = (
     "data:image/svg+xml;base64,"
     "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGRhdGEtY29tcG9uZW50PSJP"
@@ -434,9 +434,8 @@ _SVG_SHARE_LINK: str = (
     "NCA1IDMuNzUgNWgxYS43NS43NSAwIDAgMSAwIDEuNVpNNy44MjMuMTc3YS4yNS4yNSAwIDAgMSAu"
     "MzU0IDBsMi44OTYgMi44OTZhLjI1LjI1IDAgMCAxLS4xNzcuNDI3SDguNzV2NS43NWEuNzUuNzUg"
     "MCAwIDEtMS41IDBWMy41SDUuMTA0YS4yNS4yNSAwIDAgMS0uMTc3LS40MjdaIj48L3BhdGg+PC9z"
-    "dmc+Cg=="
+    "dmc+"
 )
-
 
 # GitHub Octicon "upload" (filled, 16x16 viewBox).
 # Additive fallback for a future file-upload action; no behaviour is wired here.

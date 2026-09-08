@@ -93,6 +93,7 @@ Run this code on |ide.judge0.com|!
     }
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

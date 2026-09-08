@@ -38,6 +38,7 @@ guide below for a true Windows environment.
    windows-install/index
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

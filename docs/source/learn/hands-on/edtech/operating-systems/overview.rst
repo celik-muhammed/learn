@@ -22,6 +22,7 @@ System Calls or Function Covered
  - ``GetExitCodeProcess()`` Retrieves the exit code of a process.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

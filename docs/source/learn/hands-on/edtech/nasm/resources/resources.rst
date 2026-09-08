@@ -242,6 +242,7 @@ Registers 8-32 bit (Full List)
      -
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -37,6 +37,7 @@ Initially, we'll install two important C and ASM extensions to help us.
 #. Search for and and install extension |x86 and x86_64 Assembly|.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

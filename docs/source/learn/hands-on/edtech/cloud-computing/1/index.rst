@@ -20,6 +20,7 @@ Lab 1: Set up your VPS
    1.9
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -28,6 +28,7 @@ During this lab, you will learn how to:
  #. **Create** an ``.exe`` file.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

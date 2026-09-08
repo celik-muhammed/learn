@@ -517,6 +517,7 @@ These containers and settings are defined as:
        You will break it. :))
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

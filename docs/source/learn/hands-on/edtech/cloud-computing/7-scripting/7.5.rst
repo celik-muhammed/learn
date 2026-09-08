@@ -74,6 +74,7 @@ expected data.
       0 3 * * * bash /root/backup-user-data.sh > /var/user-backups/backup-log.txt
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

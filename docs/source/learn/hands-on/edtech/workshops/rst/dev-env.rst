@@ -172,6 +172,7 @@ Windows WSL
 .. _reStructuredText Extension for Visual Studio Code: https://docs.restructuredtext.net/
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

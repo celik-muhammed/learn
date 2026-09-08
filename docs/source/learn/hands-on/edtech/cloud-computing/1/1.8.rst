@@ -369,6 +369,7 @@ Add an SSL Cert to your site
    You should see your new cert.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

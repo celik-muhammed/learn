@@ -122,6 +122,7 @@ Here are some resources if your want to explore OpenShift Origin (OKD)
    <a href="https://cloudowski.com/articles/10-differences-between-openshift-and-kubernetes/|" target="_blank">10 most important differences between OpenShift and Kubernetes</a>
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from
