@@ -11,6 +11,7 @@ These pages contain reference guides or support docs to NASM.
    resources
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

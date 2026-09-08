@@ -45,6 +45,7 @@ During this lab, you will learn how to:
  #. **automate** the script to create backups on a schedule.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

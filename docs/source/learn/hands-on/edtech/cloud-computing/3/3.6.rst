@@ -186,6 +186,7 @@ experience to install many applications that are available
 through Docker Compose.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

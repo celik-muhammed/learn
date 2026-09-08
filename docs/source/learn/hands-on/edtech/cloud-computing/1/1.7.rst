@@ -294,6 +294,7 @@ Now, we should test the configuration by creating a ``phpinfo`` page.
 #. Verify that the page loads and that the PHP version is correct
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

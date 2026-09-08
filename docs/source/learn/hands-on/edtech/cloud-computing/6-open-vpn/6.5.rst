@@ -181,6 +181,7 @@ generating new client keys to use it.
        HMAC error if the client config does not include ``auth SHA256``
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

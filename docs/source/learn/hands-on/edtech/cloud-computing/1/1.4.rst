@@ -236,6 +236,7 @@ If the firewall is disabled, you need to enable it using
     root@vps298933:~#
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

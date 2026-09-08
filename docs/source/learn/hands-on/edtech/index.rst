@@ -20,6 +20,7 @@ blended-learning courses.
    workshops/index
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -360,6 +360,7 @@ we create an Nginx site.
 View the page in your browser to verify that WordPress has SSL.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -1,4 +1,4 @@
-# scikitplot/_externals/_sphinx_ext/_sphinx_contrib/youtube.py
+# scikitplot/_externals/_sphinx_ext/_sphinxcontrib_youtube/youtube.py
 #
 # fmt: off
 # ruff: noqa

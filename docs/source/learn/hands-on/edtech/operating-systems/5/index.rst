@@ -10,6 +10,7 @@ See the instructions for |Lab 5 in Google Docs|.
    <a href="https://drive.google.com/open?id=11DjreG7oKlgl7GCD-c1QLn_ETxNu-iN54MPkXt7WFOs" target="_blank">Lab 5 in Google Docs</a>
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

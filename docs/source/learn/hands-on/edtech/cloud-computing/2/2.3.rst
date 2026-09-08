@@ -168,6 +168,7 @@ Repeat the steps that you used for Rocket.Chat to create reverse proxy.
 #. Restart Nginx
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

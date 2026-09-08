@@ -483,6 +483,7 @@ Solutions
    solutions
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

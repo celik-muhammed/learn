@@ -148,6 +148,7 @@ Verifying Volume Data
    save the project directory only. The container data are disposable.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

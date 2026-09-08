@@ -163,6 +163,7 @@ and then terminate.
 .. |image3| image:: images/image3.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

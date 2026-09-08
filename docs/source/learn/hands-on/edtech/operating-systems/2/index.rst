@@ -8,6 +8,7 @@ See the instructions for |Lab 2 in Google Docs|.
    <a href="https://drive.google.com/open?id=1X7xz2f8p3f5YPdMbD2VUY-Ufv7ytu4P2_WyTaA7J_To" target="_blank">Lab 2 in Google Docs</a>
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -5104,10 +5104,10 @@ def _cfg_str(config: Any, key: str) -> str | None:
 #: them cannot change which model a reader actually talks to.  Ids are
 #: prefixed ``stub-`` so they cannot collide with a real entry.
 #:
-#: ``reasoning`` differs on purpose between the first two: the echo entry
-#: declares support so the panel SENDS the effort and thinking fields, which
-#: is the only way ``stub/echo`` can report on them; the qa entry does not, so
-#: the two request shapes can be compared side by side in one session.
+#: ``reasoning`` differs on purpose: echo + mirror declare support so the
+#: panel SENDS effort/thinking controls for transport inspection; the qa/error/
+#: hostile/slow fixtures keep the provider-default request shape unless a future
+#: scenario explicitly needs those fields.
 _STUB_MODEL_ENTRIES: list[dict] = [
     {
         "id": "stub-echo",
@@ -5115,22 +5115,33 @@ _STUB_MODEL_ENTRIES: list[dict] = [
         "provider": "custom",
         "label": "Stub · echo request",
         "description": (
-            "Test model. Reports exactly what the browser sent — body keys, "
-            "reasoning fields and their values, credential headers by shape, "
-            "and any secret-shaped strings in the page context. No model is "
-            "called and no credential is read."
+            "Concise transport diagnostic. Reports request keys, reasoning fields, "
+            "credential-header presence by safe shape, and secret-pattern findings. "
+            "No upstream model is called."
         ),
         "reasoning": True,
     },
     {
-        "id": "stub-qa",
-        "model": "stub/qa",
+        "id": "stub-mirror",
+        "model": "stub/mirror",
         "provider": "custom",
-        "label": "Stub · canned answers",
+        "label": "Stub · mirror request chain",
         "description": (
-            "Test model. Deterministic replies from a fixture table — try "
-            '"ping". Sends no reasoning fields, for comparison with the '
-            "echo entry."
+            "Advanced security inspector. Shows Boundary A: the bounded browser-to-proxy "
+            "request actually received, and Boundary B: the effective provider-style AI input "
+            "after trusted server policy is applied, without forwarding upstream. Includes "
+            "one-turn files/pages, controls, leakage/injection diagnostics, and safe fingerprints."
+        ),
+        "reasoning": True,
+    },
+    {
+        "id": "stub-error",
+        "model": "stub/error:503",
+        "provider": "custom",
+        "label": "Stub · error 503",
+        "description": (
+            "Deterministic HTTP 503 response for testing error presentation, retry, "
+            "and fail-closed request handling. No upstream model is called."
         ),
     },
     {
@@ -5139,9 +5150,28 @@ _STUB_MODEL_ENTRIES: list[dict] = [
         "provider": "custom",
         "label": "Stub · hostile output",
         "description": (
-            "Test model. Replies containing prompt-injection text, script "
-            "tags, and malformed markup, to check how this panel renders a "
-            "reply that should not be trusted."
+            "Replies with inert prompt-injection text, script tags, dangerous links, "
+            "and malformed markup to exercise renderer and trust boundaries."
+        ),
+    },
+    {
+        "id": "stub-qa",
+        "model": "stub/qa",
+        "provider": "custom",
+        "label": "Stub · canned answers",
+        "description": (
+            'Deterministic fixture replies — try "ping" — for repeatable UI and '
+            "multi-turn behaviour tests."
+        ),
+    },
+    {
+        "id": "stub-slow",
+        "model": "stub/slow:1500",
+        "provider": "custom",
+        "label": "Stub · slow 1.5 s",
+        "description": (
+            "Deterministic delayed response for testing loading, cancellation, timeout, "
+            "streaming, and duplicate-submit behaviour. No upstream model is called."
         ),
     },
 ]
@@ -6369,6 +6399,11 @@ def add_ai_assistant_context(
         "panelSpeakBanner": _cfg_bool(
             app.config, "ai_assistant_panel_speak_banner", True
         ),
+        # Hold-Space push-to-talk inside the assistant panel. The shortcut
+        # never claims Space while typing or outside the panel.
+        "panelMicSpaceShortcut": _cfg_bool(
+            app.config, "ai_assistant_panel_mic_space_shortcut", True
+        ),
         # Trigger pill label (the floating "Ask AI" button shown when minimized).
         "panelTriggerLabel": (
             _cfg_str(app.config, "ai_assistant_panel_trigger_label") or "Ask AI"
@@ -6445,6 +6480,22 @@ def add_ai_assistant_context(
         "panelRememberConversation": _cfg_bool(
             app.config, "ai_assistant_panel_remember_conversation", True
         ),
+        # Visible automatic current-page context. The reader may override this
+        # per tab; pinned pages are a separate explicit context source.
+        "panelCurrentPageContext": _cfg_bool(
+            app.config, "ai_assistant_panel_current_page_context", True
+        ),
+        # Reader-facing privacy/runtime initial values. These are site defaults
+        # only: a stored reader choice wins on subsequent page loads.
+        "panelFeedbackTelemetryDefault": _cfg_bool(
+            app.config, "ai_assistant_panel_feedback_telemetry_default", False
+        ),
+        "panelFeedbackReviewDefault": _cfg_bool(
+            app.config, "ai_assistant_panel_feedback_review_default", True
+        ),
+        "panelPageIntegrationDefault": _cfg_bool(
+            app.config, "ai_assistant_panel_page_integration_default", False
+        ),
         # R7: keyboard shortcut chord (str; "" disables).
         "panelShortcut": (
             _cfg_str(app.config, "ai_assistant_panel_shortcut")
@@ -6459,6 +6510,14 @@ def add_ai_assistant_context(
         # back to the legacy single-string panelApiModel above.  Each entry is
         # already shape-normalised, security-validated, and de-duplicated by
         # ``_filter_panel_models`` — the JS does NOT re-validate.
+        # Stub-model visibility is emitted explicitly so the browser can use
+        # the same authority when it needs to fall back to its built-in static
+        # stub catalog (for standalone/static embedding without this Python
+        # extension). Missing JS config still defaults to True for backwards
+        # compatibility; explicit False always wins.
+        "panelStubModels": _cfg_bool(
+            app.config, "ai_assistant_panel_stub_models", True
+        ),
         "panelApiModels": _filter_panel_models(
             _with_stub_models(
                 _panel_models_raw,
@@ -6481,6 +6540,11 @@ def add_ai_assistant_context(
         # JS read: var streamingEnabled = (cfg.panelApiStreaming !== false)
         "panelApiStreaming": _cfg_bool(
             app.config, "ai_assistant_panel_api_streaming", True
+        ),
+        # Initial state of the reader-facing Streaming responses preference.
+        # panelApiStreaming remains the hard site capability/master ceiling.
+        "panelStreamingDefault": _cfg_bool(
+            app.config, "ai_assistant_panel_streaming_default", True
         ),
         # Inline picker beside mic + send (Claude-style bar).
         "panelInlineModelPicker": _cfg_bool(
@@ -6526,6 +6590,11 @@ def add_ai_assistant_context(
         # panelLinks — master switch for the Links slide-over sheet.
         # When False the sheet is not built; sourceBtn/siteBtn fall back to
         # opening their URL directly in a new tab.
+        # ── Agent Skill Generator sheet ─────────────────────────────────
+        # Local-first SKILL.md + references/ builder using the existing Context Shelf.
+        "panelSkillGenerator": _cfg_bool(
+            app.config, "ai_assistant_panel_skill_generator", True
+        ),
         "panelLinks": _cfg_bool(app.config, "ai_assistant_panel_links", True),
         "panelLinksTitle": (
             _cfg_str(app.config, "ai_assistant_panel_links_title") or "Project Links"
@@ -6628,6 +6697,28 @@ def add_ai_assistant_context(
         ),
         "panelFeedbackLog": _cfg_bool(
             app.config, "ai_assistant_panel_feedback_log", False
+        ),
+        # Run 171: compact first-message privacy/status row.  The optional
+        # text override is plain text; use it only for guarantees the site
+        # operator has actually verified (for example, a zero-retention proxy).
+        "panelChatPrivacyBanner": _cfg_bool(
+            app.config, "ai_assistant_panel_chat_privacy_banner", True
+        ),
+        "panelChatPrivacyText": (
+            _cfg_str(app.config, "ai_assistant_panel_chat_privacy_text") or ""
+        ),
+        "panelChatPrivacyMoreText": (
+            _cfg_str(app.config, "ai_assistant_panel_chat_privacy_more_text")
+            or "More information"
+        ),
+        "panelActivityTimeline": _cfg_bool(
+            app.config, "ai_assistant_panel_activity_timeline", True
+        ),
+        "panelActivityAutoCollapse": _cfg_bool(
+            app.config, "ai_assistant_panel_activity_auto_collapse", True
+        ),
+        "panelGeneratedFilePreview": _cfg_bool(
+            app.config, "ai_assistant_panel_generated_file_preview", True
         ),
         # R2: privacy / responsibility sheet.
         "panelPrivacyTitle": (
@@ -7106,6 +7197,11 @@ def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("ai_assistant_panel_quick_questions", [], "html")
     app.add_config_value("ai_assistant_panel_page_help", True, "html")
     app.add_config_value("ai_assistant_panel_speak_banner", True, "html")
+    # ``ai_assistant_panel_mic_space_shortcut`` (bool, default True)
+    #     Enable hold-Space push-to-talk while focus/interaction is inside the
+    #     assistant panel. Text entry, IME composition, menus/sheets, and the
+    #     surrounding documentation page keep normal Space behavior.
+    app.add_config_value("ai_assistant_panel_mic_space_shortcut", True, "html")
     app.add_config_value("ai_assistant_panel_trigger_label", "Ask AI", "html")
     app.add_config_value("ai_assistant_panel_start_minimized", True, "html")
     app.add_config_value("ai_assistant_panel_trigger_toggle", True, "html")
@@ -7141,6 +7237,34 @@ def setup(app: Sphinx) -> dict[str, Any]:
     #     until the tab is closed.  No transcript is sent over the network by
     #     this setting.
     app.add_config_value("ai_assistant_panel_remember_conversation", True, "html")
+
+    # ``ai_assistant_panel_current_page_context`` (bool, default True)
+    #     Initial state of the visible "Use current page as context" control.
+    #     When enabled, the assistant shows the live current documentation page
+    #     as an automatic PAGE item in the composer context shelf and includes
+    #     its privacy-prepared Markdown in requests. Readers may override the
+    #     site default per tab. Explicitly pinned pages remain separate context
+    #     snapshots and can survive same-tab navigation when conversation
+    #     persistence is enabled.
+    app.add_config_value("ai_assistant_panel_current_page_context", True, "html")
+
+    # ``ai_assistant_panel_feedback_telemetry_default`` (bool, default False)
+    #     Initial browser state for anonymous rating telemetry when this origin
+    #     has no explicit reader choice yet. False is the privacy-first built-in
+    #     default. A reader's explicit ON or OFF choice is persisted separately
+    #     and wins over this site default.
+    app.add_config_value("ai_assistant_panel_feedback_telemetry_default", False, "html")
+
+    # ``ai_assistant_panel_feedback_review_default`` (bool, default True)
+    #     Initial state for maintainer feedback review / model-improvement
+    #     sharing when no explicit reader choice exists. Set False for local-only
+    #     development/tests or deployments that require manual opt-in first.
+    app.add_config_value("ai_assistant_panel_feedback_review_default", True, "html")
+
+    # ``ai_assistant_panel_page_integration_default`` (bool, default False)
+    #     Initial state for bounded same-origin page integration events. False
+    #     keeps assistant lifecycle events on the private bus by default.
+    app.add_config_value("ai_assistant_panel_page_integration_default", False, "html")
 
     # ``ai_assistant_panel_shortcut`` (str, default "Alt+Shift+A")
     #     Keyboard chord that toggles the panel.  MUST contain at least one
@@ -7194,6 +7318,12 @@ def setup(app: Sphinx) -> dict[str, Any]:
     #     OpenAI-compat spec that the streaming loop expects.
     app.add_config_value("ai_assistant_panel_api_streaming", True, "html")
 
+    # ``ai_assistant_panel_streaming_default`` (bool, default True)
+    #     Initial reader preference for Streaming responses. The explicit
+    #     browser preference wins after the reader changes it. The master
+    #     ai_assistant_panel_api_streaming=False setting always disables SSE.
+    app.add_config_value("ai_assistant_panel_streaming_default", True, "html")
+
     # ``ai_assistant_panel_inline_model_picker`` (bool, default True)
     #     When True and panelApiModels is non-empty the panel footer renders
     #     an inline model picker beside the mic and send buttons (Claude-bar
@@ -7235,6 +7365,13 @@ def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("ai_assistant_panel_share_label", "Share", "html")
     # User list overrides defaults entirely; empty list ⇒ defaults.
     app.add_config_value("ai_assistant_panel_share_targets", [], "html")
+
+    # ── Agent Skill Generator sheet ────────────────────────────────────────
+    # ``ai_assistant_panel_skill_generator`` (bool, default True)
+    #     Enable the local-first Agent Skills builder in the panel hamburger
+    #     More menu.  It packages selected Context Shelf documentation into a
+    #     portable SKILL.md + references/ ZIP without adding a new fetch path.
+    app.add_config_value("ai_assistant_panel_skill_generator", True, "html")
 
     # ── Project Links sheet ────────────────────────────────────────────────
     # ``ai_assistant_panel_links`` (bool, default True)
@@ -7567,6 +7704,28 @@ def setup(app: Sphinx) -> dict[str, Any]:
     #     When empty, the first defined profile is used automatically.
     #     Example: ai_assistant_endpoint_default_profile = "cf"
     app.add_config_value("ai_assistant_endpoint_default_profile", "", "html")
+
+    # ``ai_assistant_panel_chat_privacy_banner`` (bool, default True)
+    #     After the first real message replaces onboarding, show one compact
+    #     privacy/status row at the top of the transcript.  Its More information
+    #     action opens the existing Privacy & Responsibility sheet.
+    app.add_config_value("ai_assistant_panel_chat_privacy_banner", True, "html")
+
+    # ``ai_assistant_panel_chat_privacy_text`` (str, default "")
+    #     Optional PLAIN-TEXT override for the first-message status row. Empty
+    #     uses a runtime-derived truthful default. Do not claim anonymity, zero
+    #     retention, or no training unless the configured endpoint guarantees it.
+    app.add_config_value("ai_assistant_panel_chat_privacy_text", "", "html")
+    app.add_config_value(
+        "ai_assistant_panel_chat_privacy_more_text", "More information", "html"
+    )
+
+    # Run 172 — observable work summaries and generated-file previews.
+    # These settings control a public activity surface only; hidden model
+    # chain-of-thought is never requested or rendered.
+    app.add_config_value("ai_assistant_panel_activity_timeline", True, "html")
+    app.add_config_value("ai_assistant_panel_activity_auto_collapse", True, "html")
+    app.add_config_value("ai_assistant_panel_generated_file_preview", True, "html")
 
     # ``ai_assistant_panel_privacy_title`` / ``_link_text`` (str)
     #     Heading shown in the slide-over and the small header link label.

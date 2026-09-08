@@ -124,6 +124,7 @@ Now, we will correct the ``comp-lzo`` configuration error.
        remote x.x.x.x 12345 udp
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

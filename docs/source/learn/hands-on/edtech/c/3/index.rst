@@ -219,6 +219,7 @@ the array in the little-endian or big-endian byte order.
    selection.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

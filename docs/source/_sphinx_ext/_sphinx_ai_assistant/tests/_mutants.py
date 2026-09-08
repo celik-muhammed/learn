@@ -57,7 +57,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        var nonce = _untrustedNonce();",
         "replace": "        var nonce = 'CTX-fixed';",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "fence-literal-dashes",
@@ -68,14 +68,14 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            '<<<' + nonce + '>>>',\n            body,",
         "replace": "            '---',\n            body,",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "fence-ignores-limit",
         "why": "An unbounded context blows the model's window and the bill.",
         "find": "        var body = text.slice(0, max);",
         "replace": "        var body = text;",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     # ── Neutralisation ────────────────────────────────────────────────────
     {
@@ -90,7 +90,7 @@ MUTANTS: list[dict[str, str]] = [
             "\\u2066-\\u2069\\uFEFF]/g"
         ),
         "replace": "/[\\u200B]/g",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "invisible-nodes-not-stripped",
@@ -101,7 +101,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        _stripInvisibleNodes(cloned);\n",
         "replace": "",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "custom-prompt-unfenced",
@@ -111,7 +111,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            ? cfg.panelSystemPrompt.replace('{context}', _fenced)",
         "replace": "            ? cfg.panelSystemPrompt.replace('{context}', _cleaned.text)",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     # ── Egress redaction ──────────────────────────────────────────────────
     {
@@ -119,7 +119,7 @@ MUTANTS: list[dict[str, str]] = [
         "why": "A key published in a docstring is sent to a third-party proxy.",
         "find": "        var _redacted = _redactSecrets(_cleaned.text);",
         "replace": "        var _redacted = { text: _cleaned.text, findings: [] };",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "redaction-silent",
@@ -129,7 +129,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        _announceRedaction(_redacted.findings);\n",
         "replace": "",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "redaction-loses-kind",
@@ -139,7 +139,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                return '[redacted:' + spec.name + ']';",
         "replace": "                return '[redacted]';",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "secret-pattern-too-loose",
@@ -149,7 +149,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "{ name: 'openai_key',         re: /\\bsk-[A-Za-z0-9]{20,}\\b/g },",
         "replace": "{ name: 'openai_key',         re: /\\bsk-[A-Za-z0-9]{2,}\\b/g },",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     # ── Detection ─────────────────────────────────────────────────────────
     {
@@ -160,7 +160,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "    var _INJECTION_THRESHOLD = 3;",
         "replace": "    var _INJECTION_THRESHOLD = 1;",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "injection-override-too-loose",
@@ -175,7 +175,7 @@ MUTANTS: list[dict[str, str]] = [
             "(?:previous\\s+|prior\\s+)?(?:instructions?|rules?|prompts?|directions?)\\b/i },"
         ),
         "replace": "          re: /\\b(?:ignore|disregard|forget)\\b/i },",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "injection-exfiltration-rebroadened",
@@ -186,7 +186,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "(?:your\\s+(?:system\\s+)?(?:prompt|instructions?|rules?)|the\\s+system\\s+prompt)",
         "replace": "(?:your|the)\\s+(?:system\\s+)?(?:prompt|instructions?|rules?)",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "injection-bypass-rebroadened",
@@ -199,7 +199,7 @@ MUTANTS: list[dict[str, str]] = [
             "(?:developer|debug|god|dan)\\s+mode\\b"
         ),
         "replace": "\\b(?:developer|debug|god)\\s+mode\\b",
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     {
         "id": "injection-summary-alarmist",
@@ -215,7 +215,7 @@ MUTANTS: list[dict[str, str]] = [
             "             + 'This page may be malicious and the attack was "
             "blocked \\u2014 '"
         ),
-        "harness": "test_untrusted_context.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__untrusted_context.mjs",
     },
     # ── Panel trigger visibility ──────────────────────────────────────────
     {
@@ -226,7 +226,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        _syncPanelTriggerUI(info);\n        return info.pill;",
         "replace": "        return info.pill;",
-        "harness": "test_panel_trigger.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__panel_trigger.mjs",
     },
     {
         "id": "trigger-minimize-strands",
@@ -236,7 +236,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            pill:       minimized || (panel !== 'open' && preference),",
         "replace": "            pill:       (panel !== 'open' && preference),",
-        "harness": "test_panel_trigger.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__panel_trigger.mjs",
     },
     # ── Export surfaces ───────────────────────────────────────────────────
     {'id': 'export-duplicate-preview',
@@ -244,7 +244,7 @@ MUTANTS: list[dict[str, str]] = [
             'registry recreates duplicate data-fmt cards.',
      'find': '    var _EXPORT_CARD_FORMATS = _EXPORT_FORMATS.concat(_EXPORT_STUB_FORMATS);',
      'replace': '    var _EXPORT_CARD_FORMATS = _EXPORT_FORMATS.concat(_EXPORT_FORMATS);',
-     'harness': 'test_export_formats.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__export_formats.mjs'},
     {
         "id": "export-previews-unreachable",
         "why": (
@@ -258,7 +258,7 @@ MUTANTS: list[dict[str, str]] = [
             "        el.setAttribute('aria-disabled', 'true');\n"
             "        el.setAttribute('title',"
         ),
-        "harness": "test_export_formats.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__export_formats.mjs",
     },
     # ── Reasoning capability ──────────────────────────────────────────────
     {
@@ -273,7 +273,7 @@ MUTANTS: list[dict[str, str]] = [
             "        if (decl === false) return off;\n"
             "        if (decl === undefined || decl === null) decl = true;"
         ),
-        "harness": "test_reasoning_support.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__reasoning_support.mjs",
     },
     {
         "id": "discovery-reserved-names-allowed",
@@ -283,7 +283,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        if (_CAPS_RESERVED_PARAMS.indexOf(name) !== -1) return null;\n",
         "replace": "",
-        "harness": "test_reasoning_support.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__reasoning_support.mjs",
     },
     {
         "id": "budget-slider-ignores-support",
@@ -295,7 +295,7 @@ MUTANTS: list[dict[str, str]] = [
             "            var live = thinkingOn && _support.thinking && budgetMode;"
         ),
         "replace": "            var live = thinkingOn && budgetMode;",
-        "harness": "test_reasoning_support.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__reasoning_support.mjs",
     },
     # ── Per-model live resolution ─────────────────────────────────────────
     {
@@ -312,7 +312,7 @@ MUTANTS: list[dict[str, str]] = [
             "_applyReasoningUI);"
         ),
         "replace": "",
-        "harness": "test_reasoning_support.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__reasoning_support.mjs",
     },
     {
         "id": "support-flag-is-a-latch",
@@ -323,7 +323,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            effortSeg.dataset.unsupported = support.effort ? 'false' : 'true';",
         "replace": "            if (!support.effort) effortSeg.dataset.unsupported = 'true';",
-        "harness": "test_reasoning_support.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__reasoning_support.mjs",
     },
 
     # ── Effort levels ─────────────────────────────────────────────────────
@@ -336,7 +336,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        return _effortById(raw).id;",
         "replace": "        return raw || _EFFORT_DEFAULT;",
-        "harness": "test_effort_levels.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__effort_levels.mjs",
     },
     {
         "id": "effort-truthiness-report",
@@ -347,7 +347,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "    var _EFFORT_DEFAULT = 'high';",
         "replace": "    var _EFFORT_DEFAULT = 'medium';",
-        "harness": "test_effort_levels.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__effort_levels.mjs",
     },
     # ── Model overrides ───────────────────────────────────────────────────
     {
@@ -365,7 +365,7 @@ MUTANTS: list[dict[str, str]] = [
             "                }"
         ),
         "replace": "",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "override-replaces-instead-of-diffing",
@@ -376,7 +376,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                if (!Object.prototype.hasOwnProperty.call(src, key)) continue;",
         "replace": "",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "override-mutates-the-source",
@@ -386,7 +386,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                var merged = {};",
         "replace": "                var merged = m;",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "active-model-skips-overrides",
@@ -396,7 +396,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        var models = _MODEL_STORE.applyOverrides(builtins).filter(function (m) {",
         "replace": "        var models = builtins.filter(function (m) {",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "reasoning-decl-reserved-names",
@@ -407,7 +407,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                if (reserved.indexOf(name) !== -1) return null;",
         "replace": "",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
 
     {
@@ -419,7 +419,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                    ? _MODEL_STORE.setOverride(_editingId, patch)",
         "replace": "                    ? _MODEL_STORE.addModel(_editingId, patch)",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "edit-does-not-announce",
@@ -430,7 +430,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                        { detail: { reason: 'model-edited', id: editedId } }));",
         "replace": "                        { detail: {} }));",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "edit-id-stays-editable",
@@ -440,7 +440,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            idInp.disabled = true;",
         "replace": "            idInp.disabled = false;",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
     {
         "id": "edit-click-selects-the-model",
@@ -450,7 +450,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            function _requestModelEdit(ev) {\n                if (ev) {\n                    ev.preventDefault();\n                    ev.stopPropagation();",
         "replace": "            function _requestModelEdit(ev) {\n                if (ev) {\n                    ev.stopPropagation();",
-        "harness": "test_model_overrides.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__model_overrides.mjs",
     },
 
     {
@@ -467,11 +467,11 @@ MUTANTS: list[dict[str, str]] = [
             "        cancelBtn.type = 'button';"
         ),
         "replace": "        var cancelBtn;\n        void 0;",
-        "harness": "test_custom_section_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__custom_section_dom.mjs",
     },
 
     # ── Composition wiring ────────────────────────────────────────────────
-    # These are caught by tests/test_end_to_end_context.py rather than a .mjs
+    # These are caught by tests/test_context_roundtrip.py rather than a .mjs
     # harness, so they are recorded there rather than here; see the docstring
     # of TestCompositionMatchesProduction for why a fixture alone missed them.
 
@@ -490,7 +490,7 @@ MUTANTS: list[dict[str, str]] = [
             "        if (!panel || !pop) return;\n"
             "        pop.addEventListener('keydown', function (e) {"
         ),
-        "harness": "test_menu_shortcuts.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__menu_shortcuts.mjs",
     },
     {
         "id": "shortcuts-eat-typing",
@@ -500,7 +500,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            if (_isTextEntryTarget(e.target)) return;\n",
         "replace": "",
-        "harness": "test_menu_shortcuts.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__menu_shortcuts.mjs",
     },
     {
         "id": "shortcuts-skip-confirm",
@@ -516,7 +516,7 @@ MUTANTS: list[dict[str, str]] = [
             "            if (spec.key) { accelerators[spec.key.toUpperCase()] = "
             "function () { pop.setAttribute('data-open','false'); handler(); }; }"
         ),
-        "harness": "test_menu_shortcuts.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__menu_shortcuts.mjs",
     },
 
     # ── Unified Share conversation ────────────────────────────────────────
@@ -525,7 +525,7 @@ MUTANTS: list[dict[str, str]] = [
             'per-format DOM surfaces inside the unified sheet.',
      'find': '            while (formatHost.firstChild) formatHost.removeChild(formatHost.firstChild);',
      'replace': '            void formatHost.firstChild;',
-     'harness': 'test_share_conversation_dom.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs'},
     {
         "id": "share-dispatch-skips-format-selection",
         "why": (
@@ -535,7 +535,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            if (!convShareSheet._selectExportFormat(fmt)) { return; }",
         "replace": "            if (!convShareSheet) { return; }",
-        "harness": "test_share_conversation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation.mjs",
     },
     {'id': 'share-new-chat-does-not-reset-cached-panels',
      'why': 'New chat must clear active result state without discarding page-memory Global edit '
@@ -544,14 +544,14 @@ MUTANTS: list[dict[str, str]] = [
      'replace': '            managedArtifacts = [];\n'
                 '            resultState = null;\n'
                 '            _globalShareState = null;',
-     'harness': 'test_share_conversation_dom.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs'},
     {'id': 'share-permanent-save-crosses-conversation',
      'why': 'A delayed privacy decision for a self-contained/local share must remain bound to the '
             'conversation that opened the dialog and must not publish after New chat.',
      'find': "            if (reviewed.action === 'cancel' || opConversationId !== boundConversationId || "
              'opConversationId !== _getConversationId()) return null;',
      'replace': "            if (reviewed.action === 'cancel') return null;",
-     'harness': 'test_share_conversation_dom.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs'},
     {'id': 'share-global-save-crosses-conversation',
      'why': 'A delayed Global Share response belongs to the conversation that created it; removing the '
             'success identity guard can attach old server state to a new chat.',
@@ -559,7 +559,7 @@ MUTANTS: list[dict[str, str]] = [
              '                if (opConversationId !== boundConversationId || opConversationId !== '
              '_getConversationId()) return;',
      'replace': '            function success(res) {\n                void opConversationId;',
-     'harness': 'test_share_conversation.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation.mjs'},
     {
         "id": "share-export-mode-observers-not-notified",
         "why": (
@@ -569,7 +569,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        _notifyExportState();",
         "replace": "        void _exportLinkMode;",
-        "harness": "test_share_conversation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation.mjs",
     },
     {
         "id": "share-export-mode-singleton-id-returns",
@@ -578,19 +578,25 @@ MUTANTS: list[dict[str, str]] = [
             "original stale-toolbar bug and invalid duplicate-id DOM. Controls "
             "must be observer views, never singleton-id authorities."
         ),
-        "find": "        row.type = 'button';",
-        "replace": (
+        "find": (
+            "        var row = document.createElement('button');\n"
             "        row.type = 'button';\n"
-            "        row.id = 'ai-assistant-export-link-toggle';"
+            "        row.className = (options.rowClass || '') +"
         ),
-        "harness": "test_share_conversation.mjs",
+        "replace": (
+            "        var row = document.createElement('button');\n"
+            "        row.type = 'button';\n"
+            "        row.id = 'ai-assistant-export-link-toggle';\n"
+            "        row.className = (options.rowClass || '') +"
+        ),
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation.mjs",
     },
     {'id': 'share-conversation-id-follows-trimmed-head',
      'why': 'Transcript position is not conversation identity. The unified Share sheet must bind to the '
             'explicit conversation UUID so trimming cannot change ownership.',
      'find': '        var boundConversationId = _getConversationId();',
      'replace': "        var boundConversationId = _transcript.length ? String(_transcript[0].ts) : '';",
-     'harness': 'test_share_conversation.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation.mjs'},
     {
         "id": "share-unified-sheet-missing-from-registry",
         "why": (
@@ -603,14 +609,14 @@ MUTANTS: list[dict[str, str]] = [
             "toolbarId: 'conv-share' },"
         ),
         "replace": "",
-        "harness": "test_share_conversation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation.mjs",
     },
     {'id': 'share-session-copy-overstates-privacy',
      'why': 'Self-contained links are embedded readable data, not encrypted or remotely revocable. UI copy '
             'must not promise stronger privacy/lifecycle semantics.',
      'find': "            'Reviewed static HTML · not encrypted · copied links cannot be revoked');",
      'replace': "            'Reviewed static HTML · encrypted · removable everywhere');",
-     'harness': 'test_share_conversation.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation.mjs'},
 
     # ── Client secret lifecycle boundary (B18 Run 1) ───────────────────
     {
@@ -630,7 +636,7 @@ MUTANTS: list[dict[str, str]] = [
             "                        shareToken:  p.shareToken  || '',\n"
             "                        ttlDays:     p.ttlDays     || 30,"
         ),
-        "harness": "test_endpoint_secret_lifecycle.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__endpoint_secret_lifecycle.mjs",
     },
     {
         "id": "endpoint-legacy-token-storage-not-scrubbed",
@@ -641,7 +647,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            if (needsRewrite) _persistCustom();",
         "replace": "            void needsRewrite;",
-        "harness": "test_endpoint_secret_lifecycle.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__endpoint_secret_lifecycle.mjs",
     },
 
     {'id': 'share-unified-sheet-host-use-before-create',
@@ -650,7 +656,7 @@ MUTANTS: list[dict[str, str]] = [
      'find': "        var formatHost = document.createElement('div');\n"
              "        formatHost.className = 'ai-assistant-conv-share-format-host';",
      'replace': '        var formatHost;\n        void 0;',
-     'harness': 'test_share_conversation_dom.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs'},
 
     # ── Export / Share active-content isolation (B18 Run 2) ─────────────
     {
@@ -662,7 +668,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            jsonPayload: _jsonForHtmlRawText(snap, 2),",
         "replace": "            jsonPayload: JSON.stringify(snap, null, 2),",
-        "harness": "test_active_content_isolation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__active_content_isolation.mjs",
     },
     {
         "id": "export-source-url-unsanitized",
@@ -673,7 +679,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        var pageUrl   = _sanitizePage(rawPage);",
         "replace": "        var pageUrl   = rawPage;",
-        "harness": "test_active_content_isolation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__active_content_isolation.mjs",
     },
     {
         "id": "share-c1-html-executable-again",
@@ -693,7 +699,7 @@ MUTANTS: list[dict[str, str]] = [
             "                : legacyFmt === 'html' ? 'text/html;charset=utf-8'\n"
             "                : 'text/plain;charset=utf-8';"
         ),
-        "harness": "test_active_content_isolation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__active_content_isolation.mjs",
     },
     {
         "id": "share-c2-loses-structured-envelope",
@@ -704,7 +710,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            share_schema: 'c2',",
         "replace": "            share_schema: 'raw',",
-        "harness": "test_active_content_isolation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__active_content_isolation.mjs",
     },
 
     {
@@ -716,7 +722,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            var normalized = _normalizeShareSnapshot(env.snapshot);",
         "replace": "            var normalized = env.snapshot;",
-        "harness": "test_active_content_isolation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__active_content_isolation.mjs",
     },
 
     # ── Global Share server capability boundary (B18 Run 3) ─────────────
@@ -726,12 +732,12 @@ MUTANTS: list[dict[str, str]] = [
      'find': '            var payload = recoveringGlobal ? _pendingGlobalCreate.payload : { snapshot: snapshot, format: meta.fmt, ttlDays: g.ttlDays };',
      'replace': '            var payload = recoveringGlobal ? _pendingGlobalCreate.payload : { snapshot: snapshot, format: meta.fmt, mimeType: meta.mime, '
                 'ext: meta.ext, ttlDays: g.ttlDays };',
-     'harness': 'test_global_share_capability.mjs'},
+     'harness': '_cf_worker/test_index__global_share_capability.mjs'},
     {'id': 'global-share-patch-uses-endpoint-token',
      'why': 'Share update ownership is the per-share edit capability, never the endpoint create credential.',
      'find': "                _patchGlobalShare(base, _globalShareState.uuid, _globalShareState.editToken,",
      'replace': "                _patchGlobalShare(base, _globalShareState.uuid, g.token,",
-     'harness': 'test_global_share_capability.mjs'},
+     'harness': '_cf_worker/test_index__global_share_capability.mjs'},
     {'id': 'global-share-edit-token-persisted',
      'why': 'The Global edit capability is intentionally page-memory-only; persisting it enlarges '
             'same-origin credential exposure.',
@@ -740,7 +746,7 @@ MUTANTS: list[dict[str, str]] = [
      'replace': "                conversationId: state.conversationId || '',\n"
                 "                editToken: state.editToken || '',\n"
                 "                format: state.format || '',",
-     'harness': 'test_global_share_capability.mjs'},
+     'harness': '_cf_worker/test_index__global_share_capability.mjs'},
 
 
     # ── Run 4: server-owned prompt authority ──────────────────────────────
@@ -749,21 +755,21 @@ MUTANTS: list[dict[str, str]] = [
         "why": "If the advertised contract no longer controls the structured path, the bundled proxy receives legacy client-authored system authority or custom endpoints receive an incompatible body.",
         "find": "        var useStructuredProxy = (proxyContract === _CHAT_CONTRACT_V1);",
         "replace": "        var useStructuredProxy = false;",
-        "harness": "test_chat_authority.mjs",
+        "harness": "_cf_worker/test_index__chat_authority.mjs",
     },
     {
         "id": "chat-structured-user-message-replaced-by-system",
         "why": "The trusted proxy contract must carry typed user input, never a client-authored system message.",
         "find": "                user_message: question,",
         "replace": "                messages: [{ role: 'system', content: systemPrompt }],",
-        "harness": "test_chat_authority.mjs",
+        "harness": "_cf_worker/test_index__chat_authority.mjs",
     },
     {
         "id": "chat-structured-context-skips-redaction",
         "why": "A structured proxy request that sends the cleaned-but-unredacted page would reintroduce page-secret exfiltration.",
         "find": "                    page_text: _redacted.text.slice(0, contextLimit),",
         "replace": "                    page_text: _cleaned.text.slice(0, contextLimit),",
-        "harness": "test_chat_authority.mjs",
+        "harness": "_cf_worker/test_index__chat_authority.mjs",
     },
 
     # ── Run 6: feedback / contribution privacy lifecycle ────────────────
@@ -772,48 +778,48 @@ MUTANTS: list[dict[str, str]] = [
         "why": "Ordinary rating telemetry must never silently recollect the user question; full Q&A belongs only to explicit contribution consent.",
         "find": "            ratingMode: detail.ratingMode || null,\n            ts: detail.ts || Date.now()",
         "replace": "            ratingMode: detail.ratingMode || null,\n            query: detail.query || '',\n            ts: detail.ts || Date.now()",
-        "harness": "test_feedback_contribution_privacy.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_contribution_privacy.mjs",
     },
     {
         "id": "feedback-telemetry-consent-fails-open",
         "why": "Network rating telemetry must require an explicit current structured consent record; missing enabled=true must never inherit authority.",
-        "find": "            if (!saved || saved.enabled !== true ||\n                    saved.version !== _FEEDBACK_TELEMETRY_CONSENT_VERSION) {",
-        "replace": "            if (!saved || saved.enabled === false ||\n                    saved.version !== _FEEDBACK_TELEMETRY_CONSENT_VERSION) {",
-        "harness": "test_feedback_telemetry_consent.mjs",
+        "find": "            if (!saved || saved.version !== _FEEDBACK_TELEMETRY_CONSENT_VERSION ||\n                    typeof saved.enabled !== 'boolean') {",
+        "replace": "            if (!saved || saved.version !== _FEEDBACK_TELEMETRY_CONSENT_VERSION ||\n                    saved.enabled === false) {",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_telemetry_consent.mjs",
     },
     {
         "id": "feedback-telemetry-helper-consent-gate-removed",
         "why": "Even an internal caller must not be able to send feedback telemetry when the user has not opted in.",
         "find": "        if (!_feedbackPersistEnabled || !_feedbackTelemetryGrantedAt) { return false; }",
         "replace": "        if (false && (!_feedbackPersistEnabled || !_feedbackTelemetryGrantedAt)) { return false; }",
-        "harness": "test_feedback_telemetry_consent.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_telemetry_consent.mjs",
     },
     {
         "id": "feedback-public-event-reexposes-content",
         "why": "The public feedback DOM event must never rebroadcast Q&A/note/model/page content to arbitrary page listeners.",
         "find": "        var out = _feedbackTelemetryPayload(detail);",
         "replace": "        var out = Object.assign({}, detail);",
-        "harness": "test_feedback_telemetry_consent.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_telemetry_consent.mjs",
     },
     {
         "id": "feedback-retract-ignores-opt-out",
         "why": "Turning telemetry off must stop all future feedback network traffic, including hidden retraction housekeeping requests.",
-        "find": "        if (!url || !prevSessionId || !_feedbackPersistEnabled || !_feedbackTelemetryGrantedAt) {",
-        "replace": "        if (!url || !prevSessionId) {",
-        "harness": "test_feedback_telemetry_consent.mjs",
+        "find": "        if (!url || !lineage || !_feedbackPersistEnabled || !_feedbackTelemetryGrantedAt) {",
+        "replace": "        if (!url || !lineage) {",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_telemetry_consent.mjs",
     },
     {'id': 'contribution-consent-version-disabled',
      'why': 'Explicit contribution must carry the active versioned consent so stale pages cannot submit '
             'under materially changed terms.',
      'find': "    var _CONTRIBUTION_CONSENT_VERSION = '2.0.0';",
      'replace': "    var _CONTRIBUTION_CONSENT_VERSION = '1.0.0';",
-     'harness': 'test_dataset_contribution_ux.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__dataset_contribution_ux.mjs'},
     {'id': 'contribution-session-linkage-restored',
      'why': 'Contribution does not need the stable browser conversation identifier; re-adding it increases '
             'linkability of personal records.',
      'find': "            page: _sanitizePage(((typeof _pageUrl === 'function') ? _pageUrl() : ((typeof location !== 'undefined') ? location.href : ''))),",
      'replace': "            sessionId: _sessionId,\n            page: _sanitizePage(((typeof _pageUrl === 'function') ? _pageUrl() : ((typeof location !== 'undefined') ? location.href : ''))),",
-     'harness': 'test_dataset_contribution_ux.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__dataset_contribution_ux.mjs'},
 
     # ── Run 7: local privacy preflight / sensitive-input protection ─────
     {
@@ -821,7 +827,7 @@ MUTANTS: list[dict[str, str]] = [
         "why": "A user-entered credential or personal datum must be reviewed before the browser sends it to an external inference endpoint.",
         "find": "            var privacyDecision = await _privacyPreflightReview(outboundCandidate, {",
         "replace": "            var privacyDecision = { action: 'continue', value: outboundCandidate }; void _privacyPreflightReview; ({",
-        "harness": "test_privacy_preflight.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__privacy_preflight.mjs",
     },
     {'id': 'privacy-preflight-share-bypassed',
      'why': 'Every Share destination must review the exact canonical outbound snapshot before '
@@ -829,25 +835,25 @@ MUTANTS: list[dict[str, str]] = [
      'find': '            var reviewed = await _privacyPreflightReview(snapshot, {',
      'replace': "            var reviewed = { action: 'continue', value: snapshot }; void "
                 '_privacyPreflightReview; ({',
-     'harness': 'test_privacy_preflight.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__privacy_preflight.mjs'},
     {'id': 'privacy-preflight-contribution-bypassed',
      'why': 'Contribution consent does not waive the final local sensitive-data preflight.',
      'find': "            var review = await _privacyPreflightReview(payload, {\n                title: 'Review dataset contribution',",
      'replace': "            var review = { action: 'continue', value: payload }; void _privacyPreflightReview; ({\n                title: 'Review dataset contribution',",
-     'harness': 'test_privacy_preflight.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__privacy_preflight.mjs'},
     {
         "id": "privacy-preflight-finding-retains-source-text",
         "why": "The warning object itself must never become a secondary secret/PII store; findings are category/count only.",
         "find": "                count: count\n            });",
         "replace": "                count: count,\n                value: text\n            });",
-        "harness": "test_privacy_preflight.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__privacy_preflight.mjs",
     },
     {
         "id": "privacy-preflight-redaction-keeps-invisible-controls",
         "why": "When the reader explicitly chooses Redact, bidi/zero-width controls must not remain hidden in the outgoing copy.",
         "find": "        out = out.replace(_privacyFreshRegex(_INVISIBLE_CHARS_RE), '');",
         "replace": "        void _INVISIBLE_CHARS_RE;",
-        "harness": "test_privacy_preflight.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__privacy_preflight.mjs",
     },
     {'id': 'privacy-preflight-share-race-guard-removed',
      'why': 'A delayed Share privacy dialog must not publish a stale snapshot after the conversation '
@@ -855,13 +861,13 @@ MUTANTS: list[dict[str, str]] = [
      'find': "            if (reviewed.action === 'cancel' || opConversationId !== boundConversationId || "
              'opConversationId !== _getConversationId()) return null;',
      'replace': "            if (reviewed.action === 'cancel') return null;",
-     'harness': 'test_share_conversation_dom.mjs'},
+     'harness': '_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs'},
     {
         "id": "privacy-preflight-no-dom-fails-open",
         "why": "If the warning UI cannot be constructed, flagged data must not silently leave the browser.",
         "find": "            return Promise.resolve({ action: 'cancel', value: value, scan: scan });",
         "replace": "            return Promise.resolve({ action: 'continue', value: value, scan: scan });",
-        "harness": "test_privacy_preflight.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__privacy_preflight.mjs",
     },
 
     # ── Run 8: YAML/TOML + artifact lifecycle ────────────────────────────
@@ -870,35 +876,35 @@ MUTANTS: list[dict[str, str]] = [
         "why": "YAML-looking user text must stay a quoted scalar; emitting it raw can turn tags, anchors, document markers, or mapping syntax into structure.",
         "find": "        return JSON.stringify(String(value));",
         "replace": "        return String(value);",
-        "harness": "test_run8_serializers.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__serializers.mjs",
     },
     {
         "id": "run8-toml-raw-string-injection",
         "why": "TOML user strings must be escaped/quoted by one helper; raw strings can terminate values and inject tables or keys.",
         "find": "    function _tomlString(value) { return JSON.stringify(String(value)); }",
         "replace": "    function _tomlString(value) { return String(value); }",
-        "harness": "test_run8_serializers.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__serializers.mjs",
     },
     {
         "id": "run8-direct-download-untracked",
         "why": "Direct toolbar downloads must enter the page-memory artifact registry so every assistant-managed result has truthful lifecycle management.",
         "find": "        _registerManagedConversationArtifact({\n            kind: 'download',",
         "replace": "        void ({\n            kind: 'download',",
-        "harness": "test_share_conversation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation.mjs",
     },
     {
         "id": "run8-local-remove-skips-blob-revoke",
         "why": "Removing a managed local preview must actually revoke the Blob URL rather than merely hiding its UI record.",
         "find": "                    try { URL.revokeObjectURL(artifact.url); } catch (_e) {}",
         "replace": "                    void artifact.url;",
-        "harness": "test_share_conversation_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs",
     },
     {
         "id": "run8-self-contained-removal-overclaims-revocation",
         "why": "A self-contained URL already copied elsewhere cannot be revoked; removal copy must never imply remote deletion.",
         "find": "                showNotification('Removed from this browser. Already copied self-contained links cannot be revoked.', false);",
         "replace": "                showNotification('Link deleted everywhere and revoked.', false);",
-        "harness": "test_share_conversation.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation.mjs",
     },
     {
         "id": "run8-global-revoke-bypasses-server-delete",
@@ -911,7 +917,7 @@ MUTANTS: list[dict[str, str]] = [
             "                _dropArtifact(artifact.id); void _deleteGlobalShare; (\n"
             "                    base, revokeUuid, artifact.editToken,"
         ),
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
 
     # ── Run 9: Global public-link lifecycle tracking ─────────────────────
@@ -920,14 +926,14 @@ MUTANTS: list[dict[str, str]] = [
         "why": "The session-scoped Global artifact ledger may persist public read links for user tracking, but must never persist the private edit/revoke capability.",
         "find": "            _ssSet(_GLOBAL_LEDGER_KEY, JSON.stringify({ schemaVersion: 1, items: safeItems }));",
         "replace": "            _ssSet(_GLOBAL_LEDGER_KEY, JSON.stringify({ schemaVersion: 1, items: safeItems, editToken: 'persisted-secret' }));",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run9-global-ledger-unbounded",
         "why": "A public bearer-link history in sessionStorage must remain bounded so repeated Share creation cannot create unbounded browser storage or UI growth.",
         "find": "            var safeItems = _globalLedger.map(_normalizeGlobalLedgerItem).filter(Boolean).slice(0, _GLOBAL_LEDGER_MAX);",
         "replace": "            var safeItems = _globalLedger.map(_normalizeGlobalLedgerItem).filter(Boolean);",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run9-global-status-downloads-content",
@@ -940,14 +946,14 @@ MUTANTS: list[dict[str, str]] = [
             "            _fetch(loc.base + '/' + encodeURIComponent(loc.id), {\n"
             "                method: 'GET', cache: 'no-store', redirect: 'error',"
         ),
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run9-global-revoke-drops-history",
         "why": "Successful server revocation should transition the managed artifact to a revoked lifecycle tombstone until the user explicitly forgets it, so provided-link history is traceable.",
         "find": "                        _markGlobalArtifactState(artifact, 'revoked');",
         "replace": "                        _dropArtifact(artifact.id);",
-        "harness": "test_share_conversation_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs",
     },
     {
         "id": "run9-new-chat-clears-global-ledger",
@@ -962,7 +968,7 @@ MUTANTS: list[dict[str, str]] = [
             "            _saveGlobalSS(null); _ssDel(_GLOBAL_LEDGER_KEY);\n"
             "            _setPreset('standard');"
         ),
-        "harness": "test_share_conversation_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs",
     },
 
     # ── Run 10: fail-closed Global lifecycle recovery ────────────────────
@@ -971,35 +977,35 @@ MUTANTS: list[dict[str, str]] = [
         "why": "Session storage is untrusted recovery input; returning a parsed legacy object wholesale can resurrect a persisted edit capability or conversation-derived fields.",
         "find": "                _saveGlobalSS(safe); // destructive scrub of forbidden legacy fields\n                return safe;",
         "replace": "                return state;",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run10-global-404-made-terminal",
         "why": "HTTP 404 is reason-unknown/unavailable, not proof of revocation or expiry; making it terminal destroys re-checkability and can silently discard a live page-memory revoke capability.",
         "find": "            if (state === 'revoked' || state === 'expired') {\n                artifact.editToken = '';",
         "replace": "            if (state === 'revoked' || state === 'expired' || state === 'unavailable') {\n                artifact.editToken = '';",
-        "harness": "test_share_conversation_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs",
     },
     {
         "id": "run10-global-patch-410-no-fallback",
         "why": "A server-confirmed expired current share must detach from update state and allow Create Global link to POST a fresh object instead of remaining stuck on a dead PATCH target.",
         "find": "                        if (err.status === 404 || err.status === 405 || err.status === 410) {",
         "replace": "                        if (err.status === 404 || err.status === 405) {",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run10-global-storage-fingerprint-restored",
         "why": "Reload recovery needs only public lifecycle metadata; persisting a conversation-derived content fingerprint adds unnecessary linkable material after mutation authority is intentionally discarded.",
         "find": "                expiresAt: state.expiresAt || null,\n                conversationId: state.conversationId || '',",
         "replace": "                expiresAt: state.expiresAt || null,\n                contentHash: state.contentHash || '',\n                conversationId: state.conversationId || '',",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run10-global-unavailable-forget-escape-removed",
         "why": "A reason-unknown 404 with a retained page-memory edit capability can make Revoke repeatedly return 404; the user still needs an explicit truthful local Forget escape hatch.",
         "find": "                if (artifact.kind === 'global' && artifact.state === 'unavailable' && artifact.editToken) {",
         "replace": "                if (false) {",
-        "harness": "test_share_conversation_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs",
     },
 
     # ── Contribution receipt lifecycle ─────────────────────────────────────
@@ -1012,7 +1018,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                'Delete pending / withdraw training use',",
         "replace": "                'Delete pending data',",
-        "harness": "test_feedback_contribution_privacy.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_contribution_privacy.mjs",
     },
     {
         "id": "contribution-withdraw-overclaims-erasure",
@@ -1022,7 +1028,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                            text.textContent = 'Training withdrawal recorded. Current provider views were removed where possible; versioned provider history is not claimed physically erased.';",
         "replace": "                            text.textContent = 'Training withdrawal recorded. All copies were permanently erased.';",
-        "harness": "test_feedback_contribution_privacy.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__feedback_contribution_privacy.mjs",
     },
 
     # ── Run 17: first-class dataset contribution UX / conversation records ──
@@ -1034,7 +1040,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            if (m.role === 'error') answerIndex++;",
         "replace": "            if (m.role === 'error') { messages.push({ role: 'assistant', content: m.text, ts: m.ts || null }); answerIndex++; }",
-        "harness": "test_dataset_contribution_ux.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__dataset_contribution_ux.mjs",
     },
     {
         "id": "run17-whole-conversation-split-into-message-records",
@@ -1044,7 +1050,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "            if (conversation) records.push(conversation);",
         "replace": "            if (conversation) records = conversation.messages || [];",
-        "harness": "test_dataset_contribution_ux.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__dataset_contribution_ux.mjs",
     },
     {
         "id": "run17-share-reclaims-contribution-controller",
@@ -1054,7 +1060,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "    function _buildConversationShareSheet(initialFmt) {",
         "replace": "    function _buildConversationShareSheet(initialFmt) {\n        void _postTrainingContribution;",
-        "harness": "test_dataset_contribution_ux.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__dataset_contribution_ux.mjs",
     },
 
     # ── Run 13: fragment-backed fixed-path Share transport ───────────────
@@ -1063,21 +1069,21 @@ MUTANTS: list[dict[str, str]] = [
         "why": "Current Share update traffic must keep the public read capability out of infrastructure request paths; only the fixed /update path may be used.",
         "find": "        _remotePost(base.replace(/\\/$/, '') + '/update', '', payload, {",
         "replace": "        _remotePost(base.replace(/\\/$/, '') + '/' + encodeURIComponent(shareId), '', payload, {",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run13-global-revoke-capability-in-path",
         "why": "Current Share revoke traffic must use the fixed /revoke path and carry the public locator in the request body, never in the URL path.",
         "find": "        _remotePost(base.replace(/\\/$/, '') + '/revoke', '', { shareId: shareId }, {",
         "replace": "        _remotePost(base.replace(/\\/$/, '') + '/' + encodeURIComponent(shareId), '', { shareId: shareId }, {",
-        "harness": "test_global_share_capability.mjs",
+        "harness": "_cf_worker/test_index__global_share_capability.mjs",
     },
     {
         "id": "run13-fragment-ledger-rejected",
         "why": "The bounded lifecycle ledger must retain newly generated #share=<id> URLs across chat resets/reload without restoring private edit authority.",
         "find": "            if (hashAt >= 0) {",
         "replace": "            if (false && hashAt >= 0) {",
-        "harness": "test_share_conversation_dom.mjs",
+        "harness": "_static/ai_assistant/test_ai_assistant__share_conversation_dom.mjs",
     },
 
     # ── Run 24: bounded remote-response / context ingestion ─────────────
@@ -1089,7 +1095,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        throw new Error('REMOTE_RESPONSE_STREAM_UNAVAILABLE');",
         "replace": "        return response.text();",
-        "harness": "test_run24_bounded_remote_response.mjs",
+        "harness": "_cf_worker/test_index__bounded_remote_response.mjs",
     },
     {
         "id": "run24-response-actual-byte-limit-disabled",
@@ -1099,7 +1105,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                    if (total > maxBytes) throw new Error('REMOTE_RESPONSE_TOO_LARGE');",
         "replace": "                    if (false) throw new Error('REMOTE_RESPONSE_TOO_LARGE');",
-        "harness": "test_run24_bounded_remote_response.mjs",
+        "harness": "_cf_worker/test_index__bounded_remote_response.mjs",
     },
     {
         "id": "run24-canonical-markdown-whole-body-reintroduced",
@@ -1109,7 +1115,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        return _readResponseTextBounded(response, _CANONICAL_RESPONSE_MAX_BYTES);",
         "replace": "        return response.text();",
-        "harness": "test_run24_bounded_remote_response.mjs",
+        "harness": "_cf_worker/test_index__bounded_remote_response.mjs",
     },
     {
         "id": "run24-dataset-discovery-whole-body-reintroduced",
@@ -1119,7 +1125,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                    return resp.ok ? _readResponseJsonBounded(resp, _CONTROL_RESPONSE_MAX_BYTES)",
         "replace": "                    return resp.ok ? resp.json()",
-        "harness": "test_run24_bounded_remote_response.mjs",
+        "harness": "_cf_worker/test_index__bounded_remote_response.mjs",
     },
 
     # ── Run 25: semantic-context live rendered visibility authority ─────
@@ -1131,7 +1137,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "        _stripModelOnlyLiveNodes(content, cloned);",
         "replace": "        void cloned;",
-        "harness": "test_run25_semantic_context_integrity.mjs",
+        "harness": "_static/isolation/test_ai_assistant_isolation__semantic_context_integrity.mjs",
     },
     {
         "id": "run25-content-visibility-hidden-accepted",
@@ -1141,7 +1147,7 @@ MUTANTS: list[dict[str, str]] = [
         ),
         "find": "                    cs.visibility === 'collapse' || cs.contentVisibility === 'hidden' ||",
         "replace": "                    cs.visibility === 'collapse' || false ||",
-        "harness": "test_run25_semantic_context_integrity.mjs",
+        "harness": "_static/isolation/test_ai_assistant_isolation__semantic_context_integrity.mjs",
     },
 
 ]

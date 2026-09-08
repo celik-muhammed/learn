@@ -82,6 +82,7 @@ def attribution(doc: str) -> str:
     """Per-page CC BY attribution admonition (appended after verbatim body)."""
     return (
         ".. admonition:: Source & license\n"
+        "   :collapsible: closed\n"
         "   :class: note\n"
         "\n"
         "   Reproduced **verbatim, without modification** from\n"

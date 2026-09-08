@@ -96,6 +96,7 @@ Lab 5: Solutions
         ret                             ; return
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

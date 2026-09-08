@@ -10,6 +10,7 @@ These pages contain quick reference guides to programming in C.
    c-programming-resources
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

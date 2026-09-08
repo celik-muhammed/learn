@@ -257,6 +257,7 @@ Congratulations! You have just installed a complex application and routed
 it through your web server.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

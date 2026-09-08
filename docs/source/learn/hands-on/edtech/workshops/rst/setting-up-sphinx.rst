@@ -411,6 +411,7 @@ Read the Docs theme.
 .. |rtd-theme| image:: images/rtd-sphinx-page.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

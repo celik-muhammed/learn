@@ -93,6 +93,7 @@ Text to Add
             b. Install Sphinx version 2: ``pip3 install Sphinx``
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

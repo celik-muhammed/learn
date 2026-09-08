@@ -68,7 +68,7 @@
         :padding: 2
         :columns: 12 12 6 6
 
-        **terminologies**
+        **terminology**
         ^^^
         .. toctree::
             :maxdepth: 2
@@ -79,12 +79,12 @@
         :padding: 2
         :columns: 12 12 6 6
 
-        **external resources**
+        **ext resource**
         ^^^
         .. toctree::
             :maxdepth: 2
 
-            External Resources <./resources/index.rst>
+            External Resource <./resource/index.rst>
 
     .. grid-item-card::
         :padding: 2
@@ -145,18 +145,29 @@
         :padding: 2
         :columns: 12 12 6 6
 
-        **hands-on materials**
+        **hands-on material**
         ^^^
         .. toctree::
             :maxdepth: 2
 
-            Hands-On Materials <./hands-on/index.rst>
+            Hands-On Material <./hands-on/index.rst>
 
     .. grid-item-card::
         :padding: 2
         :columns: 12 12 6 6
 
-        **cheatsheets**
+        **kitchen-sink**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Kitchen Sink <./kitchen-sink/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **cheatsheet**
         ^^^
         .. toctree::
             :maxdepth: 2
@@ -166,7 +177,7 @@
     .. grid-item-card::
         :padding: 2
 
-        **glossaries**
+        **glossary**
         ^^^
         .. toctree::
             :maxdepth: 2

@@ -411,6 +411,7 @@ The specific commands are:
        lazyfree_pending_objects:0
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

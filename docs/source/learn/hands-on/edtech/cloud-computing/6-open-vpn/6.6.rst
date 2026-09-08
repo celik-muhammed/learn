@@ -42,6 +42,7 @@ Here is a list of options for you to explore on your own:
    * https://medium.freecodecamp.org/running-your-own-openvpn-server-on-a-raspberry-pi-8b78043ccdea?gi=11b90d9105c3
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

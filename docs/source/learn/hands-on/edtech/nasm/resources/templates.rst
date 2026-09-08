@@ -89,6 +89,7 @@ Makefile 32-bit Template
         @rm -f project_name
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

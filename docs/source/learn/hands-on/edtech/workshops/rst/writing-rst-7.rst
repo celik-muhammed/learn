@@ -120,6 +120,7 @@ References
 - https://docutils.sourceforge.io/docs/ref/rst/directives.html#table-of-contents
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -1,0 +1,51 @@
+# A tiny starter collection for `gallery-grid`.
+#
+# FOUR keys are rendered on the card:
+#     title    -> the heading            (the only required key)
+#     link     -> where the card goes
+#     content  -> body text
+#     img-top  -> a picture above the heading
+#
+# EVERYTHING ELSE is data: invisible on the card, but usable in
+# :filter:, :sort: and :group-by:.  That is why `level: beginner`
+# does not appear on the card, and why `:filter: level=beginner` works.
+
+- title: Plotting a confusion matrix
+  link: https://scikit-plots.github.io/
+  content: Start here if you have never used scikit-plots.
+  level: beginner
+  minutes: 5
+  topic: [classification, metrics]
+  added: 2025-01-15
+
+- title: ROC and precision-recall curves
+  link: https://scikit-plots.github.io/
+  content: Compare classifiers visually.
+  level: beginner
+  minutes: 12
+  topic: [classification, metrics]
+  added: 2025-03-02
+
+- title: Calibration plots
+  link: https://scikit-plots.github.io/
+  content: Are your predicted probabilities honest?
+  level: intermediate
+  minutes: 18
+  topic: [classification, calibration]
+  added: 2025-06-11
+
+- title: Clustering with elbow and silhouette
+  link: https://scikit-plots.github.io/
+  content: Choosing k without guessing.
+  level: intermediate
+  minutes: 22
+  topic: [clustering]
+  added: 2024-11-04
+
+- title: Building a custom estimator plot
+  link: https://scikit-plots.github.io/
+  content: Extend scikit-plots with your own visualisation.
+  level: advanced
+  minutes: 40
+  topic: [extending]
+  added: 2025-08-20

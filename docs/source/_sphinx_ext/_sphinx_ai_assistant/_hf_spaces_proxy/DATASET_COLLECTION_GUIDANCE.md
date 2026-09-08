@@ -6,7 +6,7 @@
 > training input, cross-source feedback/contribution joins, unversioned consent,
 > immediate contribution persistence, or review-token-only promotion, this section
 > supersedes them. For the human workflow first read
-> [`../DATASET_CONTRIBUTION_GUIDE.md`](../DATASET_CONTRIBUTION_GUIDE.md).
+> [`./DATASET_CONTRIBUTION_GUIDE.md`](./DATASET_CONTRIBUTION_GUIDE.md).
 
 - Ordinary `/v1/feedback` is rating telemetry only. Query, answer, note, model,
   page and conversation identity are discarded server-side; durable feedback is
@@ -787,6 +787,22 @@ For a provider-native smoke test:
 If you close/decline instead, the contribution remains training-ineligible and the
 browser renders the provider review state as **NOT ACCEPTED**.
 
+### Generate a derived merged contribution view
+
+For analysis/export across canonical provider contribution rows, use:
+
+```bash
+python deduplicate_dataset.py \
+  --from-storage-config \
+  --contribution-cloud-merged
+```
+
+This emits `ai-contribution-cloud-merged-jsonl-<UTC timestamp>.jsonl` plus a manifest.
+It is a derived view only: individual `ct_<recordId>.jsonl` files retain lifecycle,
+withdrawal, deduplication, and concurrency authority. The merged command accepts only
+current eligible rows, rejects `--include-unreviewed`, suppresses withdrawn rows, and
+will not re-ingest an earlier merged artifact as source input.
+
 ### Mirror expectations
 
 If the topology is HF Primary + GitHub Mirror, the smoke test creates an HF review
@@ -1010,19 +1026,25 @@ retract A
 rate B
 ```
 
-Relevant v2 fields include:
+Current canonical schema-v5 lineage fields are:
 
 ```text
-feedbackId
-prevFeedbackId
-editCount
+feedbackId       current event
+feedbackChainId  stable root event
+prevFeedbackId   immediate predecessor
+prevFeedbackIds  ordered full ancestry, oldest -> newest
+editCount        revision depth
 action
-_ts
+_ts              server write time; fallback/storage ordering only
 ```
 
-Retraction tombstones participate in last-write-wins so an explicitly removed
-rating can suppress an older rating. A tombstone is then **always removed** from
-the clean training output.
+Historical scalar-only `prevFeedbackId` rows remain readable. Current rows are
+self-contained so terminal-rating resolution does not depend on network arrival
+order. Retraction tombstones first participate in storage-key last-write-wins so an
+explicitly removed rating suppresses its target, then tombstones are **always removed**
+from clean training output. The semantic lineage pass then selects the terminal valid
+rating. Same-revision forks, cycles, or conflicting ancestry for one `feedbackId` fail
+closed rather than using `_ts` as a guess.
 
 If a retraction reaches the server but the replacement rating never arrives,
 no training example is emitted for that key. This is safer than resurrecting a
@@ -1684,7 +1706,7 @@ conflict resolution could hide corruption or unauthorized modification.
 - exact legacy duplicate records across mirrors suppressed;
 - same canonical record ID + different bytes fails closed;
 - guarded remote archive extraction;
-- historical schema normalization to current schema v4 when `_utils/_dataset_schema.py` is available;
+- historical schema normalization to current canonical schema v5 when `_utils/_dataset_schema.py` is available;
 - default exclusion of feedback telemetry/quarantined/legacy-unreviewed records;
 - training acceptance only for `trainingStatus="eligible"` contributions;
 - tombstone/retraction handling where applicable;

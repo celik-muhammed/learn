@@ -10,6 +10,7 @@ These pages contain quick reference guides to programming in C.
    misc
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

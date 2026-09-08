@@ -42,6 +42,7 @@ During this lab, you will learn how to:
  #. **harden** SSH logins.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

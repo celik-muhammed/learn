@@ -56,6 +56,7 @@ interact with it.
        root@vps298933:~/wordpress-docker#
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

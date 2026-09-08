@@ -12,9 +12,50 @@ owned by the server.
 from __future__ import annotations
 
 import json
+import pathlib as _pathlib
 import secrets
+import sys as _sys
 from dataclasses import dataclass
 from typing import Any, Iterable
+
+try:
+    from ._resource_contract import (
+        ResourceContractError,
+        ResourceDescriptor,
+        parse_resource_descriptors,
+    )
+except ImportError:
+    try:
+        # Hugging Face Spaces commonly execute the service directory as a
+        # top-level module collection.
+        from _resource_contract import (  # type: ignore[no-redef]
+            ResourceContractError,
+            ResourceDescriptor,
+            parse_resource_descriptors,
+        )
+    except ModuleNotFoundError as exc:
+        # Test runners, vendored tools and embedded services may load this file
+        # directly with ``spec_from_file_location`` without placing its sibling
+        # directory on sys.path. Load only the fixed sibling contract; never
+        # search caller-controlled paths or mutate global import state.
+        import importlib.util as _importlib_util
+
+        _resource_path = _pathlib.Path(__file__).with_name("_resource_contract.py")
+        _resource_name = f"{__name__}__resource_contract"
+        _resource_spec = _importlib_util.spec_from_file_location(
+            _resource_name, _resource_path
+        )
+        if _resource_spec is None or _resource_spec.loader is None:
+            raise ImportError("resource contract loader is unavailable") from exc
+        _resource_module = _importlib_util.module_from_spec(_resource_spec)
+        _sys.modules[_resource_name] = _resource_module
+        try:
+            _resource_spec.loader.exec_module(_resource_module)
+        finally:
+            _sys.modules.pop(_resource_name, None)
+        ResourceDescriptor = _resource_module.ResourceDescriptor
+        ResourceContractError = _resource_module.ResourceContractError
+        parse_resource_descriptors = _resource_module.parse_resource_descriptors
 
 CHAT_CONTRACT = "scikitplot-chat-v1"
 MAX_MODEL_CHARS = 256
@@ -31,6 +72,7 @@ _ALLOWED_ROOT = frozenset(
         "max_tokens",
         "stream",
         "reasoning",
+        "resources",
     }
 )
 _ALLOWED_CONTEXT = frozenset({"page_text", "page_descriptor"})
@@ -66,6 +108,7 @@ class ChatRequest:
     effort: str | None
     thinking: bool
     budget_tokens: int | None
+    resources: tuple[ResourceDescriptor, ...]  # pyright: ignore[reportInvalidTypeForm]
 
 
 def _bounded_text(
@@ -160,6 +203,11 @@ def parse_chat_request(  # ruff: ignore[too-many-branches]
     if not isinstance(stream, bool):
         raise ChatContractError("stream must be boolean")
 
+    try:
+        resources = parse_resource_descriptors(raw.get("resources", []))
+    except ResourceContractError as exc:
+        raise ChatContractError(str(exc)) from exc
+
     reasoning = raw.get("reasoning", {})
     if reasoning is None:
         reasoning = {}
@@ -192,6 +240,7 @@ def parse_chat_request(  # ruff: ignore[too-many-branches]
         effort=effort,
         thinking=thinking,
         budget_tokens=budget,
+        resources=resources,
     )
 
 

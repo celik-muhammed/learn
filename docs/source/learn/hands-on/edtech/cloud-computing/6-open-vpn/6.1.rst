@@ -144,6 +144,7 @@ VPN server. Please continue to the next step to correct the invalid
 configuration.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

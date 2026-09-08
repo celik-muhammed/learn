@@ -235,6 +235,7 @@ then tries to terminate the application. The
        PID 10776 returned exit code '-1073741510' (int) / 'c000013a' (hex)'.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

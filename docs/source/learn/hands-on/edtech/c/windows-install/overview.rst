@@ -26,6 +26,7 @@ During this lab, you will learn how to:
  #. **Read** input from the console window
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

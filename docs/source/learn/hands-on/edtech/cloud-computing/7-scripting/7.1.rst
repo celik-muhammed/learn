@@ -129,6 +129,7 @@ Expected output
     root@vps298933:~#
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

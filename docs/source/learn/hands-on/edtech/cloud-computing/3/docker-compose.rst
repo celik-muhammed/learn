@@ -91,6 +91,7 @@ Here is some information about parts of the file:
    - A Docker container can be added and removed without destroying the data.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

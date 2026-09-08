@@ -22,6 +22,7 @@ During this lab, you will learn how to use:
  #. ``remove()`` to delete a file.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

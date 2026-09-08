@@ -39,6 +39,7 @@ Initially, we'll install three important C and ASM extensions to help us.
    files in VSC directly.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

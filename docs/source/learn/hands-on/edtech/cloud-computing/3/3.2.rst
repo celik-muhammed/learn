@@ -401,6 +401,7 @@ containers and volume data, then run the installer again. :))
        rm -r db-data && rm -r wordpress  # removes the db-data and wordpress folders
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

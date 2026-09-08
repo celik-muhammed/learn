@@ -460,6 +460,7 @@ that the processes run in the background and do not exit when the task
 completes.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

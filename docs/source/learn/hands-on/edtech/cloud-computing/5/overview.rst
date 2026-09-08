@@ -29,6 +29,7 @@ During this lab, you will learn how to:
  #. **package** a web application or internet service in a Docker image
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

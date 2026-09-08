@@ -112,6 +112,7 @@ Task 3: Test Random Generated Numbers
 #. If not, increase the value till you find one!
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

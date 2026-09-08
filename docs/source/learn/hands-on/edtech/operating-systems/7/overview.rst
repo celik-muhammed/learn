@@ -26,6 +26,7 @@ During this lab, you will learn how to use:
  #. ``GetExitCodeProcess()`` to retrieve the exit code of a process
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

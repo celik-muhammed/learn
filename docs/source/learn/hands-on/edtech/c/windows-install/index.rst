@@ -19,6 +19,7 @@ read user data inputted into the console window.
    3
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

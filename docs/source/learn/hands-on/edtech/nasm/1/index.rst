@@ -508,6 +508,7 @@ See the `next page <solution.html>`_ for the solutions.
     solution
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

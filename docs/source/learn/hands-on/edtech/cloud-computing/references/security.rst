@@ -23,6 +23,7 @@ Let's Encrypt
     certbot --nginx
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

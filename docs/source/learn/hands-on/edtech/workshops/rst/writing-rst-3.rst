@@ -113,6 +113,7 @@ Text to add
         specific Python packages.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

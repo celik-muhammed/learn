@@ -15,6 +15,7 @@ Lab 2: Configure Nginx as a Reverse Proxy
    2.4
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -18,6 +18,7 @@ Lab 6: OpenVPN
    6.6
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

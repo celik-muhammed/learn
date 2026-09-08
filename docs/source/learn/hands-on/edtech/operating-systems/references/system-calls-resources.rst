@@ -28,6 +28,7 @@ FileIO
 #. |A Handy Guide To Handling Handles|
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

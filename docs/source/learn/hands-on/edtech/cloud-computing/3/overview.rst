@@ -130,6 +130,7 @@ During this lab, you will:
     technology to cloud and distributed computing.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

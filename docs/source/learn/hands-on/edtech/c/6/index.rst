@@ -525,6 +525,7 @@ Here is a list of common linked list operations:
   #. ``clone``
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -113,6 +113,7 @@ During this lab, you will:
  #. Configure Nginx as a reverse proxy to services running HTTP and HTTPS
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

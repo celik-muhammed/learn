@@ -38,6 +38,7 @@ During this lab, you will learn how to:
  #. **configure** an image and container with SSL support
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

@@ -113,6 +113,7 @@ the process can exit gracefully.
 .. |image0| image:: images/notepad-save-as.png
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

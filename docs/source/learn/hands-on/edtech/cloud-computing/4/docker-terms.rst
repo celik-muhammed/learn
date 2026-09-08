@@ -87,6 +87,7 @@ Compose
    <a href="https://hub.docker.com/" target="_blank">Docker Hub</a>
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

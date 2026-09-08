@@ -16,6 +16,7 @@ Lab 8: VPS Security
    8.5
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

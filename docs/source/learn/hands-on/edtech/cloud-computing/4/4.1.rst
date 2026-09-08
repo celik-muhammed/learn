@@ -338,6 +338,7 @@ Lastly, we need to create a reverse proxy. Here is my site, for example:
 #. Restart Nginx
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from

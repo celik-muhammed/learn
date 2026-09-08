@@ -150,6 +150,7 @@ Text to Add
         <https://hub.docker.com/_/nginx>, which uses Debian 10.
 
 .. admonition:: Source & license
+   :collapsible: closed
    :class: note
 
    Reproduced **verbatim, without modification** from
