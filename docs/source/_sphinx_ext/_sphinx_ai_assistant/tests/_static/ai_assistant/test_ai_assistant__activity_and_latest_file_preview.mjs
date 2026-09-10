@@ -1,6 +1,7 @@
 // Run 172 — observable activity + latest-revision generated-file preview.
 import fs from 'node:fs';
 const src = fs.readFileSync(process.argv[2], 'utf8');
+const cssSrc = fs.readFileSync(process.argv[3], 'utf8');
 const css = fs.readFileSync(process.argv[3], 'utf8');
 let passed = 0, failed = 0;
 function ok(cond, name) { if (cond) passed++; else { failed++; console.error('FAIL ' + name); } }
@@ -52,13 +53,262 @@ ok(src.includes("sseEventType === 'activity' || sseEventType === 'assistant.acti
 ok(src.includes('_activityIngestWireEvent(activity, publicEvent)')&&src.includes('_activityIngestArtifactEvent(activity, publicEvent)'),'SSE events feed bounded registries');
 
 ok(artifact.includes('old ? old.revision + 1 : 1'),'changed content increments revision');
+ok(artifact.includes('diff: _diffLineStat(old && old.content, content)')&&artifact.includes('baseRevision: old ? _artifactContentRevision(old) : 0'),'each revision records its own +/- stat and the content revision it came from');
+// The split is the point: a content change advances contentRevision, while a
+// preview eviction advances only the ledger event counter.
+ok(artifact.includes('contentRevision: old ? _artifactContentRevision(old) + 1 : 1'),'a content change advances the content revision');
+ok(src.includes('contentRevision: _artifactContentRevision(old),'),'losing a preview does not advance the content revision');
+ok(src.includes('_artifactContentRevision(entry) === Number(binding.revision)'),'staleness is judged on content, not on ledger events');
+ok(src.includes("(typeof entry.contentRevision === 'number')"),'records written before the split still resolve a revision');
 ok(artifact.includes('_generatedArtifactIsAvailable(old)')&&artifact.includes('old.content === content')&&artifact.includes('return old'),'identical currently-available content reuses revision');
 ok(artifact.includes('_generatedArtifactLedger[path] = entry'),'ledger is keyed by canonical path');
 ok(bind.includes('_generatedArtifactOpenLatest(key, el)')&&bind.includes('_generatedArtifactRefs[key]'),'historical controls bind by key');
 ok(openLatest.includes('var entry = _generatedArtifactLedger[key]'),'preview resolves latest at click');
 ok(downloadLatest.includes('var entry = _generatedArtifactLedger[key]'),'download resolves latest at click');
-ok(changed.includes("title.textContent = 'Changed files'")&&changed.includes('every link opens the latest revision'),'answer gets separate latest-revision Changed files section');
-ok(changed.includes("all.textContent = 'Download all latest files'")&&changed.includes('var entry = _generatedArtifactLedger[key]'),'bulk download re-resolves latest files');
+// "Changed files" claimed more than happened -- nothing outside the browser
+// changed. The latest-revision guarantee is unchanged and still asserted.
+ok(changed.includes("'Presented ' + combined.length")&&changed.includes('links open the latest revision'),'answer gets a presented-files section that resolves the latest revision');
+ok(changed.includes("hint.textContent = 'drafts, not applied"),'the draft status rides with the count, not a tooltip');
+ok(!changed.includes("'Changed files'"),'no surface still claims files were changed');
+ok(src.includes('function _collapseArtifactPreBlocks(root)'),'complete files collapse to an in-place preview');
+// `sync` is the per-chunk path: it runs on every streamed chunk while a fence
+// is still growing. Collapsing there would wrap a partial file and keep
+// re-wrapping it. The finalization path is where this belongs.
+ok(src.includes('_collapseArtifactPreBlocks(root);'),'complete files are collapsed somewhere');
+ok(sync.indexOf('_collapseArtifactPreBlocks') === -1,'collapse never runs on the per-chunk streaming path');
+ok(src.includes('if (lines < _FILE_PREVIEW_COLLAPSE_MIN_LINES) return;'),'short files stay open rather than costing a click for nothing');
+ok(src.includes("if (!path) return;"),'anonymous snippets are not collapsed -- they are usually the answer itself');
+// The original wrap is moved, never re-created: copy, download and the
+// artifact path all keep working because they are the same element.
+// The gutter moved into a shared builder used by the inline sheet and the
+// preview overlay, so the contract is asserted on the builder.
+const sheetFn = extract('_buildLineNumberedSheet');
+ok(sheetFn.includes('sheet.appendChild(pre);')&&src.includes('body.appendChild(sheet);'),'the sheet holds the original pre, so copy and download are untouched');
+ok(sheetFn.includes('var parent = pre.parentNode;')&&sheetFn.includes('parent.insertBefore(sheet, next);'),'the sheet replaces the pre in place, keeping its position among siblings');
+ok(src.includes("_buildLineNumberedSheet(wrap, text, 'ai-md-file-sheet')"),'the inline file view uses the shared builder');
+ok(src.includes("_buildLineNumberedSheet(pre, item.previewText,"),'the preview overlay uses it too, so every preview is numbered');
+ok((src.match(/gutter\.className = 'ai-md-file-gutter'/g) || []).length === 1,'there is exactly one gutter implementation');
+// Numbers must never enter the code, in either surface.
+ok(sheetFn.includes("gutter.setAttribute('aria-hidden', 'true')"),'the gutter is out of the accessibility tree');
+ok(!/pre\.textContent\s*=\s*[^;]*numbers/.test(src),'no code path writes a line number into the pre');
+ok(/\.ai-assistant-panel-attachment-preview-sheet \.ai-md-file-gutter\s*\{[^}]*line-height:\s*inherit/.test(cssSrc),'the overlay gutter inherits the code line box, so numbers cannot drift');
+
+// ── Every code block is numbered, not only collapsed files ───────────────
+//
+// The collapse pass numbers the complete files it collapses. Short files and
+// every snippet that never declared a path were left unnumbered, so a reader
+// could cite a line only in the blocks large enough to have been collapsed.
+const numFn = extract('_numberRemainingCodeBlocks');
+ok(src.includes('_numberRemainingCodeBlocks(root);'),'the remaining blocks are numbered too');
+ok(numFn.includes("_buildLineNumberedSheet(wrap, code.textContent || '',"),'they use the same builder, so a line number means the same thing everywhere');
+// Two independent guards against nesting one sheet inside another.
+ok(numFn.includes("wrap.getAttribute('data-ai-line-numbered') === 'true'"),'numbering twice is a no-op');
+ok(numFn.includes("wrap.parentNode.classList.contains('ai-md-file-sheet')"),'a block already sheeted by the collapse pass is skipped');
+// Same timing rule as the collapse: the per-chunk path would wrap a fence that
+// is still arriving and re-wrap it on every chunk.
+ok(sync.indexOf('_numberRemainingCodeBlocks') === -1,'numbering never runs on the per-chunk streaming path');
+ok(src.indexOf('_numberRemainingCodeBlocks(root);') > src.indexOf('_collapseArtifactPreBlocks(root);'),'numbering runs after the collapse, so collapsed files are not double-wrapped');
+ok(/\.ai-md-snippet-sheet[^{]*\{[^}]*border-radius/.test(cssSrc),'a snippet sheet keeps the code block radius rather than the file sheet squared edge');
+ok(/\.ai-md-snippet-sheet \.ai-md-file-gutter[\s\S]{0,120}?line-height:\s*inherit/.test(cssSrc),'its gutter shares the code line box');
+
+// ── One scroller per sheet, and no wrapping where numbers are shown ──────
+//
+// Two faults from putting a gutter beside a block that already scrolled.
+// The <pre> had max-height + overflow:auto, so it scrolled in a fixed box
+// while the gutter, having neither, rendered every line of the file: a
+// 5543-line preview stretched the dialog to the length of the file, and the
+// numbers slid out of step the moment either scrolled.
+const sheetCss = cssSrc.replace(/\/\*[\s\S]*?\*\//g, '');
+const sheetRule = (sheetCss.match(/\.ai-md-file-sheet \{[^}]*\}/) || [''])[0];
+ok(/overflow-y:\s*auto/.test(sheetRule) && /max-height/.test(sheetRule),'the sheet is the scroll container, not the code');
+const codeRule = (sheetCss.match(/\.ai-md-file-sheet \.ai-md-pre,[\s\S]*?\{[^}]*\}/) || [''])[0];
+// `hidden`, not `visible`: CSS promotes a visible axis to `auto` when the other
+// is not visible, so `overflow-y: visible` beside `overflow-x: auto` made the
+// block a scroll container on both axes -- silently, and only for files with
+// long lines. It then swallowed the wheel while having nothing to scroll.
+ok(/max-height:\s*none/.test(codeRule) && /overflow-y:\s*hidden/.test(codeRule),'the code no longer scrolls itself, so gutter and code move together');
+ok(!/overflow-y:\s*visible/.test(codeRule),'no visible axis remains to be promoted beside the horizontal scroll');
+ok(/overflow-x:\s*auto/.test(codeRule),'long lines still scroll horizontally');
+// The overlay body is the scroller there, so the sheet must not claim the wheel.
+ok(/\.ai-assistant-panel-attachment-preview-body > \.ai-md-file-sheet \{[^}]*overscroll-behavior:\s*auto/.test(cssSrc),'a sheet that does not scroll releases the wheel to the page');
+// The sheets that DO own a scrollbar keep containing it.
+const ownScroll = (cssSrc.replace(/\/\*[\s\S]*?\*\//g, '').match(/^\.ai-md-file-sheet \{[^}]*\}/m) || [''])[0];
+ok(/overscroll-behavior:\s*contain/.test(ownScroll),'a sheet with its own scrollbar still contains the gesture');
+// A logical line wrapping to three visual rows fills three line boxes in the
+// code and one in the gutter, so every later number is wrong.
+ok(/white-space:\s*pre;/.test(codeRule) && !/pre-wrap/.test(codeRule),'numbered code does not wrap');
+ok(/overflow-x:\s*auto/.test(codeRule),'long lines scroll horizontally instead');
+ok(/overflow-wrap:\s*normal/.test(codeRule) && /word-break:\s*normal/.test(codeRule),'inherited wrapping rules are overridden too, not just white-space');
+// The overlay body is already a scroller; a sheet scrolling inside it would
+// give two vertical scrollbars for one document.
+ok(/\.ai-assistant-panel-attachment-preview-body > \.ai-md-file-sheet \{[^}]*max-height:\s*none/.test(sheetCss),'inside the preview body the sheet defers to the body scroller');
+// One rule per selector: two blocks for .ai-md-file-sheet meant the cascade
+// had to be read to know what the sheet does, and an assertion could match the
+// wrong one -- which is how this very check first passed against a rule with
+// no overflow in it.
+ok((sheetCss.match(/^\.ai-md-file-sheet \{/gm) || []).length === 1,'the sheet is defined once, not by two rules read together');
+
+// Line numbers must never enter the code. Prefixing each line is the usual
+// shortcut and it poisons every copy, download and patch taken from the block.
+ok(src.includes("gutter.className = 'ai-md-file-gutter'")&&src.includes('gutter.textContent = numbers.join'),'line numbers live in their own element');
+ok(src.includes("gutter.setAttribute('aria-hidden', 'true')"),'the gutter is out of the accessibility tree');
+ok(/\.ai-md-file-gutter\s*\{[^}]*user-select:\s*none/.test(cssSrc),'the gutter cannot be drag-selected into a copy');
+ok(/\.ai-md-file-gutter\s*\{[^}]*pointer-events:\s*none/.test(cssSrc),'the gutter is not a click target');
+ok(!/code[^\n]*textContent\s*=[^\n]*ln\b/.test(src),'no code path writes a line number into the code element');
+const gutterRule = (cssSrc.match(/\.ai-md-file-gutter\s*\{[^}]*\}/) || [''])[0];
+const preRule = (cssSrc.match(/\.ai-md-file-sheet \.ai-md-pre\s*\{[^}]*\}/) || [''])[0];
+const lh = r => (r.match(/line-height:\s*([\d.]+)/) || [])[1];
+const fs2 = r => (r.match(/font-size:\s*([\d.]+rem)/) || [])[1];
+ok(lh(gutterRule) && lh(gutterRule) === lh(preRule),'gutter and code share a line height, or the numbers drift');
+ok(fs2(gutterRule) && fs2(gutterRule) === fs2(preRule),'gutter and code share a font size');
+// Presentation contract, asserted against the paired stylesheet rather than
+// trusting the class names to exist.
+ok(/\.ai-md-file-disclosure-head\s*\{/.test(cssSrc),'the disclosure row is styled');
+ok(/\[aria-expanded="true"\][^{]*\.ai-md-file-disclosure-caret\s*\{[^}]*rotate\(90deg\)/.test(cssSrc),'the caret reflects aria state, not a separate class');
+ok(/prefers-reduced-motion: reduce/.test(cssSrc),'caret motion is opt-out');
+ok(/\.ai-md-file-disclosure-body\[hidden\]\s*\{\s*display:\s*none/.test(cssSrc),'hidden bodies are actually hidden');
+ok(/\.ai-assistant-panel-changed-files-list\[hidden\]/.test(cssSrc),'the presented-files list collapses too');
+ok(src.includes("head.setAttribute('aria-label',"),'the row carries one full sentence for assistive tech');
+// Superseded by the footer assertion below: the strip now holds both bulk
+// controls, so hiding the footer covers what this used to check on its own.
+ok(src.includes('if (footerRef) footerRef.hidden = open;'),'collapsing the summary hides its bulk controls with it');
+ok(src.includes("wrap.getAttribute('data-ai-file-disclosure') === 'true'"),'collapsing twice is a no-op');
+ok(src.includes("head.setAttribute('aria-controls', body.id)")&&src.includes("head.setAttribute('aria-expanded', 'false')"),'the disclosure is a real, announced control');
+// The label now names the count; the contract it guards -- resolving each
+// file from the ledger at click time -- is unchanged and still asserted.
+// The label moved into the shared icon-button decorator; the contract it
+// guards -- resolving each file from the ledger at click time, and naming the
+// count -- is unchanged.
+ok(changed.includes("'Download all ' + combined.length + ' files'")&&changed.includes('var entry = _generatedArtifactLedger[key]'),'bulk download re-resolves latest files and names the count');
+ok(changed.includes('_decorateIconButton(all, ICONS.exportTxt,'),'the bulk download carries the download glyph');
+// Patch export is git's format, so it carries git's mark rather than the
+// generic download arrow -- the two footer actions produce different kinds of
+// artifact and should not look interchangeable.
+ok(changed.includes('_decorateIconButton(series, ICONS.gitMark,'),'the patch export carries the git logomark');
+ok(/gitMark:'<svg[^']*fill="currentColor"/.test(src),'the git mark inherits colour rather than shipping fixed-colour variants');
+ok(!/gitMark:[^\n]*#f03c2e|gitMark:[^\n]*#100f0d|gitMark:[^\n]*fill="#fff"/.test(src),'no theme-specific copy of the mark is shipped');
+
+// Icon-only below a narrow surface width, measured on the panel rather than
+// the viewport: the panel is resizable, maximizable and embeddable, so the two
+// widths are different numbers.
+ok(/container-name:\s*ai-artifact-surface/.test(cssSrc),'the artifact surfaces are query containers');
+ok(/@container ai-artifact-surface \(max-width: 22rem\)/.test(cssSrc),'labels collapse on a narrow panel, not a narrow window');
+const iconOnly = (cssSrc.match(/@container ai-artifact-surface \(max-width: 22rem\) \{[\s\S]*?\n\}/) || [''])[0];
+['ai-md-artifact-download-label','ai-assistant-panel-changed-file-download',
+ 'ai-assistant-panel-changed-files-download-all','ai-assistant-panel-changed-files-series']
+  .forEach(function (cls) { ok(iconOnly.includes(cls), cls + ' collapses to its glyph'); });
+// Comments stripped first. The rule's own comment explains why display:none
+// is not used, and matching that sentence reported correct CSS as broken --
+// the third time this run a comment has defeated an assertion written against
+// raw source.
+const iconOnlyCode = iconOnly.replace(/\/\*[\s\S]*?\*\//g, '');
+ok(/clip-path:\s*inset\(50%\)/.test(iconOnlyCode)&&!/display:\s*none/.test(iconOnlyCode),'the label is clipped, not removed, so the hit area and title survive');
+ok(/min-width:\s*2\.25rem/.test(iconOnly),'an icon-only button keeps a usable target size');
+// Safe only because the accessible name never depended on the visible label.
+ok(src.includes("dlBtn.setAttribute('aria-label', 'Download ' + filename)"),'the snippet download names its file regardless of width');
+ok(src.includes("download.setAttribute('aria-label', 'Download latest ' + entry.path"),'the file download names its file regardless of width');
+const deco = extract('_decorateIconButton');
+ok(deco.includes("glyph.setAttribute('aria-hidden', 'true')"),'the glyph is decoration: removing it changes nothing announced');
+ok(deco.includes('glyph.innerHTML = iconSvg;'),'the glyph comes from an ICONS constant, never user or model content');
+ok(deco.includes("btn.textContent = '';"),'the button is cleared first, so decorating twice cannot duplicate the label');
+ok((src.match(/allBtn\.innerHTML = ICONS/g) || []).length === 0,'the snippet all-button uses the shared decorator rather than its own two lines');
+ok(/\.ai-md-artifact-btn-icon svg \{[^}]*width:\s*\.85em/.test(cssSrc),'the glyph scales with its button text rather than a fixed pixel size');
+// Card layout: Preview and Download own the primary row; Patch and Continue
+// drop to a quieter second line rather than competing for the same weight.
+// The primary row is now preview | download | save as. Patch and Continue
+// still sit on the secondary line, asserted below.
+// Three controls: preview fills the row, then download, then one ⋮ menu.
+// Save-as, patch and continue moved into that menu -- asserted below, so the
+// capability is still guarded, just at its new home.
+// Presented files now use the same segmented control as the snippet cards:
+// preview and download joined, then the overflow menu beside them.
+ok(changed.includes('primary.appendChild(_buildArtifactSegmentGroup(entry.path, preview, download));')&&changed.includes('primary.appendChild(_buildFileOverflow(key, entry));'),'a presented file is one segmented control plus its overflow menu');
+ok(src.includes('function _buildArtifactSegmentGroup(ariaLabel, primary, secondary)'),'both artifact surfaces share one segmented-control builder');
+ok(/\.ai-md-artifact-group\s*>\s*\.ai-assistant-panel-changed-file-preview[\s\S]{0,200}?border:\s*0/.test(cssSrc),'a presented-file segment sheds its own chrome inside the group');
+ok(/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/.test(cssSrc),'the group takes the room the overflow menu leaves');
+ok(!changed.includes("className = 'ai-assistant-panel-changed-file-saveas'"),'save-as is no longer a fifth button on the card');
+ok(/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto/.test(cssSrc),'the preview claims the room the two actions leave');
+ok(/@media \(max-width: 420px\)[\s\S]*?\.ai-assistant-panel-changed-file-primary\s*\{[^}]*minmax\(0, 1fr\)/.test(cssSrc),'a narrow panel wraps the actions instead of clipping the filename');
+
+// Save-as is a download alias, never a rename: the ledger key is the file's
+// identity and the revision chain, diff base and patch headers all hang off it.
+ok(src.includes('function _generatedArtifactSaveAs(key)'),'files can be saved under a chosen name');
+ok(!/_generatedArtifactSaveAs[\s\S]{0,900}?_generatedArtifactLedger\[[^\]]+\]\s*=/.test(src),'save-as never rewrites the ledger key');
+ok(src.includes('_artifactNameSlugPreservingExtension(raw)'),'a reader-supplied filename is sanitized like any other');
+ok(src.includes("text.split(/[\\\\/]/).pop()"),'a typed directory is stripped rather than silently ignored');
+ok(src.includes('_generatedArtifactIsAvailable(entry)'),'an unavailable revision cannot be saved');
+// The menu mechanics now live in one shared builder used by both the snippet
+// card and the tracked-file card; `_buildFileOverflow` is the thin wrapper that
+// supplies this surface's items. Assert each where it lives.
+const menu = extract('_buildOverflowMenu');
+// ── Menu items carry a glyph ─────────────────────────────────────────────
+//
+// Decoration in the strict sense: aria-hidden, with the accessible name coming
+// from the label text, so removing an icon changes nothing announced.
+ok(menu.includes("iconWrap.setAttribute('aria-hidden', 'true');"),'the glyph is out of the accessibility tree');
+ok(menu.includes('if (item.icon) iconWrap.innerHTML = item.icon;'),'it is optional, and only ever an ICONS constant');
+ok(menu.includes("text.className = 'ai-assistant-panel-changed-file-menu-text'"),'label and hint sit in their own stack beside it');
+// The gutter is reserved either way: a list where some labels are indented and
+// others are not is harder to scan than one with no icons at all.
+ok(/\.ai-assistant-panel-changed-file-menu-item \{[^}]*grid-template-columns:\s*1rem minmax\(0, 1fr\)/.test(cssSrc),'the icon column is reserved whether or not an item has a glyph');
+ok(/\.ai-assistant-panel-changed-file-menu-icon \{[^}]*align-items:\s*center/.test(cssSrc),'the glyph is centred in its own column');
+ok(/\.ai-assistant-panel-changed-file-menu-icon \{[^}]*margin-top/.test(cssSrc),'and aligned to the first line, not the middle of a two-line item');
+ok(/forced-colors: active[\s\S]{0,200}?menu-icon[\s\S]{0,60}?ButtonText/.test(cssSrc),'and survives forced-colours mode');
+// Each glyph matches what its action produces.
+ok(/'Download patch'[^}]*icon: ICONS\.gitMark/.test(src),'the patch export carries the git mark');
+ok(/'Save as\\u2026'[^}]*icon: ICONS\.exportTxt/.test(src),'save-as carries the download arrow');
+ok(/'Open in a sheet'[^}]*icon: ICONS\.terms/.test(src),'opening a sheet carries the document glyph');
+const fileMenu = extract('_buildFileOverflow');
+ok(fileMenu.includes('_generatedArtifactDownloadPatch(key)')&&fileMenu.includes('_generatedArtifactContinueEditing(key)'),'patch and continue live in the overflow menu, still one click away');
+ok(fileMenu.includes('_generatedArtifactSaveAs(key)')&&fileMenu.includes('_generatedArtifactOpenSheet(key)'),'save-as and open-in-a-sheet are menu items');
+ok(menu.includes("menu.setAttribute('role', 'menu')")&&menu.includes("row.setAttribute('role', 'menuitem')"),'the menu is announced as a menu');
+ok(menu.includes("btn.setAttribute('aria-haspopup', 'menu')")&&menu.includes("btn.setAttribute('aria-expanded', 'true')"),'the trigger reports its popup and its state');
+ok(menu.includes("if (e.key !== 'Escape') return;")&&menu.includes('btn.focus();'),'Escape closes the menu and returns focus to the trigger');
+// Both listeners, by name. Asserting that the string appears at all passed
+// while one of the two removals had been deleted -- the mutant found it.
+const closer = extract('_closeFileMenu');
+ok(closer.includes("document.removeEventListener('click', rec.onDocClick, true);"),'closing the menu removes its click listener');
+ok(closer.includes("document.removeEventListener('keydown', rec.onKeyDown, true);"),'closing the menu removes its keydown listener');
+ok(menu.includes("document.addEventListener('click', rec.onDocClick, true);")&&menu.includes("document.addEventListener('keydown', rec.onKeyDown, true);"),'both listeners are registered when the menu opens');
+ok(extract('_closeFileMenu').includes('_fileMenuOpen = null;'),'only one file menu can be open at a time');
+// One builder, two surfaces: the snippet card must not grow a second menu with
+// its own (and inevitably weaker) keyboard handling.
+ok(src.includes("'ai-md-artifact-overflow');"),'the snippet card uses the shared menu builder');
+ok(!src.includes("className = 'ai-md-artifact-promote'"),'the snippet card no longer carries a second full-width button');
+ok((src.match(/document\.addEventListener\('keydown', rec\.onKeyDown, true\);/g) || []).length === 1,'there is exactly one menu keyboard implementation');
+const sheet = extract('_generatedArtifactOpenSheet');
+ok(sheet.includes('_generatedArtifactOpenLatest(key, null, { sheet: true })'),'the sheet is the same viewer asked to show everything');
+ok(sheet.includes('_generatedArtifactIsAvailable(entry)'),'an unavailable revision cannot be opened as a sheet');
+ok(changed.includes("badge.textContent = (ext || 'file').slice(0, 6).toUpperCase();"),'each card carries a type badge that survives path truncation');
+// The bulk pair is now the wide version of a file row: Download all is the big
+// segment, Download patch series the narrow one beside it.
+ok(changed.includes("_buildArtifactSegmentGroup(\n                'All ' + combined.length + ' presented files', all, series)"),'bulk actions are one segmented control');
+// One file: a single action, spanning the section and wearing the group's
+// chrome, so the footer does not change kind when a second file arrives.
+ok(changed.includes("series.classList.add('ai-assistant-panel-changed-files-solo');")&&changed.includes('footer.appendChild(series);'),'a single-file section offers patch export as one full-width control');
+ok(/\.ai-assistant-panel-changed-files-solo\s*\{[^}]*flex:\s*1 1 100%/.test(cssSrc),'the solo footer control spans the section');
+ok(/\.ai-assistant-panel-changed-files-solo\s*\{[^}]*border:\s*1px/.test(cssSrc),'the solo control wears the group chrome rather than sitting bare');
+// Wording follows the count: a "series" of one makes a reader look for the
+// other files.
+ok(changed.includes("many ? 'Download patch series' : 'Download patch'"),'a one-file export is called a patch, not a series');
+ok(changed.includes("'Download ' + _generatedArtifactLedger[combined[0]].path + ' as a git patch'"),'the one-file accessible name says which file');
+ok(changed.includes("'Download all ' + combined.length + ' tracked files as one git patch series'"),'the many-file accessible name says how many');
+ok(!changed.includes("'Download every tracked file as one git patch series'"),'the count-blind label is gone');
+// The preview segment is built from the snippet card's own classes, not a
+// parallel class tree styled to match -- the two had already diverged.
+ok(changed.includes("preview.className = 'ai-md-artifact-card ai-assistant-panel-changed-file-preview';"),'a presented file uses the snippet card markup');
+ok(changed.includes("icon.className = 'ai-md-artifact-icon'")&&changed.includes("copy.className = 'ai-md-artifact-info'")&&changed.includes("name.className = 'ai-md-artifact-name'"),'its parts use the shared card classes');
+ok(!changed.includes("open.textContent = 'Preview'"),'the redundant trailing Preview word is gone; the card is the affordance');
+ok(changed.includes("preview.setAttribute('aria-label', 'Preview ' + entry.path)"),'the card still says what it does, in its accessible name');
+ok(changed.includes('typeLine.appendChild(badge);')&&changed.includes('typeLine.appendChild(meta);'),'badge and live state share the type line');
+ok(/\.ai-assistant-panel-changed-file-preview \.ai-assistant-panel-changed-file-meta:empty[\s\S]{0,120}?display:\s*none/.test(cssSrc),'an empty state line leaves no gap');
+ok(/\.ai-assistant-panel-changed-files-footer\s*>\s*\.ai-md-artifact-group\s*\{[^}]*flex:\s*1 1 100%/.test(cssSrc),'the bulk control spans the footer');
+ok(/\.ai-md-artifact-group\s*>\s*\.ai-assistant-panel-changed-files-download-all[\s\S]{0,200}?border:\s*0/.test(cssSrc),'the bulk segments shed their own chrome inside the group');
+ok(changed.includes('if (footerRef) footerRef.hidden = open;'),'collapsing the summary hides the whole footer, not just one control');
+ok(changed.includes("id: 'presented-files', kind: 'file', state: 'done'"),'the presentation is reported in the activity timeline as a file event');
+ok(changed.includes("' r' + _artifactContentRevision(e)"),'the timeline names each file at its content revision');
+ok(/\.ai-assistant-panel-changed-files-download-all\s*\{[^}]*flex:\s*1 1 100%/.test(cssSrc),'download-all spans the strip so it reads as covering every card');
+ok(/\.ai-assistant-panel-changed-file-secondary:empty\s*\{\s*display:\s*none/.test(cssSrc),'an empty secondary line collapses instead of leaving a gap');
 ok(changed.includes('_attachmentPathAlias(entry.path)')&&changed.includes('aliasCollision')&&changed.includes('portable filesystem'),'bulk download fails closed on portable path collisions');
 ok(sessionBudget.includes('_generatedArtifactMakeRetentionUnavailable')&&sessionBudget.includes('Released older file preview'),'session pressure evicts oldest retained previews instead of silently exceeding memory');
 ok(retentionUnavailable.includes("entry.state = 'unavailable'")&&retentionUnavailable.includes('entry.content = null')&&!retentionUnavailable.includes('entry.revision + 1'),'local retention eviction invalidates bytes without inventing a file revision');
@@ -102,7 +352,15 @@ const latestFactory = new Function(`
   var _TURN_ACTIVITY_FILE_TOTAL_MAX_BYTES = 1048576;
   var _TURN_ACTIVITY_FILE_SESSION_TOTAL_MAX_BYTES = 8 * 1024 * 1024;
   var _TURN_ACTIVITY_FILE_MAX_COUNT = 24;
+  var _DIFF_STAT_MAX_LINES = 20000;
+  var _DIFF_STAT_LCS_BUDGET = 4000000;
   function _cfg(){ return {panelGeneratedFilePreview:true}; }
+  ${extract('_artifactContentRevision')}
+  ${extract('_generatedArtifactEntryBytes')}
+  ${extract('_diffStatSplitLines')}
+  ${extract('_diffStatMultiset')}
+  ${extract('_diffStatLcs')}
+  ${extract('_diffLineStat')}
   function _generatedArtifactSafePath(v){
     if (typeof v !== 'string') return '';
     var p=v.trim(); if(!p || p[0]==='/' || p.includes('\\\\') || /^[A-Za-z]:/.test(p)) return '';

@@ -167,6 +167,17 @@
         :padding: 2
         :columns: 12 12 6 6
 
+        **youtu.be**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            YouTube <./youtube/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
         **cheatsheet**
         ^^^
         .. toctree::

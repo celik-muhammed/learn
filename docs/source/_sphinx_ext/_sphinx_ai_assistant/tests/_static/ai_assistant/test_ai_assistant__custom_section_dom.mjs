@@ -385,5 +385,20 @@ const emptyReason = src.indexOf('_appendModelSheetSections(scrollElEmpty);', emp
 t('empty sheet puts model management before Effort/Thinking',
   emptyCustom >= 0 && emptyReason > emptyCustom, true);
 
+// ── Section titles read as headings ──────────────────────────────────────
+//
+// The summary inherited the bubble's own text colour, so a section title
+// differed from the paragraph under it only by weight and 2% of size -- not
+// enough separation against a tinted bubble for a heading meant to be scanned.
+const sec_css = fs.readFileSync(process.argv[3], 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+t('the summary takes an explicit title colour', /summary\.ai-md-section-summary \{[^}]*color:\s*var\(--ai-section-title-color/.test(sec_css), true);
+// "Darker" is the light direction only: on a dark bubble, darker text means
+// less contrast, so the dark rule moves toward white instead.
+t('the light theme mixes toward black', /:root \{[^}]*--ai-section-title-color:[^;]*#000 14%\)/.test(sec_css), true);
+t('the dark theme mixes toward white, not darker still', /\[data-bs-theme="dark"\][\s\S]{0,120}?--ai-section-title-color:[^;]*#fff 14%\)/.test(sec_css), true);
+t('both derive from the theme text colour rather than a literal', (sec_css.match(/--ai-section-title-color: color-mix\(in srgb, var\(--pst-color-text-base/g) || []).length === 2, true);
+t('the chevron stays quieter than its title', /\.ai-md-section-chevron \{ color: var\(--pst-color-text-muted/.test(sec_css), true);
+t('forced-colours falls back to a system colour, not a discarded mix', /forced-colors: active[\s\S]{0,260}?ai-md-section-summary[\s\S]{0,80}?CanvasText/.test(sec_css), true);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

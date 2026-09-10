@@ -315,5 +315,24 @@ const t = (name, got, want) => {
     /dataset: '<svg viewBox="0 0 16 16"/.test(src), true);
 }
 
+
+// ── Session-field parity across formats ───────────────────────────────────
+//
+// The snapshot has already had the reader's review applied, so every format
+// renders the same decisions. A format that silently drops a field the reader
+// chose to include is deciding for them -- and invisibly, since the same
+// export in another format carried it.
+//
+// Found by diffing five real exports of one conversation: JSON, YAML, TOML and
+// HTML all carried `session.id`; the text export did not.
+const txtBuilder = extract('_buildConvTxtString');
+['page_title', 'page_url', 'exported_at_iso', 'id'].forEach(function (field) {
+  t('text export renders session.' + field, txtBuilder.includes('session.' + field), true);
+});
+t('session id is emitted only when the snapshot carries it',
+  txtBuilder.includes("if (session.id) lines.push('Session: ' + session.id);"), true);
+t('no session field is emitted unconditionally',
+  !/lines\.push\('Session: '/.test(txtBuilder.replace("if (session.id) lines.push('Session: ' + session.id);", '')), true);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
