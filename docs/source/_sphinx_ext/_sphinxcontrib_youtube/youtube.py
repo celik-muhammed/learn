@@ -35,7 +35,7 @@ def visit_youtube_node(self, node):
     """Custom html visit node."""
     privacy = "https://www.youtube-nocookie.com/embed/"
     embed = "https://www.youtube.com/embed/"
-    node["platform_url"] = embed if node["privacy_mode"] is None else privacy
+    node["platform_url"] = privacy if utils._privacy_enabled(node.get("privacy_mode")) else embed
     return utils.visit_video_node_html(
         self,
         node,

@@ -29,7 +29,14 @@ t('one unified sheet instance',(src.match(/var convShareSheet = _buildConversati
 t('sheet stable id',outer.includes("sheet.id = 'ai-assistant-panel-conv-share-sheet';"));
 t('sheet is modal dialog',outer.includes("sheet.setAttribute('role', 'dialog');"));
 t('outer defaults to local Save file destination',outer.includes("var selectedDestination = 'download';"));
-t('outer owns content preset',outer.includes("var contentPreset = 'standard';"));
+// The preset now follows the destination's exposure: a local device file
+// keeps its provenance, anything published keeps the privacy-lighter default.
+// A real local save produced a file whose every timestamp, model field,
+// session id and page url was null.
+t('outer owns content preset',outer.includes("var contentPreset = _conversationPresetForDestination('download');"));
+t('local destinations default to complete provenance',src.includes("return (destination === 'download' || destination === 'local')") && src.includes("? 'complete' : 'standard';"));
+t('switching destination re-defaults an unchosen preset',outer.includes("if (contentPreset !== 'custom') {"));
+t('a chosen preset survives a destination change',outer.includes("contentPreset !== 'custom'"));
 t('outer owns one result state',outer.includes('var resultState = null;'));
 t('page-memory managed artifact registry exists',src.includes('var _managedConversationArtifacts = [];'));
 t('Share sheet consumes page-memory artifact registry',outer.includes('var managedArtifacts = _managedConversationArtifacts;'));
@@ -156,5 +163,79 @@ t('destination cards styled',css.includes('.ai-assistant-conv-share-destinations
 t('result component styled',css.includes('.ai-assistant-conv-share-result'));
 t('artifact lifecycle list styled',css.includes('.ai-assistant-conv-share-artifacts'));
 t('narrow destination layout becomes vertical',/@media \(max-width:720px\)[\s\S]*ai-assistant-conv-share-destinations/.test(css));
+
+// ── Destination layout ────────────────────────────────────────────────────
+//
+// Four destinations in a three-column track always produced a 3 + 1 row: three
+// cards of one width and a fourth, alone, stretched across. That reads as a
+// hierarchy the destinations do not have -- Global link is a peer of the other
+// three, not a summary of them.
+const dest_css = fs.readFileSync(process.argv[3], 'utf8');
+const destRule = (dest_css.match(/\.ai-assistant-conv-share-destinations \{[^}]*\}/) || [''])[0];
+t('destinations use a two-column track', /grid-template-columns:\s*repeat\(2,\s*minmax\(0,1fr\)\)/.test(destRule), true);
+t('no three-column track remains', !/repeat\(3,/.test(destRule), true);
+t('rows share a height so a wrapped description does not unbalance them', /grid-auto-rows:\s*1fr/.test(destRule), true);
+t('cards fill their track, or equal rows would not show', /\.ai-assistant-conv-share-destination \{[^}]*height:\s*100%/.test(dest_css), true);
+t('a narrow panel drops to one column', /\.ai-assistant-conv-share-destinations \{ grid-template-columns:1fr; grid-auto-rows:auto; \}/.test(dest_css), true);
+// Two columns divide four evenly and stay even at three or two, so the layout
+// does not depend on how many destinations the build happens to offer.
+const destCount = (src.match(/destWrap\.appendChild\(/g) || []).length;
+t('destination count is not assumed by the track', destCount === 0 || /repeat\(2,/.test(destRule), true);
+
+// ── Collapsible sections ──────────────────────────────────────────────────
+//
+// Content-and-privacy was already a bordered card while its siblings got a
+// single top rule, so one control looked like a panel and the rest looked like
+// separators. A reader scanning for "where do I change what gets sent" had to
+// learn which rows were interactive by clicking them.
+const col_css = fs.readFileSync(process.argv[3], 'utf8');
+const collapseRule = (col_css.match(/\.ai-assistant-conv-share-collapse \{[^}]*\}/) || [''])[0];
+t('every collapsible section is a bordered card', /border:1px solid/.test(collapseRule) && /border-radius:\.8rem/.test(collapseRule), true);
+t('no section is only a top rule', !/^[^}]*border-top:1px solid rgba\(127,127,127,\.18\)/.test(collapseRule), true);
+t('adjacent sections are spaced, not fused', /\.ai-assistant-conv-share-collapse \+ \.ai-assistant-conv-share-collapse \{ margin-top/.test(col_css), true);
+t('keyboard focus is visible on the card, not only its button', /\.ai-assistant-conv-share-collapse:focus-within/.test(col_css), true);
+
+// The section governing what leaves the device is not a peer of the others.
+const privRule = (col_css.match(/\.ai-assistant-panel-review-content-privacy \{[^}]*\}/) || [''])[0];
+t('the privacy section keeps the shared card shape', /border-radius: \.8rem/.test(privRule), true);
+t('and takes an accent leading edge', /border-inline-start: 3px solid var\(--ai-artifact-accent\)/.test(privRule), true);
+t('the distinction survives forced-colours mode', /forced-colors: active[\s\S]{0,220}?review-content-privacy[\s\S]{0,80}?border-inline-start-width/.test(col_css), true);
+// The border is a signpost, not a safeguard: what makes the section safe is
+// that the snapshot is built from the reviewed options, asserted separately.
+t('the reviewed options still drive the snapshot', src.includes('_conversationContentPreset(contentPreset)'), true);
+
+// ── Width containment and section separation ─────────────────────────────
+const lay_css = fs.readFileSync(process.argv[3], 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+
+// A flex item's default `min-width: auto` refuses to shrink below its content,
+// so `overflow-x: auto` on its own did nothing: the switcher grew to fit all
+// five tabs and widened the sheet instead of scrolling.
+const swRule = (lay_css.match(/\.ai-assistant-conv-share-format-switcher \{[^}]*\}/) || [''])[0];
+t('the tab switcher can shrink below its content', /min-width:\s*0/.test(swRule), true);
+t('and is capped at its container width', /max-width:\s*100%/.test(swRule), true);
+// Superseded: the switcher wraps instead of scrolling. Horizontal scrolling
+// hid TOML behind the edge with nothing indicating it existed, and a format the
+// reader cannot see is one they will not choose.
+t('the switcher wraps into rows rather than scrolling', /display:\s*grid/.test(swRule) && !/overflow-x:\s*auto/.test(swRule), true);
+t('every tab is the same width, so rows line up as a grid', /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(6rem,\s*100%\),\s*1fr\)\)/.test(swRule), true);
+// auto-fit collapses empty tracks, so a trailing row of two sits at two
+// columns rather than one tab stretching across -- the orphan R173T36 fixed
+// for the destination cards, avoided here without fixing a column count.
+t('no fixed column count is assumed', !/repeat\(\d+,/.test(swRule), true);
+t('a single column never exceeds a narrow container', /minmax\(min\(6rem,\s*100%\)/.test(swRule), true);
+t('tabs fill their track and centre their label', /\.ai-assistant-conv-share-format-switcher > \* \{[^}]*text-align:\s*center/.test(lay_css), true);
+t('the narrow override no longer forces scrolling back on', !/\.ai-assistant-conv-share-format-switcher \{ overflow-x:auto; flex-wrap:nowrap; \}/.test(lay_css), true);
+
+// The artifact row's action buttons do not shrink, so they pushed the row past
+// its container rather than moving to a second line.
+const artRule = (lay_css.match(/\.ai-assistant-conv-share-artifact \{[^}]*\}/) || [''])[0];
+t('the artifact row wraps instead of overflowing', /flex-wrap:wrap/.test(artRule), true);
+t('and can shrink inside its own flex parent', /min-width:0/.test(artRule) && /max-width:100%/.test(artRule), true);
+t('its text claims the first line so buttons wrap as a group', /\.ai-assistant-conv-share-artifact-text \{ flex:1 1 12rem; \}/.test(lay_css), true);
+t('action buttons keep their size', /\.ai-assistant-conv-share-artifact \.ai-assistant-conv-share-action-btn \{ flex:0 0 auto; \}/.test(lay_css), true);
+
+// A title after a bordered full-height preview read as the preview's caption.
+t('a section title after the format preview is separated from it', /\.ai-assistant-conv-share-format-host \+ \.ai-assistant-conv-share-section-title[\s\S]{0,140}?margin-top:\s*1rem/.test(lay_css), true);
+t('the base title spacing is unchanged for ordinary siblings', /\.ai-assistant-conv-share-section-title \{ margin-top:\.2rem/.test(lay_css), true);
 
 console.log(`\n${pass} passed, ${fail} failed`);process.exit(fail?1:0);

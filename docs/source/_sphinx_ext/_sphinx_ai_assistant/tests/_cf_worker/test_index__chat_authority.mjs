@@ -15,7 +15,23 @@ function ok(cond, name) {
 
 ok(src.includes("var _CHAT_CONTRACT_V1 = 'scikitplot-chat-v1';"), 'client has explicit trusted chat contract id');
 ok(src.includes('await _chatContractDiscover(endpoint)'), 'client negotiates contract instead of guessing trust');
-ok(src.includes('var useStructuredProxy = (proxyContract === _CHAT_CONTRACT_V1);'), 'advertised contract controls structured path');
+// The structured path is still gated on what the endpoint advertised -- the
+// invariant is unchanged -- but the client now negotiates across a set rather
+// than pinning one id, so the assertion pins the rule instead of the literal.
+ok(src.includes('var useStructuredProxy = (proxyContract === _CHAT_CONTRACT_V1 ||') &&
+   src.includes('proxyContract === _CHAT_CONTRACT_V2);'),
+   'advertised contract controls structured path');
+ok(src.includes("var _CHAT_CONTRACT_V2 = 'scikitplot-chat-v2';"), 'client has an explicit id for the history contract');
+ok(src.includes('if (proxyContract === _CHAT_CONTRACT_V2) {') &&
+   src.includes('if (historyPlan.turns.length) bodyObj.history = historyPlan.turns;'),
+   'history is sent only under the contract that declares it');
+ok(src.includes("if (contract === _CHAT_CONTRACT_V2 && !bounds) contract = _CHAT_CONTRACT_V1;"),
+   'v2 without published bounds degrades to v1 rather than guessing limits');
+ok(src.includes("entry.role !== 'user' && entry.role !== 'assistant'"),
+   'only user and assistant turns can enter history');
+ok(src.includes('picked.reverse();'), 'history is selected newest-first but sent oldest-first');
+ok(!/bodyObj\.history\s*=\s*[^;]*slice\(0,/.test(src),
+   'an oversized turn is dropped whole, never truncated into the request');
 ok(src.includes("credentials: 'omit'"), 'contract discovery sends no browser credentials');
 ok(src.includes('user_message: question'), 'structured request carries typed user_message');
 ok(src.includes('page_text: _redacted.text.slice(0, contextLimit)'), 'structured request sends redacted page data');

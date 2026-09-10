@@ -67,9 +67,36 @@ def test_every_mutant_is_documented() -> None:
     """
     for mutant in MUTANTS:
         assert mutant.get("why", "").strip(), f"{mutant['id']}: missing 'why'"
+        assert mutant.get("target", "js") in {"js", "css"}, (
+            f"{mutant['id']}: 'target' must be 'js' or 'css'"
+        )
         assert mutant.get("harness", "").endswith(".mjs"), (
             f"{mutant['id']}: 'harness' must name a .mjs file"
         )
+
+
+def _mutant_target(mutant: dict) -> pathlib.Path:
+    """
+    Source file a mutant applies to.
+
+    Presentation contracts live in the stylesheet, not the script: the shared
+    artifact accent, the segmented-control chrome and the line-number gutter
+    are all enforced there. Restricting mutation to the script would leave
+    every one of those assertions unguarded -- they could be deleted and no
+    mutant would notice.
+
+    Parameters
+    ----------
+    mutant : dict
+        Entry from :data:`tests._mutants.MUTANTS`.
+
+    Returns
+    -------
+    pathlib.Path
+        ``ai-assistant.css`` when ``target`` is ``"css"``, else
+        ``ai-assistant.js``.
+    """
+    return _CSS_TARGET if mutant.get("target") == "css" else _TARGET
 
 
 @pytest.mark.parametrize("mutant", MUTANTS, ids=_ids)
@@ -86,7 +113,7 @@ def test_mutant_anchor_is_unique(mutant: dict) -> None:
     catalogue problem rather than as a surviving mutant, which would send
     someone looking in the wrong file.
     """
-    source = _TARGET.read_text(encoding="utf-8")
+    source = _mutant_target(mutant).read_text(encoding="utf-8")
     count = source.count(mutant["find"])
     assert count == 1, (
         f"{mutant['id']}: anchor found {count} times, expected exactly 1. "
@@ -112,7 +139,8 @@ def test_mutant_is_caught(mutant: dict) -> None:
         the surviving mutant is only half the message; what it lets through is
         the other half.
     """
-    source = _TARGET.read_text(encoding="utf-8")
+    target_path = _mutant_target(mutant)
+    source = target_path.read_text(encoding="utf-8")
     assert source.count(mutant["find"]) == 1, f"{mutant['id']}: anchor not unique"
     mutated = source.replace(mutant["find"], mutant["replace"], 1)
     assert mutated != source, f"{mutant['id']}: replacement is a no-op"
@@ -121,11 +149,16 @@ def test_mutant_is_caught(mutant: dict) -> None:
     assert harness.is_file(), f"{mutant['id']}: no such harness {harness.name}"
 
     with tempfile.TemporaryDirectory() as tmp:
-        target = pathlib.Path(tmp) / "ai-assistant.js"
-        target.write_text(mutated, encoding="utf-8")
+        # Only the mutated file is written to the temporary directory; the
+        # other is passed through unchanged, so a CSS mutant is still judged
+        # against the real script and vice versa.
+        mutated_path = pathlib.Path(tmp) / target_path.name
+        mutated_path.write_text(mutated, encoding="utf-8")
+        js_arg = mutated_path if target_path == _TARGET else _TARGET
+        css_arg = mutated_path if target_path == _CSS_TARGET else _CSS_TARGET
 
         result = subprocess.run(
-            ["node", str(harness), str(target), str(_CSS_TARGET), str(RUNTIME_ROOT)],
+            ["node", str(harness), str(js_arg), str(css_arg), str(RUNTIME_ROOT)],
             capture_output=True,
             text=True,
             timeout=_TIMEOUT_S,

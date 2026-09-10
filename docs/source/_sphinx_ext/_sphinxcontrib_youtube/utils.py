@@ -47,6 +47,11 @@ DOWNLOAD_TIMEOUT = (5, 30)
 #: far better outcome than a CI job that never returns.
 DEFAULT_DOWNLOAD_LIMIT = 200
 
+#: Maximum bytes accepted for one LaTeX thumbnail.  A response is streamed
+#: into a temporary file and promoted only after it completes, so a broken
+#: connection cannot leave a corrupt image that looks cached on the next run.
+DEFAULT_DOWNLOAD_MAX_BYTES = 8 * 1024 * 1024
+
 # -- helper methods ------------------------------------------------------------
 
 
@@ -56,15 +61,15 @@ DEFAULT_DOWNLOAD_LIMIT = 200
 # ``.../embed/https://www.youtube.com/watch?v=ID`` -- a dead iframe, emitted with
 # no warning and a successful build.
 #
-# The URL grammar lives in one place (``youtube_catalog.reference``) rather than
-# being duplicated here, so the directive, the catalog and the sync tool can
-# never disagree about what a given URL means. The fallback keeps this vendored
-# extension usable standalone, at reduced capability, if that module is absent.
+# The URL grammar lives in one place (``_sphinx_youtube_gallery.reference``)
+# rather than being duplicated here, so the standalone player, typed gallery,
+# and sync tool cannot disagree about what a given URL means.
 
-from ..youtube_catalog.reference import (
+from .._sphinx_youtube_gallery.reference import (
     ReferenceError as _ReferenceError,
     parse_video_reference as _parse_video_reference,
 )
+from .._sphinx_youtube_gallery._video_options import LEAF_VIDEO_SPEC
 
 
 def parse_youtube_id(value):
@@ -91,10 +96,10 @@ def parse_youtube_id(value):
 
 
 def get_size(d, key):
-    """Return a valid css size and unit."""
+    """Return a valid positive CSS size and unit."""
     if key not in d:
         return None
-    m = re.match(r"(\d+)(|%|px)$", d[key])
+    m = re.fullmatch(r"([1-9]\d*)(|%|px)", d[key])
     if not m:
         raise ValueError("invalid size %r" % d[key])
     return int(m.group(1)), m.group(2) or "px"
@@ -163,16 +168,10 @@ class Video(Directive):
     required_arguments = 1
     optional_arguments = 0
     final_argument_whitespace = False
-    option_spec: ClassVar = {
-        "width": directives.unchanged,
-        "height": directives.unchanged,
-        "aspect": directives.unchanged,
-        "align": directives.unchanged,
-        "url_parameters": directives.unchanged,
-        "privacy_mode": directives.unchanged,
-        # scikit-plots local patch: accessible name for the <iframe>.
-        "title": directives.unchanged,
-    }
+    # Standalone players and youtube-gallery-generated players share the exact
+    # same validators.  ``privacy_mode`` therefore understands explicit false
+    # values, sizes are positive, and query strings are bounded/normalized.
+    option_spec: ClassVar = dict(LEAF_VIDEO_SPEC)
 
     def run(self):
         """Run the directive."""
@@ -201,7 +200,7 @@ class Video(Directive):
 
         if "aspect" in self.options:
             aspect = self.options.get("aspect")
-            m = re.match(r"(\d+):(\d+)", aspect)
+            m = re.fullmatch(r"([1-9][0-9]*):([1-9][0-9]*)", aspect)
             if m is None:
                 # scikit-plots local patch: located error, not a traceback.
                 return [
@@ -233,13 +232,18 @@ class Video(Directive):
         if "instance" in self.options:
             instance = self.options.get("instance")
 
+        try:
+            width = get_size(self.options, "width")
+            height = get_size(self.options, "height")
+        except ValueError as exc:
+            return [self.state_machine.reporter.error(str(exc), line=self.lineno)]
         return [
             self._node(
                 id=video_id,
                 title=self.options.get("title"),
                 aspect=aspect,
-                width=get_size(self.options, "width"),
-                height=get_size(self.options, "height"),
+                width=width,
+                height=height,
                 align=align,
                 url_parameters=_merge_url_parameters(
                     self.options.get("url_parameters", ""), start_at
@@ -256,6 +260,11 @@ class Video(Directive):
 # -- builder specific methods --------------------------------------------------
 
 
+def _privacy_enabled(value):
+    """Interpret a validated privacy-mode option consistently."""
+    return value is not None and value not in (False, "false", "off", "no", "0")
+
+
 def visit_video_node_html(self, node, platform_url_privacy=None, additional_attr={}):
     """Visit html video node."""
     aspect = node["aspect"]
@@ -264,18 +273,24 @@ def visit_video_node_html(self, node, platform_url_privacy=None, additional_attr
     url_parameters = node["url_parameters"]
     platform_url = node["platform_url"]
     platform_url_privacy = node["platform_url_privacy"]
-    if node.get("privacy_mode") and platform_url_privacy:
+    if _privacy_enabled(node.get("privacy_mode")) and platform_url_privacy:
         platform_url = platform_url_privacy
 
     if aspect is None:
         aspect = 16, 9
 
     div_style = {}
-    if (height is None) and (width is not None) and (width[1] == "%"):
+    # A player with an aspect ratio and no explicit height is responsive at
+    # every width, including the historical no-option default.  Using the
+    # native CSS aspect-ratio property avoids the fixed 560x345 frame that
+    # became tall and distorted when max-width shrank it inside a mobile card.
+    if height is None:
+        if width is None:
+            width = 560, "px"
         div_style = {
-            "padding-top": "%dpx" % CONTROL_HEIGHT,
-            "padding-bottom": "%f%%" % (width[0] * aspect[1] / aspect[0]),
             "width": "%d%s" % width,
+            "max-width": "100%",
+            "aspect-ratio": "%d / %d" % aspect,
             "position": "relative",
         }
         style = {
@@ -293,15 +308,13 @@ def visit_video_node_html(self, node, platform_url_privacy=None, additional_attr
         }
     else:
         if width is None:
-            if height is None:
-                width = 560, "px"
+            if height[1] == "%":
+                width = 100, "%"
             else:
                 width = height[0] * aspect[0] / aspect[1], "px"
-        if height is None:
-            height = width[0] * aspect[1] / aspect[0], "px"
         style = {
             "width": "%d%s" % width,
-            "height": "%d%s" % (height[0] + CONTROL_HEIGHT, height[1]),
+            "height": "%d%s" % height,
             "border": "0",
         }
         attrs = {
@@ -317,8 +330,8 @@ def visit_video_node_html(self, node, platform_url_privacy=None, additional_attr
     # it a page of embeds is an unnavigable list of unnamed frames.
     # `loading="lazy"` matters at gallery scale: a 100- or 1000-video page
     # otherwise opens that many YouTube connections on first paint.
-    # `max-width` keeps the fixed-px default from overflowing a narrow
-    # `grid-item-card` on mobile without changing the desktop rendering.
+    # The responsive wrapper above keeps default and fixed-width players at
+    # their requested aspect ratio inside narrow cards.
     attrs["title"] = node.get("title") or "{} video player".format(
         node["platform"] or "embedded"
     )
@@ -431,17 +444,21 @@ def download_images(app, env):
     _limit = getattr(
         app.config, "video_download_limit", DEFAULT_DOWNLOAD_LIMIT
     )
+    _attempted = [0]
     _downloaded = [0]
     _skipped = [0]
+    _max_bytes = getattr(
+        app.config, "video_download_max_bytes", DEFAULT_DOWNLOAD_MAX_BYTES
+    )
     for src in iterator(env.video_remote_images, msg, "brown", nb_images):
 
         # scikit-plots local patch: bound the aggregate, not just each call.
-        if _downloaded[0] >= _limit:
+        if _attempted[0] >= _limit:
             _skipped[0] += 1
             continue
         dst = Path(app.outdir) / env.video_remote_images[src]
         if not dst.is_file():
-            _downloaded[0] += 1
+            _attempted[0] += 1
             logger.info(f"{src} -> {dst} (downloading)")
             dst.parent.mkdir(parents=True, exist_ok=True)
             # -- scikit-plots local patch: bounded, fully-handled fetch ----
@@ -451,17 +468,44 @@ def download_images(app, env):
             # pipe propagates as an unhandled exception. It also wrote the
             # response body unconditionally, so a 404 page was saved as a
             # `.jpg`. Fetch first, validate, then write only on success.
+            response = None
             try:
-                response = requests.get(src, timeout=DOWNLOAD_TIMEOUT)
+                response = requests.get(src, timeout=DOWNLOAD_TIMEOUT, stream=True)
                 response.raise_for_status()
-                payload = response.content
+                content_type = response.headers.get("Content-Type", "")
+                if content_type and not content_type.lower().startswith("image/"):
+                    raise ValueError(f"unexpected content type {content_type!r}")
+                length = response.headers.get("Content-Length")
+                if length and int(length) > _max_bytes:
+                    raise ValueError(
+                        f"response is {int(length):,} bytes; limit is {_max_bytes:,}"
+                    )
+                temporary = dst.with_suffix(dst.suffix + ".part")
+                received = 0
+                try:
+                    with temporary.open("wb") as handle:
+                        for chunk in response.iter_content(chunk_size=64 * 1024):
+                            if not chunk:
+                                continue
+                            received += len(chunk)
+                            if received > _max_bytes:
+                                raise ValueError(
+                                    f"response exceeds {_max_bytes:,} bytes"
+                                )
+                            handle.write(chunk)
+                    temporary.replace(dst)
+                    _downloaded[0] += 1
+                finally:
+                    temporary.unlink(missing_ok=True)
             except (requests.RequestException, OSError) as exc:
                 logger.warning(f'Cannot download thumbnail "{src}": {exc}')
                 continue
-            try:
-                dst.write_bytes(payload)
-            except OSError as exc:
-                logger.warning(f'Cannot write thumbnail "{dst}": {exc}')
+            except (ValueError, TypeError) as exc:
+                logger.warning(f'Cannot download thumbnail "{src}": {exc}')
+                continue
+            finally:
+                if response is not None:
+                    response.close()
             # -- end scikit-plots local patch ------------------------------
         else:
             logger.info(f"{src} -> {dst} (already in cache)")
@@ -471,7 +515,8 @@ def download_images(app, env):
     # the document, not a deliberate limit.
     if _skipped[0]:
         logger.warning(
-            f"video: fetched {_downloaded[0]} thumbnails and skipped "
+            f"video: attempted {_attempted[0]} thumbnail downloads, completed "
+            f"{_downloaded[0]}, and skipped "
             f"{_skipped[0]} after reaching the download limit of {_limit}. "
             f"Raise 'video_download_limit' in conf.py if the PDF needs them."
         )

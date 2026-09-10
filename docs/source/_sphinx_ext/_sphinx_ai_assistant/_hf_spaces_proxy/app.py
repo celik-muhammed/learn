@@ -303,6 +303,13 @@ except ImportError:  # standalone HF Space deployment
 try:
     from ._utils._chat_contract import (  # type: ignore[import]
         CHAT_CONTRACT,
+        MAX_HISTORY_TOTAL_CHARS,
+        MAX_HISTORY_TURN_CHARS,
+        MAX_HISTORY_TURNS,
+        MAX_WORKING_FILE_CHARS,
+        MAX_WORKING_FILE_TOTAL_CHARS,
+        MAX_WORKING_FILES,
+        SUPPORTED_CHAT_CONTRACTS,
         ChatContractError,
         build_upstream_payload,
         encode_upstream_payload,
@@ -311,6 +318,13 @@ try:
 except Exception:  # noqa: BLE001
     from _utils._chat_contract import (  # type: ignore[import]
         CHAT_CONTRACT,
+        MAX_HISTORY_TOTAL_CHARS,
+        MAX_HISTORY_TURN_CHARS,
+        MAX_HISTORY_TURNS,
+        MAX_WORKING_FILE_CHARS,
+        MAX_WORKING_FILE_TOTAL_CHARS,
+        MAX_WORKING_FILES,
+        SUPPORTED_CHAT_CONTRACTS,
         ChatContractError,
         build_upstream_payload,
         encode_upstream_payload,
@@ -2826,7 +2840,7 @@ def _stub_mirror_context(body: bytes) -> dict[str, Any]:
         raw = json.loads(body)
     except (json.JSONDecodeError, TypeError, ValueError):
         return context
-    if not isinstance(raw, dict) or raw.get("contract") != CHAT_CONTRACT:
+    if not isinstance(raw, dict) or raw.get("contract") not in SUPPORTED_CHAT_CONTRACTS:
         return context
     try:
         req = parse_chat_request(
@@ -3734,7 +3748,7 @@ def _reasoning_capability() -> dict:
     if not REASONING_ENABLED:
         return {
             "reasoning": {"enabled": False},
-            "chat_request": {"contract": CHAT_CONTRACT},
+            "chat_request": _chat_request_capability(),
             "stub": _stub_capability(),
         }
 
@@ -3759,8 +3773,35 @@ def _reasoning_capability() -> dict:
         caps["thinking_mode"] = REASONING_THINKING_MODE
     return {
         "reasoning": caps,
-        "chat_request": {"contract": CHAT_CONTRACT},
+        "chat_request": _chat_request_capability(),
         "stub": _stub_capability(),
+    }
+
+
+def _chat_request_capability() -> dict:
+    """Advertise every accepted chat contract plus the history bounds.
+
+    ``contract`` keeps naming the *baseline* v1 envelope so a browser built
+    before history existed reads the same value it always read.  Newer clients
+    read ``contracts`` and negotiate upward.  The bounds are published because
+    a client that cannot see them can only discover them by having a request
+    rejected, and a planner that has to guess its own budget will guess wrong.
+    """
+    return {
+        "contract": CHAT_CONTRACT,
+        "contracts": list(SUPPORTED_CHAT_CONTRACTS),
+        "history": {
+            "max_turns": MAX_HISTORY_TURNS,
+            "max_turn_chars": MAX_HISTORY_TURN_CHARS,
+            "max_total_chars": MAX_HISTORY_TOTAL_CHARS,
+            "roles": ["user", "assistant"],
+        },
+        "working_files": {
+            "max_files": MAX_WORKING_FILES,
+            "max_file_chars": MAX_WORKING_FILE_CHARS,
+            "max_total_chars": MAX_WORKING_FILE_TOTAL_CHARS,
+            "digest": "sha256",
+        },
     }
 
 

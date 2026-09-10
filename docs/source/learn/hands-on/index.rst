@@ -35,3 +35,16 @@ under the original license terms.
             :maxdepth: 2
 
             BilimEdtech Labs <./edtech/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+
+        **sphinx-rtd-tutorial** -- A step-by-step tutorial on generating polished Python package documentation from source code comments using Sphinx and publishing it to Read the Docs.
+        ^^^
+        Source of
+        `sphinx-rtd-tutorial.readthedocs.io <https://sphinx-rtd-tutorial.readthedocs.io/en/latest/>`__
+
+        .. toctree::
+            :maxdepth: 2
+
+            Sphinx-RTD-Tutorial <./sphinx-rtd-tutorial/docs/source/index.rst>

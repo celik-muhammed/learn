@@ -64,17 +64,6 @@ External Learning Resource
         :padding: 2
         :columns: 12 12 6 6
 
-        **youtu.be resource**
-        ^^^
-        .. toctree::
-            :maxdepth: 2
-
-            Youtube Resource <./youtube/index.rst>
-
-    .. grid-item-card::
-        :padding: 2
-        :columns: 12 12 6 6
-
         **data resource**
         ^^^
         .. toctree::

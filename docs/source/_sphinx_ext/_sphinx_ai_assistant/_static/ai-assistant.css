@@ -1061,7 +1061,20 @@
     display: flex;
     flex-direction: column;    /* Claude-style: textarea on top, action bar below */
     align-items: stretch;
-    flex: 1 1 auto;
+    /*
+     * `flex-basis: 100%` claims the whole first line.
+     *
+     * With `auto` the composer only had its own row because the note and the
+     * credit each carried `width: 100%` and were pushed off it. R173T50 made
+     * those two shrinkable so they could share a row with each other -- and on
+     * a wide panel that let all three fit on one line, putting the composer
+     * beside its own small print.
+     *
+     * Stating the composer's basis makes its row independent of what the
+     * elements after it happen to be sized at: the two rows are now a property
+     * of the composer, not a side effect of the footnotes not fitting.
+     */
+    flex: 1 1 100%;
     min-width: 0;              /* attachment strip must scroll, never widen footer */
     max-width: 100%;
     border: 1px solid var(
@@ -2235,6 +2248,25 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     background: var(--pst-color-surface, var(--color-background-secondary, #f0f1f3));
 }
 .ai-assistant-panel-bubble-model-list {
+    /*
+     * No scroller of its own inside the answer menu.
+     *
+     * It had `max-height: min(50vh, 18rem)` and `overflow-y: auto`, which is
+     * right for a list standing alone and wrong for one nested in a menu that
+     * is itself bounded. On a short panel the outer menu was clamped to ~180px
+     * while this list claimed up to 288px: two scroll regions, one inside the
+     * other, and the inner one took the wheel. The outer menu could not be
+     * scrolled to reveal the list, and the list could not be scrolled into
+     * view -- so no model was reachable at all.
+     *
+     * One scroller wins: the outer menu, which is the element the placement
+     * routine measures and bounds. This is the same rule R173T46 established
+     * for numbered sheets -- a gutter beside a block that already scrolled --
+     * arriving in a second place.
+     */
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
     display: none;
     flex-direction: column;
     gap: 0.12rem;
@@ -3803,6 +3835,18 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
  *   the minimum value that preserves the same visual result after the
  *   "stay on current page" fix. */
 .ai-assistant-panel-hamburger {
+    /* Bounded by the panel it hangs in. Without a limit its lower entries ran
+       past the bottom edge on a small panel, with nothing to scroll and no
+       indication they existed.
+
+       `100%` is right here, unlike the shared popup menus: this one is
+       absolutely positioned INSIDE the panel, so the percentage resolves
+       against the panel's own box and tracks a resize with no JavaScript. The
+       `vh` term still matters for a panel taller than the window -- the screen
+       clips what the panel does not. */
+    max-height: min(calc(100% - 3.3rem - 0.75rem), 80vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     z-index: 1021;        /* above sheets (99999); was 5 when sheet was pre-dismissed */
     position: absolute;
     top: 3.3rem;            /* below the header (0.75 + 1.75 content + 0.75 + 1px border) */
@@ -4902,6 +4946,22 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
      * plain body-weight text that happens to have a chevron next to it. */
     font-weight: 700;
     font-size: 1.02em;
+    /*
+     * Stronger than body text, not merely bolder.
+     *
+     * The summary inherited the bubble's own `--pst-color-text-base`, so a
+     * section title differed from the paragraph under it only by weight and
+     * 2% of size. Against a tinted bubble that is not enough separation for a
+     * heading a reader is meant to scan by.
+     *
+     * "Darker" is the light-theme direction only. On a dark bubble, darker
+     * text means *less* contrast against the background, so the dark rule
+     * moves the other way -- toward white. What is shared between the themes
+     * is the intent (more contrast than body text), not the direction, and
+     * writing it as one token per theme keeps that explicit rather than
+     * hiding a reversal inside a colour literal.
+     */
+    color: var(--ai-section-title-color, inherit);
     padding: 0.2rem 0.3rem;
     margin: 0 -0.3rem;   /* offset the padding so text still aligns visually */
     border-radius: 6px;
@@ -9458,14 +9518,42 @@ ol.ai-assistant-mic-perm-settings-legacy-body[aria-hidden="true"] {
 
 /* One stable sheet, compact in-sheet format switcher. */
 .ai-assistant-conv-share-format-switcher {
-    display: flex;
-    align-items: center;
+    /*
+     * Wraps into rows rather than scrolling.
+     *
+     * Horizontal scrolling hid tabs behind an edge: TOML sat off-screen with
+     * nothing indicating it existed, and a format the reader cannot see is a
+     * format they will not choose. Wrapping shows all five at every width --
+     * 5 across, then 4, 3, 2, 1 as the panel narrows.
+     *
+     * `auto-fit` with a `1fr` maximum keeps every tab the same width, so the
+     * rows line up as a grid instead of ragged flex lines. Tracks that have no
+     * item collapse, so a trailing row of two sits at the two columns it
+     * occupies rather than one tab stretching across the whole row -- the
+     * orphan problem R173T36 fixed for the destination cards, avoided here by
+     * construction rather than by choosing a fixed column count.
+     *
+     * `min(6rem, 100%)` in the minimum is what stops a single column from
+     * exceeding a very narrow container: a bare 6rem minimum would overflow
+     * below 6rem of width, which is exactly the case wrapping exists for.
+     */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(6rem, 100%), 1fr));
+    align-items: stretch;
     gap: 4px;
     padding: 8px 12px 7px;
     border-bottom: 1px solid var(--color-border, #d0d7de);
     flex-shrink: 0;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    min-width: 0;
+    max-width: 100%;
+}
+/* Tabs fill their track and centre their label, so equal-width cells read as
+   equal choices. Names are never squashed: the track has a floor, and below it
+   the grid drops a column instead of shrinking the tabs. */
+.ai-assistant-conv-share-format-switcher > * {
+    min-width: 0;
+    text-align: center;
+    justify-content: center;
 }
 
 [data-bs-theme="dark"] .ai-assistant-conv-share-format-switcher,
@@ -18469,14 +18557,52 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 .ai-assistant-conv-share-summary { font-size:.78rem; color:var(--pst-color-text-muted,#667085); font-weight:600; }
 .ai-assistant-conv-share-warning { border:1px solid rgba(217,119,6,.35); border-radius:.6rem; background:rgba(245,158,11,.08); padding:.55rem .7rem; text-align:left; font:inherit; font-size:.76rem; cursor:pointer; color:inherit; }
 .ai-assistant-conv-share-section-title { margin-top:.2rem; font-size:.72rem; font-weight:750; letter-spacing:.055em; text-transform:uppercase; opacity:.68; }
-.ai-assistant-conv-share-destinations { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.55rem; }
-.ai-assistant-conv-share-destination { display:flex; flex-direction:column; gap:.2rem; min-width:0; padding:.7rem; border:1px solid rgba(127,127,127,.25); border-radius:.75rem; background:transparent; color:inherit; text-align:left; cursor:pointer; font:inherit; }
+/* A section title directly after the format preview needs real separation.
+   `.2rem` was tuned for a title following ordinary text; after a bordered,
+   full-height preview host it read as a caption belonging to the preview
+   rather than as the heading of the next section. */
+.ai-assistant-conv-share-format-host + .ai-assistant-conv-share-section-title,
+.ai-assistant-conv-share-format-preview + .ai-assistant-conv-share-section-title {
+    margin-top: 1rem;
+}
+.ai-assistant-conv-share-format-host { margin-bottom: .15rem; }
+/* Two columns, not three.
+   There are four destinations, so a three-column track always produced a
+   3 + 1 row: three cards of one width and a fourth, alone, stretched to the
+   full row. That reads as a hierarchy the destinations do not have -- Global
+   link is a peer of the other three, not a summary of them.
+   Two columns divide four evenly and stay even at three (one empty cell) or
+   two, so no count of destinations produces an orphan. `grid-auto-rows: 1fr`
+   keeps both rows the same height when one description wraps and another does
+   not, which is the other way this row looked unbalanced. */
+.ai-assistant-conv-share-destinations { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:1fr; gap:.55rem; }
+.ai-assistant-conv-share-destination { display:flex; flex-direction:column; gap:.2rem; min-width:0; height:100%; padding:.7rem; border:1px solid rgba(127,127,127,.25); border-radius:.75rem; background:transparent; color:inherit; text-align:left; cursor:pointer; font:inherit; }
 .ai-assistant-conv-share-destination strong { font-size:.82rem; }
 .ai-assistant-conv-share-destination span { font-size:.75rem; line-height:1.35; }
 .ai-assistant-conv-share-destination small { font-size:.68rem; line-height:1.3; opacity:.68; }
 .ai-assistant-conv-share-destination[aria-pressed="true"] { border-color:currentColor; box-shadow:0 0 0 1px currentColor inset; }
 .ai-assistant-conv-share-destination:disabled { opacity:.48; cursor:not-allowed; }
-.ai-assistant-conv-share-collapse { border-top:1px solid rgba(127,127,127,.18); }
+/* Every collapsible section is a card, not a hairline row.
+   The content-and-privacy section was already bordered while the others got a
+   single top rule, so one control looked like a panel and its siblings looked
+   like separators. A reader scanning for "where do I change what gets sent"
+   had to learn which rows were interactive by clicking them. */
+.ai-assistant-conv-share-collapse {
+    border:1px solid rgba(127,127,127,.22);
+    border-radius:.8rem;
+    padding:0 .72rem;
+    background:var(--pst-color-surface, var(--color-background-primary, transparent));
+}
+.ai-assistant-conv-share-collapse + .ai-assistant-conv-share-collapse { margin-top:.55rem; }
+/* Hover and keyboard focus land on the card, so the whole thing reads as one
+   control rather than a border with a button loose inside it. */
+.ai-assistant-conv-share-collapse:focus-within { border-color:currentColor; }
+.ai-assistant-conv-share-collapse-toggle:hover { opacity:.85; }
+/* Open sections carry a little more weight than closed ones, so a reader can
+   see at a glance which they have already been through. */
+.ai-assistant-conv-share-collapse:has(.ai-assistant-conv-share-collapse-panel:not([hidden])) {
+    border-color:rgba(127,127,127,.34);
+}
 .ai-assistant-conv-share-collapse-toggle { width:100%; display:flex; justify-content:space-between; gap:1rem; border:0; background:transparent; color:inherit; padding:.72rem .1rem; font:inherit; font-weight:650; cursor:pointer; }
 .ai-assistant-conv-share-collapse-toggle > span:last-child { font-size:.72rem; opacity:.68; font-weight:500; }
 .ai-assistant-conv-share-collapse-panel { padding:0 0 .7rem; }
@@ -18492,7 +18618,17 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 .ai-assistant-conv-share-result-meta { font-size:.72rem; opacity:.7; }
 .ai-assistant-conv-share-result-actions { display:flex; flex-wrap:wrap; gap:.4rem; }
 .ai-assistant-conv-share-artifacts { display:flex; flex-direction:column; gap:.4rem; }
-.ai-assistant-conv-share-artifact { display:flex; align-items:center; gap:.45rem; border:1px solid rgba(127,127,127,.18); border-radius:.65rem; padding:.5rem .55rem; }
+/* The row is a flex line whose action buttons (Copy link, Open, Download) do
+   not shrink, so on a narrow panel they pushed the row wider than its
+   container instead of moving. `min-width:0` lets the row shrink inside its
+   own flex parent, and wrapping sends the buttons to a second line rather
+   than off the edge -- the artifact name is what identifies the row and must
+   not be the thing that gets pushed out. */
+.ai-assistant-conv-share-artifact { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem; min-width:0; max-width:100%; border:1px solid rgba(127,127,127,.18); border-radius:.65rem; padding:.5rem .55rem; }
+/* Below the wrap point the text claims the whole first line, so the buttons
+   land beneath it as a group rather than one per line. */
+.ai-assistant-conv-share-artifact-text { flex:1 1 12rem; }
+.ai-assistant-conv-share-artifact .ai-assistant-conv-share-action-btn { flex:0 0 auto; }
 .ai-assistant-conv-share-artifact-text { min-width:0; flex:1; display:flex; flex-direction:column; gap:.1rem; }
 .ai-assistant-conv-share-artifact-text strong { font-size:.76rem; }
 .ai-assistant-conv-share-artifact-text span { font-size:.66rem; opacity:.68; overflow-wrap:anywhere; }
@@ -18500,9 +18636,16 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 .ai-assistant-conv-share-fmt-yaml, .ai-assistant-conv-share-fmt-toml { font-weight:700; }
 
 @media (max-width:720px) {
-  .ai-assistant-conv-share-destinations { grid-template-columns:1fr; }
+  /* One column on a narrow panel: two cards side by side would clip their
+     descriptions, and the description is what distinguishes a self-contained
+     link from a global one. `grid-auto-rows` is released so a single column
+     sizes each card to its own content rather than to the tallest. */
+  .ai-assistant-conv-share-destinations { grid-template-columns:1fr; grid-auto-rows:auto; }
   .ai-assistant-conv-share-custom-grid { grid-template-columns:1fr; }
-  .ai-assistant-conv-share-format-switcher { overflow-x:auto; flex-wrap:nowrap; }
+  /* The narrow-panel override forced the old scrolling behaviour back on.
+     The grid already reaches one column per row on its own, so this rule now
+     only has to stop being wrong. */
+  .ai-assistant-conv-share-format-switcher { overflow-x:visible; }
   .ai-assistant-conv-share-artifact { align-items:flex-start; flex-wrap:wrap; }
 }
 
@@ -19055,8 +19198,41 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 }
 
 /* ── Feedback & contribution workspace (Run 45 / B64) ─────────────────── */
+/* ── Workspace tabs are not format tabs ────────────────────────────────────
+   This tablist borrows `.ai-assistant-conv-share-format-switcher` for its
+   visual tokens and inherited its LAYOUT with them. R173T41 made that switcher
+   an even grid, which is right for five interchangeable formats and wrong
+   here: two or three named sections were stretched to equal fractions of the
+   row, so a short label sat in a wide cell with its active edge drawn across
+   the whole of it -- the stale blue edge.
+
+   The grid is overridden rather than the shared class abandoned: the tokens
+   are worth sharing and the layout is not. Named sections size to their names
+   and sit at the start of the row, the way a tablist reads. */
 .ai-assistant-panel-feedback-workspace-tabs {
     padding-inline: 14px;
+    display: flex;
+    grid-template-columns: none;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+/* Content-sized, not stretched: the active edge then spans the label rather
+   than an empty fraction of the row. */
+.ai-assistant-panel-feedback-workspace-tabs > .ai-assistant-conv-share-format-btn {
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: center;
+}
+/* One edge, from the shared accent token, so the indicator cannot disagree
+   with the accent used everywhere else in the panel. */
+.ai-assistant-panel-feedback-workspace-tabs > .ai-assistant-conv-share-format-btn[aria-selected="true"] {
+    box-shadow: inset 0 -2px 0 0 var(--ai-artifact-accent);
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-feedback-workspace-tabs > .ai-assistant-conv-share-format-btn[aria-selected="true"] {
+        box-shadow: inset 0 -2px 0 0 Highlight;
+    }
 }
 
 .ai-assistant-panel-feedback-workspace-pane[hidden] {
@@ -19320,11 +19496,28 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
    Feedback and Dataset contribution share the same compact disclosure/preset
    surface as Share, but only expose fields that map to their actual review
    contracts. Required/forbidden fields are visibly locked. */
+/* The section that governs what leaves the device is not a peer of the others.
+   It keeps the shared card shape -- a different shape would read as a
+   different kind of thing -- and takes an accent leading edge so it is
+   identifiable while scrolling and cannot be mistaken for a formatting
+   option. The border is a signpost, not a safeguard: what makes this section
+   safe is that the snapshot is built from the reviewed options, which is
+   asserted in the share harnesses, not here. */
 .ai-assistant-panel-review-content-privacy {
     border: 1px solid rgba(127,127,127,.22);
+    border-inline-start: 3px solid var(--ai-artifact-accent);
     border-radius: .8rem;
     padding: 0 .72rem;
     background: var(--pst-color-surface, var(--color-background-primary, transparent));
+}
+.ai-assistant-panel-review-content-privacy:focus-within {
+    border-color: rgba(127,127,127,.34);
+    border-inline-start-color: var(--ai-artifact-accent);
+}
+@media (forced-colors: active) {
+    /* The accent is discarded in forced-colours modes, so the distinction
+       falls back to a heavier edge rather than disappearing. */
+    .ai-assistant-panel-review-content-privacy { border-inline-start-width: 4px; }
 }
 .ai-assistant-panel-review-content-privacy .ai-assistant-conv-share-collapse-toggle {
     padding: .72rem 0;
@@ -21452,4 +21645,1845 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
 }
 .ai-assistant-panel-changed-file-download[data-artifact-unavailable] {
     opacity: .72;
+}
+
+/* ── Revision diff statistics ───────────────────────────────────────────────
+   `+20` / `−10` beside a file draft's name, so the size of a change reads at
+   a glance instead of requiring a preview.
+
+   Colour is never the only carrier of meaning: the sign character is part of
+   the text, and the surrounding wrapper holds a full sentence in aria-label.
+   Both hues are also chosen to stay legible for the common red/green
+   deficiencies -- the removal tone leans warm-red rather than pure red, and
+   the addition tone leans teal rather than pure green, which keeps the two
+   distinguishable by hue *and* by lightness. */
+:root {
+    --ai-diff-add-rgb: 13, 148, 136;    /* #0d9488 teal-600 */
+    --ai-diff-del-rgb: 220, 38, 38;     /* #dc2626 red-600  */
+}
+[data-bs-theme="dark"] {
+    --ai-diff-add-rgb: 45, 212, 191;    /* #2dd4bf teal-400 */
+    --ai-diff-del-rgb: 248, 113, 113;   /* #f87171 red-400  */
+}
+.ai-assistant-panel-diff-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .3rem;
+    margin-inline-start: .42rem;
+    font-size: .62rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.ai-assistant-panel-diff-stat-add { color: rgb(var(--ai-diff-add-rgb)); }
+.ai-assistant-panel-diff-stat-del { color: rgb(var(--ai-diff-del-rgb)); }
+@media (forced-colors: active) {
+    /* Forced-colours modes discard the hues entirely; the +/− signs and the
+       aria-label are what remain, which is why neither is decorative. */
+    .ai-assistant-panel-diff-stat-add,
+    .ai-assistant-panel-diff-stat-del { color: CanvasText; }
+}
+
+/* Patch export button — same affordance weight as Download, so neither reads
+   as the primary action. `git am` is offered, never assumed. */
+.ai-assistant-panel-changed-file-patch {
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 8px;
+    padding: .45rem .55rem;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ai-assistant-panel-changed-file-patch:hover,
+.ai-assistant-panel-changed-file-patch:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+}
+.ai-assistant-panel-changed-file {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+/* Snippet promotion and working-file continuation.
+   Both are secondary to the primary Download/Preview action: a reader who
+   only wants the bytes should never have to read past them. */
+.ai-md-artifact-row { display: flex; align-items: stretch; gap: .35rem; min-width: 0; }
+.ai-md-artifact-row .ai-md-artifact-card { flex: 1 1 auto; min-width: 0; }
+.ai-md-artifact-promote,
+.ai-assistant-panel-changed-file-continue,
+.ai-assistant-panel-changed-files-series {
+    border: 1px dashed color-mix(in srgb, var(--pst-color-border, #d8dce1) 82%, transparent);
+    border-radius: 8px;
+    padding: .45rem .55rem;
+    background: transparent;
+    color: var(--pst-color-text-muted, #71717a);
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ai-md-artifact-promote:hover, .ai-md-artifact-promote:focus-visible,
+.ai-assistant-panel-changed-file-continue:hover,
+.ai-assistant-panel-changed-file-continue:focus-visible,
+.ai-assistant-panel-changed-files-series:hover,
+.ai-assistant-panel-changed-files-series:focus-visible {
+    border-style: solid;
+    color: inherit;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+}
+.ai-assistant-panel-changed-files-series { justify-self: start; margin-top: .1rem; }
+.ai-assistant-panel-changed-file {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+@media (max-width: 420px) {
+    /* Four controls do not fit a narrow panel; the row wraps instead of
+       clipping the filename, which is the part that identifies the file. */
+    .ai-assistant-panel-changed-file { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+/* A generated file that lost its claim on the tracked revision. Presented, not
+   hidden: the bytes are still a real answer, they simply did not win. */
+.ai-md-stale-candidate {
+    margin: .4rem 0 0;
+    padding: .45rem .6rem;
+    border-inline-start: 3px solid rgb(var(--ai-diff-del-rgb, 220, 38, 38));
+    border-radius: 0 6px 6px 0;
+    background: color-mix(in srgb, rgb(var(--ai-diff-del-rgb, 220, 38, 38)) 8%, transparent);
+    font-size: .68rem;
+    line-height: 1.45;
+}
+
+/* ── In-place file preview ──────────────────────────────────────────────────
+   A complete file collapses to a row that names and sizes it, and opens in
+   place. The chat body keeps the answer's reasoning readable; the file is one
+   click away and never moves to another surface. */
+.ai-md-file-disclosure-head {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    width: 100%;
+    margin: .5rem 0 0;
+    padding: .45rem .6rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 96%, #808080 4%);
+    color: inherit;
+    font: inherit;
+    font-size: .68rem;
+    text-align: start;
+    cursor: pointer;
+}
+.ai-md-file-disclosure-head:hover,
+.ai-md-file-disclosure-head:focus-visible {
+    border-color: color-mix(in srgb, var(--pst-color-border, #d8dce1) 100%, transparent);
+}
+.ai-md-file-disclosure-caret {
+    flex: 0 0 auto;
+    transition: transform .12s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-md-file-disclosure-caret { transition: none; }
+}
+.ai-md-file-disclosure-head[aria-expanded="true"] .ai-md-file-disclosure-caret {
+    transform: rotate(90deg);
+}
+.ai-md-file-disclosure-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.ai-md-file-disclosure-meta {
+    flex: 0 0 auto;
+    color: var(--pst-color-text-muted, #71717a);
+    font-variant-numeric: tabular-nums;
+}
+.ai-md-file-disclosure-body[hidden] { display: none; }
+
+/* The presented-files summary collapses too, so a long answer ends in one
+   line rather than a stack of cards. */
+.ai-assistant-panel-changed-files-head {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+.ai-assistant-panel-changed-files-caret {
+    display: inline-block;
+    margin-inline-end: .3rem;
+    transition: transform .12s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-changed-files-caret { transition: none; }
+}
+.ai-assistant-panel-changed-files-head[aria-expanded="true"] .ai-assistant-panel-changed-files-caret {
+    transform: rotate(90deg);
+}
+.ai-assistant-panel-changed-files-list[hidden] { display: none; }
+
+/* ── Presented-file cards ───────────────────────────────────────────────────
+   Preview and Download are the two actions most readers want, so they own the
+   card's primary row. Patch and Continue sit on a quieter second line: still
+   one click away, but no longer competing for the same visual weight. */
+.ai-assistant-panel-changed-file {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    grid-template-columns: none;
+}
+.ai-assistant-panel-changed-file-primary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: .35rem;
+}
+.ai-assistant-panel-changed-file-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    padding-inline-start: .2rem;
+}
+.ai-assistant-panel-changed-file-secondary:empty { display: none; }
+.ai-assistant-panel-changed-file-badge {
+    display: inline-block;
+    margin-inline-start: .4rem;
+    padding: .05rem .3rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
+    border-radius: 4px;
+    color: var(--pst-color-text-muted, #71717a);
+    font-size: .55rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+/* The footer is one action strip: patch series, and a download-all that spans
+   the full width so it reads as covering every card above it. */
+.ai-assistant-panel-changed-files,
+.ai-md-artifact-list {
+    /* Measured by the @container rules below. The panel is resizable and can
+       be maximized or embedded, so its rendered width and the viewport's are
+       different numbers -- a media query here would collapse labels on a wide
+       panel inside a narrow window, and keep them on a narrow panel inside a
+       wide one. */
+    container-type: inline-size;
+    container-name: ai-artifact-surface;
+}
+.ai-assistant-panel-changed-files-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-top: .45rem;
+}
+.ai-assistant-panel-changed-files-footer[hidden] { display: none; }
+.ai-assistant-panel-changed-files-download-all { flex: 1 1 100%; }
+
+/* ── Presented-file card: preview | download | save as ─────────────────────
+   Three columns, and the preview claims all the room left over. The card body
+   IS the preview target, so the whole block is the affordance rather than a
+   small word at its end — the same shape as an attachment tile, opening the
+   same full overlay. */
+.ai-assistant-panel-changed-file-primary {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.ai-assistant-panel-changed-file-preview {
+    min-height: 3.1rem;
+    align-items: center;
+}
+.ai-assistant-panel-changed-file-saveas {
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 8px;
+    padding: .45rem .55rem;
+    background: var(--pst-color-surface, #fff);
+    color: inherit;
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ai-assistant-panel-changed-file-saveas:hover,
+.ai-assistant-panel-changed-file-saveas:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+}
+@media (max-width: 420px) {
+    /* Three actions plus a filename do not fit a narrow panel. The filename is
+       the part that identifies the card, so it keeps the full width and the
+       actions wrap beneath it rather than being clipped. */
+    .ai-assistant-panel-changed-file-primary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .ai-assistant-panel-changed-file-primary > button:not(.ai-assistant-panel-changed-file-preview) {
+        justify-self: start;
+    }
+}
+
+/* ── File-editing sheet: code with a line-number gutter ────────────────────
+   The numbers are a sibling of the code, never a prefix inside it. Prefixing
+   is the usual shortcut and it poisons every copy, download and patch taken
+   from the block; here `<code>` still holds exactly the file's bytes.
+
+   `user-select: none` keeps the gutter out of a drag-selection, and
+   `aria-hidden` keeps it out of the accessibility tree — a screen reader
+   reading "one import two sys three" would be worse than no numbers at all. */
+.ai-md-file-sheet {
+    display: flex;
+    /* The sheet is the scroll container: gutter and code grow to their natural
+       height inside it and move under one scrollbar. When the code scrolled
+       itself instead, the gutter -- which had no max-height -- rendered every
+       line of the file, stretching a 5543-line preview to the length of the
+       file while the two slid out of step. */
+    max-height: min(70vh, 28rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+}
+.ai-md-file-gutter {
+    flex: 0 0 auto;
+    box-sizing: content-box;
+    width: calc(var(--ai-gutter-digits, 2) * 1ch);
+    padding: .6rem .5rem .6rem .6rem;
+    border-inline-end: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 94%, #808080 6%);
+    color: var(--pst-color-text-muted, #71717a);
+    font-family: var(--pst-font-family-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: .72rem;
+    line-height: 1.5;
+    text-align: end;
+    white-space: pre;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+    tab-size: 1;
+}
+.ai-md-file-sheet .ai-md-pre-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+/* The gutter is aligned by sharing the code block's line box, so any change to
+   one must change the other. Kept adjacent here for exactly that reason. */
+.ai-md-file-sheet .ai-md-pre {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    padding: .6rem;
+    font-size: .72rem;
+    line-height: 1.5;
+}
+.ai-md-file-disclosure-head[aria-expanded="true"] {
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+}
+
+/* One quiet disclosure instead of two more buttons per file. Five visible
+   controls made the block read as a control panel rather than a result. */
+.ai-assistant-panel-changed-file-more {
+    align-self: start;
+    border: 0;
+    background: transparent;
+    padding: .1rem .2rem;
+    color: var(--pst-color-text-muted, #71717a);
+    font: inherit;
+    font-size: .58rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+.ai-assistant-panel-changed-file-more:hover,
+.ai-assistant-panel-changed-file-more:focus-visible { color: inherit; }
+.ai-assistant-panel-changed-file-secondary[hidden] { display: none; }
+
+/* ── File card: preview fills, then download, then ⋮ ───────────────────────
+   Preview and Download are what almost every reader wants. Everything else is
+   behind one menu — the same affordance the panel subbar already uses, so a
+   reader who has met it once has met it here. */
+.ai-assistant-panel-changed-file-primary {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    position: relative;
+}
+.ai-assistant-panel-changed-file-overflow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 8px;
+    background: var(--pst-color-surface, #fff);
+    color: var(--pst-color-text-muted, #71717a);
+    cursor: pointer;
+}
+.ai-assistant-panel-changed-file-overflow:hover,
+.ai-assistant-panel-changed-file-overflow:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+    color: inherit;
+}
+.ai-assistant-panel-changed-file-overflow svg { width: 1rem; height: 1rem; }
+.ai-assistant-panel-changed-file-menu {
+    /* Start position only. `_positionFileMenuWithinPanelBody` overwrites left
+       and top after insertion, and sets right/bottom to auto, so these values
+       are what the menu uses for its first paint before measurement -- not
+       where it stays. Keeping them means no visible jump from the corner. */
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + .25rem);
+    /* Bounded by the viewport, because the screen is what clips the menu --
+       a panel-relative unit would let a maximized panel produce a menu taller
+       than the display. `20rem` caps it on a tall screen, where half the
+       viewport is a menu long enough to lose the trigger it belongs to. */
+    max-height: min(50vh, 20rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 30;
+    display: grid;
+    gap: .1rem;
+    min-width: 13rem;
+    padding: .25rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 90%, transparent);
+    border-radius: 10px;
+    background: var(--pst-color-surface, #fff);
+    box-shadow: 0 6px 20px rgb(0 0 0 / .12);
+}
+.ai-assistant-panel-changed-file-menu-item {
+    /* Icon column, then the text stack. The gutter is reserved whether or not
+       an item has a glyph: a list where some labels are indented and others
+       are not is harder to scan than one with no icons at all. */
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    align-items: start;
+    column-gap: .45rem;
+    row-gap: .05rem;
+    padding: .4rem .5rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+.ai-assistant-panel-changed-file-menu-item:hover,
+.ai-assistant-panel-changed-file-menu-item:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 90%, #808080 10%);
+}
+.ai-assistant-panel-changed-file-menu-label { font-size: .68rem; font-weight: 600; }
+.ai-assistant-panel-changed-file-menu-hint {
+    font-size: .58rem;
+    color: var(--pst-color-text-muted, #71717a);
+}
+/* Download-all reads as covering every card above it, so it is centred rather
+   than left-aligned like a peer of the per-card actions. */
+.ai-assistant-panel-changed-files-download-all { flex: 1 1 100%; text-align: center; }
+
+/* ── Restored activity: list visible, details on request ───────────────────
+   After a reload the reader has lost every other cue about what happened, so
+   the step list is open. What stays collapsed is each step's detail — the
+   shape is recoverable at a glance, the specifics on request. */
+.ai-assistant-panel-activity[data-restored="true"] .ai-assistant-panel-activity-note {
+    margin: 0 0 .4rem;
+    font-size: .58rem;
+    color: var(--pst-color-text-muted, #71717a);
+}
+.ai-assistant-panel-activity-step-toggle {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+.ai-assistant-panel-activity-step-caret {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    color: var(--pst-color-text-muted, #71717a);
+    transition: transform .12s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-activity-step-caret { transition: none; }
+}
+.ai-assistant-panel-activity-step-toggle[aria-expanded="true"] .ai-assistant-panel-activity-step-caret {
+    transform: rotate(90deg);
+}
+.ai-assistant-panel-activity-step-detail[hidden] { display: none; }
+/* A command detail is a command. Reading one as prose invites misreading it —
+   nothing here executes anything, but the shape should not suggest otherwise. */
+.ai-assistant-panel-activity-step-detail--code {
+    margin-top: .25rem;
+    padding: .35rem .45rem;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+    font-family: var(--pst-font-family-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: .62rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Snippet card: one card that downloads, one ⋮ for everything else — the same
+   shape as a tracked-file card, so the two surfaces teach the same gesture. */
+.ai-md-artifact-row { position: relative; align-items: stretch; }
+.ai-md-artifact-overflow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 8px;
+    background: var(--pst-color-surface, #fff);
+    color: var(--pst-color-text-muted, #71717a);
+    cursor: pointer;
+}
+.ai-md-artifact-overflow:hover,
+.ai-md-artifact-overflow:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+    color: inherit;
+}
+.ai-md-artifact-overflow svg { width: 1rem; height: 1rem; }
+
+/* Snippet row: preview card, then a distinct Download control, then ⋮.
+   Download was a span inside the card button. A button nested in a button is
+   invalid and browsers drop one of the two click targets — which one varies —
+   so it is a sibling now, with its own focus stop and accessible name. */
+.ai-md-artifact-row { display: flex; gap: .35rem; }
+.ai-md-artifact-card { flex: 1 1 auto; min-width: 0; cursor: pointer; }
+button.ai-md-artifact-download-label {
+    flex: 0 0 auto;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 8px;
+    padding: .45rem .6rem;
+    background: var(--pst-color-surface, #fff);
+    /* Colour comes from the shared accent rule at the end of this sheet, not
+       from `inherit` -- an earlier version set it here and, being later in the
+       cascade than the bubble-scoped accent, silently made the one control
+       that already had the right colour lose it. */
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+button.ai-md-artifact-download-label:hover,
+button.ai-md-artifact-download-label:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+}
+
+/* ── Snippet artifact: one segmented control ───────────────────────────────
+   Preview and Download read as a single control with a divider, not as two
+   buttons that happen to sit together. They remain two real <button> elements
+   — nesting one inside the other is invalid HTML and browsers drop one of the
+   two click targets — so the joining is purely presentational, and role=group
+   with a name is what carries the relationship to assistive technology. */
+.ai-md-artifact-group {
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 10px;
+    background: var(--pst-color-surface, #fff);
+    overflow: hidden;
+}
+.ai-md-artifact-group:focus-within {
+    border-color: color-mix(in srgb, var(--pst-color-border, #d8dce1) 100%, transparent);
+}
+/* Both segments shed their own chrome; the group owns the border and radius. */
+.ai-md-artifact-group > .ai-md-artifact-card,
+.ai-md-artifact-group > button.ai-md-artifact-download-label {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    margin: 0;
+}
+.ai-md-artifact-group > .ai-md-artifact-card:hover,
+.ai-md-artifact-group > button.ai-md-artifact-download-label:hover {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 93%, #808080 7%);
+}
+/* The divider is a real element rather than a border on a segment: a border
+   would move or vanish with whichever segment is hovered or focused. */
+.ai-md-artifact-sep {
+    flex: 0 0 1px;
+    align-self: stretch;
+    margin: .35rem 0;
+    background: color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
+}
+
+/* The Presented files section uses the same segmented control as the snippet
+   cards above it. Only the outer grid differs: the group takes the room the
+   overflow menu leaves, and the preview segment takes the room inside it. */
+.ai-assistant-panel-changed-file-primary {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+.ai-assistant-panel-changed-file-primary > .ai-md-artifact-group {
+    min-width: 0;
+}
+.ai-md-artifact-group > .ai-assistant-panel-changed-file-preview {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.ai-md-artifact-group > .ai-assistant-panel-changed-file-download {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.ai-md-artifact-group > .ai-assistant-panel-changed-file-preview:hover,
+.ai-md-artifact-group > .ai-assistant-panel-changed-file-preview:focus-visible,
+.ai-md-artifact-group > .ai-assistant-panel-changed-file-download:hover,
+.ai-md-artifact-group > .ai-assistant-panel-changed-file-download:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 93%, #808080 7%);
+}
+
+/* ── Presented files inherit the snippet-card look ─────────────────────────
+   The preview segment now uses the snippet card's own classes, so these rules
+   only cover what genuinely differs: the state line is refreshed at click time
+   from the ledger and can be empty, and the row must not collapse when it is. */
+.ai-assistant-panel-changed-file-preview .ai-md-artifact-type:empty { display: none; }
+.ai-assistant-panel-changed-file-preview .ai-md-artifact-name {
+    display: flex;
+    align-items: baseline;
+    gap: .1rem;
+    min-width: 0;
+}
+/* Long repository paths truncate from the START: the filename at the end is
+   what identifies the file, and clipping it leaves every row reading
+   "scikit-plots/user_guide/impute/…". */
+.ai-assistant-panel-changed-file-preview .ai-md-artifact-name > :first-child,
+.ai-assistant-panel-changed-file-preview .ai-md-artifact-name {
+    direction: ltr;
+}
+.ai-assistant-panel-changed-file-preview .ai-md-artifact-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Footer: the bulk pair reads as the wide version of a file row. */
+.ai-assistant-panel-changed-files-footer > .ai-md-artifact-group { flex: 1 1 100%; }
+.ai-md-artifact-group > .ai-assistant-panel-changed-files-download-all {
+    flex: 1 1 auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: center;
+}
+.ai-md-artifact-group > .ai-assistant-panel-changed-files-series {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.ai-md-artifact-group > .ai-assistant-panel-changed-files-download-all:hover,
+.ai-md-artifact-group > .ai-assistant-panel-changed-files-download-all:focus-visible,
+.ai-md-artifact-group > .ai-assistant-panel-changed-files-series:hover,
+.ai-md-artifact-group > .ai-assistant-panel-changed-files-series:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 93%, #808080 7%);
+}
+
+/* The type line carries a short badge and, beside it, the live revision/state
+   text the ledger refreshes at click time. Both may be empty at different
+   moments, so neither may leave a gap on its own. */
+.ai-assistant-panel-changed-file-preview .ai-md-artifact-type {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+}
+.ai-assistant-panel-changed-file-preview .ai-assistant-panel-changed-file-meta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ai-assistant-panel-changed-file-preview .ai-assistant-panel-changed-file-meta:empty,
+.ai-assistant-panel-changed-file-preview .ai-assistant-panel-changed-file-badge:empty {
+    display: none;
+}
+
+
+/* ── Artifact accent ───────────────────────────────────────────────────────
+   One token, one selector list. These four controls are the same idea in four
+   places -- take this file -- and were drifting apart: the snippet download
+   label carried the theme accent, the presented-file download and the bulk
+   download inherited body text, and the section heading was plain bold.
+
+   Defined as a variable rather than repeating the fallback chain, so a theme
+   that sets `--pst-color-primary` moves all of them together and a future
+   fifth control opts in by adding its selector here rather than by copying
+   three levels of `var()` fallback. */
+:root {
+    --ai-artifact-accent: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+}
+[data-bs-theme="dark"] {
+    /* The light accent fails contrast on a dark surface, so the dark theme
+       carries its own value rather than reusing one that is merely readable. */
+    --ai-artifact-accent: #93c5fd;
+}
+button.ai-md-artifact-download-label,
+.ai-assistant-panel-changed-file-download,
+.ai-assistant-panel-changed-files-download-all,
+.ai-assistant-panel-changed-files-head strong {
+    color: var(--ai-artifact-accent);
+}
+/* Hover and focus keep the accent: a control that loses its colour on hover
+   reads as disabling itself at the moment the reader commits to it. */
+button.ai-md-artifact-download-label:hover,
+button.ai-md-artifact-download-label:focus-visible,
+.ai-assistant-panel-changed-file-download:hover,
+.ai-assistant-panel-changed-file-download:focus-visible,
+.ai-assistant-panel-changed-files-download-all:hover,
+.ai-assistant-panel-changed-files-download-all:focus-visible {
+    color: var(--ai-artifact-accent);
+}
+/* The heading is a label, not a control: same colour, no pointer affordance. */
+.ai-assistant-panel-changed-files-head strong {
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+@media (forced-colors: active) {
+    /* Forced-colours modes discard the accent entirely. Every one of these
+       controls is a real button or a heading, so the meaning survives in the
+       element itself rather than in the hue. */
+    button.ai-md-artifact-download-label,
+    .ai-assistant-panel-changed-file-download,
+    .ai-assistant-panel-changed-files-download-all,
+    .ai-assistant-panel-changed-files-head strong {
+        color: LinkText;
+    }
+}
+
+/* A one-file footer is a single action, so there is nothing to segment. It
+   still spans the section and wears the group's chrome, so it reads as the
+   same kind of control it becomes when a second file arrives — a reader should
+   not have to relearn the footer because an answer produced one file. */
+.ai-assistant-panel-changed-files-series.ai-assistant-panel-changed-files-solo {
+    flex: 1 1 100%;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 10px;
+    padding: .5rem .6rem;
+    background: var(--pst-color-surface, #fff);
+    text-align: center;
+}
+.ai-assistant-panel-changed-files-series.ai-assistant-panel-changed-files-solo:hover,
+.ai-assistant-panel-changed-files-series.ai-assistant-panel-changed-files-solo:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 93%, #808080 7%);
+}
+
+/* ── Continuation tray ─────────────────────────────────────────────────────
+   A queue the reader cannot see is a queue they cannot manage. The tray is a
+   status line, not a control strip: it states what will travel and offers the
+   one action that is awkward through per-file menus. */
+.ai-assistant-panel-changed-files-tray {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: .35rem 0 .1rem;
+    padding: .35rem .55rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--ai-artifact-accent) 10%, transparent);
+    font-size: .62rem;
+}
+.ai-assistant-panel-changed-files-tray > span { flex: 1 1 auto; min-width: 0; }
+.ai-assistant-panel-changed-files-tray-clear {
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    padding: .1rem .25rem;
+    color: var(--ai-artifact-accent);
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+.ai-assistant-panel-changed-files-continue-all {
+    flex: 1 1 100%;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
+    border-radius: 10px;
+    padding: .5rem .6rem;
+    background: var(--pst-color-surface, #fff);
+    color: var(--ai-artifact-accent);
+    font: inherit;
+    font-size: .62rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}
+.ai-assistant-panel-changed-files-continue-all:hover,
+.ai-assistant-panel-changed-files-continue-all:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 93%, #808080 7%);
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-changed-files-tray-clear,
+    .ai-assistant-panel-changed-files-continue-all { color: LinkText; }
+}
+
+/* Every configured model is listed, so length is handled by scrolling rather
+   than by dropping entries. The clamp is generous enough that ordinary
+   configurations never scroll at all, and `contain` stops a flick inside the
+   list from scrolling the transcript behind it. */
+.ai-assistant-panel-bubble-model-list[hidden] { display: none; }
+/* The heading stays put while the options scroll under it, so a reader who has
+   scrolled still knows what the list is. */
+.ai-assistant-panel-bubble-model-heading {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--pst-color-surface, #fff);
+}
+
+/* Icon-and-label buttons. The glyph is aria-hidden and the accessible name
+   comes from aria-label, so the icon is decoration in the strict sense: remove
+   it and nothing announced changes. */
+.ai-md-artifact-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    margin-inline-end: .4rem;
+    vertical-align: -.15em;
+}
+.ai-md-artifact-btn-icon svg { width: .85em; height: .85em; }
+.ai-md-artifact-btn-label { min-width: 0; }
+/* The footer pair centres its contents, so the icon travels with the label
+   rather than pinning to the left edge of a full-width button. */
+.ai-assistant-panel-changed-files-download-all,
+.ai-assistant-panel-changed-files-series,
+.ai-assistant-panel-changed-files-continue-all {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* ── Icon-only download controls on a narrow panel ─────────────────────────
+   Below 22rem of surface width the label is dropped and the glyph carries the
+   button. That is safe only because every one of these already has a full
+   `aria-label` and `title`: the accessible name never changes, so a screen
+   reader announces "Download latest docs/index.rst under its own name" at
+   every width, and a pointer user gets the same sentence on hover.
+
+   Dropping the label is preferable to letting it truncate: "Downl…" is a worse
+   affordance than a recognisable glyph, and truncation would also squeeze the
+   filename beside it, which is the part that identifies the row. */
+@container ai-artifact-surface (max-width: 22rem) {
+    .ai-md-artifact-download-label .ai-md-artifact-btn-label,
+    .ai-assistant-panel-changed-file-download .ai-md-artifact-btn-label,
+    .ai-assistant-panel-changed-files-download-all .ai-md-artifact-btn-label,
+    .ai-assistant-panel-changed-files-series .ai-md-artifact-btn-label {
+        /* clip, not display:none — the label stays in the layout box for
+           `title` and keeps the button's hit area from collapsing to the
+           glyph's width, which would make it hard to hit on a touch screen. */
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .ai-md-artifact-download-label .ai-md-artifact-btn-icon,
+    .ai-assistant-panel-changed-file-download .ai-md-artifact-btn-icon,
+    .ai-assistant-panel-changed-files-download-all .ai-md-artifact-btn-icon,
+    .ai-assistant-panel-changed-files-series .ai-md-artifact-btn-icon {
+        margin-inline-end: 0;
+    }
+    /* Minimum target size is kept even with no text to widen the button. */
+    .ai-md-artifact-download-label,
+    .ai-assistant-panel-changed-file-download {
+        min-width: 2.25rem;
+        justify-content: center;
+    }
+}
+/* The Git mark is the one glyph that is a brand rather than an operation, so
+   it keeps a slightly larger optical size against the arrow icons. */
+.ai-assistant-panel-changed-files-series .ai-md-artifact-btn-icon svg {
+    width: .95em;
+    height: .95em;
+}
+
+/* ── Toggle switches in forced-colours modes ───────────────────────────────
+   The PDF switch already had this treatment; the panel switch and the shared
+   mic switch did not. In a forced-colours mode author colours are discarded,
+   so a track drawn as `rgba(0,0,0,.22)` and a thumb drawn white both collapse
+   toward the system background: the switch becomes a pill with no visible
+   state, and on/off is exactly what a switch has to communicate.
+
+   System keywords are used rather than fixed colours, because that is what
+   forced-colours modes honour. */
+@media (forced-colors: active) {
+    .ai-assistant-mic-toggle-track,
+    .ai-assistant-panel-mode-switch .ai-assistant-panel-toggle-track {
+        border: 1px solid ButtonText;
+        background: Canvas;
+    }
+    .ai-assistant-mic-popup-toggle[aria-pressed="true"] .ai-assistant-mic-toggle-track,
+    .ai-assistant-mic-popup-toggle[aria-checked="true"] .ai-assistant-mic-toggle-track,
+    .ai-assistant-panel-mode-switch[aria-checked="true"] .ai-assistant-panel-toggle-track {
+        background: Highlight;
+    }
+    .ai-assistant-mic-toggle-thumb,
+    .ai-assistant-panel-mode-switch .ai-assistant-panel-toggle-thumb {
+        background: ButtonText;
+        /* The thumb's drop shadow is also discarded, so the border is what
+           keeps it distinguishable once the track is filled with Highlight. */
+        box-shadow: none;
+        border: 1px solid Canvas;
+        box-sizing: border-box;
+    }
+    .ai-assistant-mic-popup-toggle[aria-pressed="true"] .ai-assistant-mic-toggle-thumb,
+    .ai-assistant-mic-popup-toggle[aria-checked="true"] .ai-assistant-mic-toggle-thumb,
+    .ai-assistant-panel-mode-switch[aria-checked="true"] .ai-assistant-panel-toggle-thumb {
+        background: HighlightText;
+    }
+}
+
+/* The overlay preview uses the same sheet and gutter as the inline file view,
+   so a line number means the same thing wherever the reader is looking. Only
+   the container differs: the overlay scrolls its own body, so the sheet fills
+   it rather than sitting inside a disclosure. */
+.ai-assistant-panel-attachment-preview-sheet {
+    width: 100%;
+    min-width: 0;
+    border-radius: 8px;
+}
+.ai-assistant-panel-attachment-preview-sheet .ai-assistant-panel-attachment-preview-code {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+}
+/* The gutter must share the code's line box or the numbers drift line by line;
+   inheriting both values is what keeps them aligned as either changes. */
+.ai-assistant-panel-attachment-preview-sheet .ai-md-file-gutter {
+    font-size: inherit;
+    line-height: inherit;
+}
+.ai-assistant-panel-attachment-preview-sheet,
+.ai-assistant-panel-attachment-preview-sheet .ai-assistant-panel-attachment-preview-code {
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+
+/* ── Section title contrast ────────────────────────────────────────────────
+   Derived from the theme's own text colour rather than set to a literal, so a
+   site that retints its text keeps its titles in the same family. Mixing
+   toward the extreme adds contrast against the bubble in whichever direction
+   that theme's background lies. */
+:root {
+    --ai-section-title-color: color-mix(in srgb, var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a)) 86%, #000 14%);
+}
+[data-bs-theme="dark"],
+.dark {
+    --ai-section-title-color: color-mix(in srgb, var(--pst-color-text-base, var(--color-foreground-primary, #e6e6e6)) 86%, #fff 14%);
+}
+/* The chevron stays quieter than the title it belongs to: it is an affordance,
+   not part of the heading, and matching the title's weight made the row read
+   as two emphasised things. */
+.ai-md-section-chevron { color: var(--pst-color-text-muted, #71717a); }
+.ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:hover .ai-md-section-chevron {
+    color: inherit;
+}
+@media (forced-colors: active) {
+    /* color-mix results are discarded; the title falls back to the system
+       text colour rather than to whatever the mix last computed. */
+    .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary,
+    .ai-md-section-chevron { color: CanvasText; }
+}
+
+/* Snippet sheets: the same gutter as a file sheet, lighter chrome.
+   A snippet is part of the prose around it, not a document in its own right,
+   so it keeps the code block's own border radius and does not gain the file
+   sheet's squared top edge (which exists to meet a disclosure header). */
+.ai-md-snippet-sheet {
+    border-radius: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
+    margin: .4rem 0;
+}
+.ai-md-snippet-sheet .ai-md-pre-wrap { margin: 0; }
+/* The gutter shares the code's line box here too. Restating the values would
+   let them drift apart the moment either side is retuned, and drift shows up
+   as numbers sliding out of line with their rows. */
+.ai-md-snippet-sheet .ai-md-gutter,
+.ai-md-snippet-sheet .ai-md-file-gutter {
+    font-size: inherit;
+    line-height: inherit;
+}
+.ai-md-snippet-sheet,
+.ai-md-snippet-sheet .ai-md-pre {
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+/* ── Numbered sheets own the scroll, and never wrap ────────────────────────
+   Two faults, both introduced by putting a gutter beside a block that already
+   scrolled itself.
+
+   1. The `<pre>` carried `max-height` + `overflow: auto`, so it scrolled
+      inside a fixed box while the gutter — with neither — rendered every line
+      of the file at full height. A 5543-line preview stretched the dialog to
+      the length of the file, and the numbers slid out of step with the code
+      the moment either scrolled.
+
+      The sheet is the scroll container now. Gutter and code grow to their
+      natural height inside it and scroll in lockstep, because they are moved
+      by the same scrollbar rather than by two.
+
+   2. `white-space: pre-wrap` is wrong wherever numbers are shown. A logical
+      line that wraps to three visual rows occupies three line boxes in the
+      code and one in the gutter, so every number after the first wrapped line
+      is wrong. Numbered code does not wrap; it scrolls horizontally instead,
+      and the gutter stays put because that scroll belongs to the code alone. */
+.ai-md-file-sheet > .ai-md-file-gutter {
+    /* Stays with the code as the sheet scrolls vertically, and stays put as
+       the code scrolls horizontally, because only the code overflows on x. */
+    flex: 0 0 auto;
+    align-self: stretch;
+}
+.ai-md-file-sheet .ai-md-pre,
+.ai-md-file-sheet .ai-assistant-panel-attachment-preview-code {
+    max-height: none;
+    /*
+     * `hidden`, not `visible`.
+     *
+     * CSS promotes a `visible` axis to `auto` when the other axis is not
+     * visible. With `overflow-x: auto` for long lines, `overflow-y: visible`
+     * therefore computed to `auto` and the block became a scroll container on
+     * BOTH axes -- silently, and only for files whose lines happen to be long.
+     *
+     * A scroll container that cannot scroll vertically still swallows the
+     * wheel, and `overscroll-behavior: contain` on the sheet stopped the
+     * gesture chaining out to the page. The reader could not scroll the
+     * document with the pointer over a wide code block.
+     *
+     * `hidden` clips nothing here: the block has no height limit, so its box
+     * already fits its content. It only stops the promotion.
+     */
+    overflow-y: hidden;
+    overflow-x: auto;
+    white-space: pre;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+/* The preview overlay's body already scrolls; a sheet scrolling inside it
+   would give the reader two vertical scrollbars for one document. The sheet
+   defers, and the body remains the single scroller. */
+.ai-assistant-panel-attachment-preview-body > .ai-md-file-sheet {
+    max-height: none;
+    overflow-y: visible;
+    /* This sheet does not scroll -- the overlay body does -- so it must not
+       claim the wheel. `contain` is for the sheets that own a scrollbar; here
+       it would trap the gesture in an element with nothing to scroll. */
+    overscroll-behavior: auto;
+}
+
+/* ── Preview window controls ───────────────────────────────────────────────
+   The dialog is movable by its header, resizable from its corner and can be
+   minimised or maximised. Geometry is written as explicit left/top/width/height
+   once the reader moves it, which is why the centring transform is dropped at
+   that point rather than fought with. */
+.ai-assistant-panel-attachment-preview-head {
+    cursor: grab;
+    touch-action: none;          /* or a drag becomes a page scroll on touch */
+    user-select: none;
+    align-items: flex-start;
+    gap: .25rem;
+}
+.ai-assistant-panel-attachment-preview[data-dragging="true"] .ai-assistant-panel-attachment-preview-head {
+    cursor: grabbing;
+}
+.ai-assistant-panel-attachment-preview {
+    /* Native corner resize: no JS, correct keyboard and pointer behaviour for
+       free, and it already works because the dialog sets `overflow: hidden`. */
+    resize: both;
+    min-width: 320px;
+    min-height: 180px;
+}
+.ai-assistant-panel-attachment-preview[data-window-mode="minimized"] {
+    resize: none;
+}
+.ai-assistant-panel-attachment-preview[data-window-mode="minimized"] .ai-assistant-panel-attachment-preview-body {
+    display: none;
+}
+.ai-assistant-panel-attachment-preview-window-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pst-color-text-muted, #71717a);
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-preview-window-btn:hover,
+.ai-assistant-panel-attachment-preview-window-btn:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, #808080 12%);
+    color: inherit;
+}
+.ai-assistant-panel-attachment-preview-window-btn[aria-pressed="true"] {
+    color: var(--ai-artifact-accent);
+}
+.ai-assistant-panel-attachment-preview-window-btn svg { width: 1rem; height: 1rem; }
+@media (forced-colors: active) {
+    .ai-assistant-panel-attachment-preview-window-btn { color: ButtonText; }
+    .ai-assistant-panel-attachment-preview-window-btn[aria-pressed="true"] { color: Highlight; }
+}
+
+/* The three window controls sit together at the trailing edge, after the
+   title. Grouping them keeps their order in one place and keeps Close beside
+   its peers rather than separated from them by the heading. */
+.ai-assistant-panel-attachment-preview-controls {
+    display: flex;
+    align-items: center;
+    gap: .15rem;
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+}
+/* The heading takes the room the controls leave, and truncates rather than
+   pushing them off the edge: a long filename must never displace Close. */
+.ai-assistant-panel-attachment-preview-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.ai-assistant-panel-attachment-preview-title,
+.ai-assistant-panel-attachment-preview-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Close keeps the same box as its neighbours so the group reads as one row of
+   equal controls rather than two shapes side by side. */
+.ai-assistant-panel-attachment-preview-controls .ai-assistant-panel-attachment-preview-close {
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Window controls: both themes, explicitly ──────────────────────────────
+   The hover mix falls back to `#fff` when a site does not define
+   `--pst-color-surface`, which on a dark page produces a near-white wash under
+   a light glyph. The dark rule states its own values rather than relying on a
+   token the host may never set. */
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-preview-window-btn,
+.dark .ai-assistant-panel-attachment-preview-window-btn {
+    color: var(--pst-color-text-muted, #9aa4b2);
+}
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-preview-window-btn:hover,
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-preview-window-btn:focus-visible,
+.dark .ai-assistant-panel-attachment-preview-window-btn:hover,
+.dark .ai-assistant-panel-attachment-preview-window-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e6e6e6;
+}
+
+/* ── Touch and small screens ───────────────────────────────────────────────
+   A movable, corner-resizable window is a pointer idea. On a phone there is no
+   hover to reveal the resize corner, the corner itself is smaller than a
+   fingertip, and a window dragged by a finger is easy to strand and hard to
+   recover.
+
+   So below 640px the preview stops pretending to be a window and becomes what
+   a full-screen sheet already is on that form factor: it fills the viewport,
+   cannot be dragged, and cannot be resized. Minimise and maximise stay, because
+   collapsing to the title bar is still useful for glancing at the page behind.
+
+   Keyed on `pointer: coarse` as well as width, since a touch laptop has the
+   same fingertip problem at any width. */
+@media (max-width: 640px), (pointer: coarse) {
+    .ai-assistant-panel-attachment-preview {
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100%;
+        max-height: 100%;
+        transform: none !important;
+        border-radius: 0;
+        resize: none;
+        min-width: 0;
+    }
+    .ai-assistant-panel-attachment-preview-head {
+        cursor: default;
+        touch-action: auto;      /* the header scrolls the page again */
+    }
+    .ai-assistant-panel-attachment-preview[data-window-mode="minimized"] {
+        top: auto !important;
+        bottom: 0;
+        height: auto !important;
+    }
+    /* Fingertip-sized controls: 1.85rem is comfortable for a mouse and small
+       for a thumb, and these three sit adjacent to each other. */
+    .ai-assistant-panel-attachment-preview-window-btn,
+    .ai-assistant-panel-attachment-preview-menu-btn,
+    .ai-assistant-panel-attachment-preview-controls .ai-assistant-panel-attachment-preview-close {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    .ai-assistant-panel-attachment-preview-controls { gap: .35rem; }
+}
+
+/* ── Footer: disclaimer and credit share one row ───────────────────────────
+   Both carried `width: 100%`, so each claimed a full line of a wrapping flex
+   row and the footer spent two rows on two short pieces of small print.
+
+   They now share one line: the note takes the room left over, the credit takes
+   what it needs. Below the point where both fit, the note goes back to a full
+   line and the credit sits under it — stacked because it does not fit, not
+   because it is laid out that way by default.
+
+   Measured on the footer's own inline size rather than the viewport: this
+   panel is resizable and can be docked or maximized, so its width and the
+   window's are different numbers. */
+.ai-assistant-panel-footer {
+    container-type: inline-size;
+    container-name: ai-panel-footer;
+    row-gap: 0.15rem;
+    column-gap: 0.5rem;
+}
+.ai-assistant-panel-footer-note {
+    width: auto;
+    /*
+     * A 10rem basis, not 15rem.
+     *
+     * The basis is what decides when two columns stop fitting. At 15rem the
+     * pair gave up and stacked while there was still room for two narrow
+     * columns of wrapped text -- the footer jumped from one row to three at a
+     * width where it could have used two.
+     */
+    flex: 1 1 10rem;
+    min-width: 0;
+    text-align: start;
+    /*
+     * Never truncated, never hidden behind hover.
+     *
+     * A notice that the assistant can be wrong is the one piece of text in
+     * this panel a reader most needs to have seen, and hover reveals nothing
+     * on a touch screen. Clipping it to one line and offering the rest on
+     * hover would make it look tidier and mean less. It wraps instead.
+     */
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+.ai-assistant-panel-footer-credit {
+    width: auto;
+    flex: 0 1 auto;
+    margin-inline-start: auto;
+    margin-top: 0.35rem;
+    text-align: end;
+    align-self: center;
+    /*
+     * Wraps, except through the project name.
+     *
+     * `nowrap` made the credit an unbreakable ~11rem block, so the column pair
+     * failed as soon as the note could not also fit beside it -- the credit
+     * was deciding the layout for both. Allowed to wrap, "Powered by" and the
+     * link can sit on two lines and the pair survives to a much smaller panel.
+     *
+     * The link itself keeps `nowrap`: breaking a project name across lines
+     * makes it look like two words, and it is short enough that it never needs
+     * to break.
+     */
+    white-space: normal;
+}
+.ai-assistant-panel-footer-credit-link { white-space: nowrap; }
+/*
+ * Three regimes, two of them side by side.
+ *
+ *   wide     | long text            short text |
+ *   medium   | long   |  short |   (both wrapped into columns)
+ *   tiny     | long text |
+ *            | short text |
+ *
+ * The stack is the last resort rather than the second option: below 20rem two
+ * columns of a few words each are narrower than the words themselves, and the
+ * note -- which is the part that must be read -- would wrap to five or six
+ * lines to make room for a credit.
+ */
+@container ai-panel-footer (max-width: 20rem) {
+    /* Not enough width for both: the note reclaims the line and the credit --
+       the less important of the two -- moves below it and re-centres. */
+    .ai-assistant-panel-footer-note { flex-basis: 100%; text-align: center; }
+    .ai-assistant-panel-footer-credit {
+        flex-basis: 100%;
+        margin-inline-start: 0;
+        margin-top: 0.1rem;
+        text-align: center;
+    }
+}
+
+/* ── Preview title bar: file actions ───────────────────────────────────────
+   The chevron opens actions on the file; the three controls beside it act on
+   the window showing it. Kept as two groups because merging them would make
+   Close read as a peer of Download. */
+.ai-assistant-panel-attachment-preview-menu-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pst-color-text-muted, #71717a);
+    cursor: pointer;
+}
+.ai-assistant-panel-attachment-preview-menu-btn:hover,
+.ai-assistant-panel-attachment-preview-menu-btn:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, #808080 12%);
+    color: inherit;
+}
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-preview-menu-btn,
+.dark .ai-assistant-panel-attachment-preview-menu-btn {
+    color: var(--pst-color-text-muted, #9aa4b2);
+}
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-preview-menu-btn:hover,
+[data-bs-theme="dark"] .ai-assistant-panel-attachment-preview-menu-btn:focus-visible,
+.dark .ai-assistant-panel-attachment-preview-menu-btn:hover,
+.dark .ai-assistant-panel-attachment-preview-menu-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e6e6e6;
+}
+/* Rotation is driven from aria-expanded, so the glyph cannot disagree with the
+   state a screen reader is told. */
+.ai-assistant-panel-attachment-preview-menu-btn svg {
+    width: 1rem;
+    height: 1rem;
+    transition: transform .12s ease-out;
+}
+.ai-assistant-panel-attachment-preview-menu-btn[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-attachment-preview-menu-btn svg { transition: none; }
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-attachment-preview-menu-btn { color: ButtonText; }
+}
+
+/* ── Speak hint: collapsible to its icon ───────────────────────────────────
+   The hint points at the mic, which is in the footer either way, so the row
+   buys discoverability rather than access. Collapsed it keeps the glyph and
+   the affordance at the width of one icon -- nothing is lost, so there is
+   nothing for a reader to regret putting away. */
+.ai-assistant-panel-speak-row {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    /*
+     * Zero height in BOTH states, contents lifted clear.
+     *
+     * Collapsed it already worked this way (R173T58): the transcript took the
+     * row and the space beside the pill showed the conversation through it.
+     * Expanded it was still an in-flow row, so that same space was panel
+     * background -- opaque, with nothing behind it.
+     *
+     * The difference between the two states is now what is drawn, not whether
+     * the row occupies a line.
+     */
+    height: 0;
+    min-height: 0;
+    margin: 0 0.75rem;
+    overflow: visible;
+    position: relative;
+    z-index: 3;
+}
+.ai-assistant-panel-speak-row > * { transform: translateY(-100%); }
+.ai-assistant-panel-speak-row .ai-assistant-panel-speak-banner {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;              /* the row owns the spacing now */
+}
+/* Collapsed: the row shrinks to the banner's glyph. The text is clipped rather
+   than removed so the banner keeps its hit area and its accessible name is
+   untouched -- the button still announces "Speak with your assistant". */
+/*
+ * Collapsed, the row sits at the trailing edge.
+ *
+ * It becomes a single small target whose only purpose is to be pressed, and on
+ * a phone the trailing edge is where the thumb already rests -- the leading
+ * edge is the far corner for a right-handed one-handed grip. The expanded form
+ * stays leading-aligned because it is text to read, and text starts where the
+ * reader's eye does.
+ *
+ * `flex-end` rather than `right`, so a right-to-left interface gets the
+ * mirrored placement without a second rule.
+ */
+.ai-assistant-panel-speak-row[data-collapsed="true"] { justify-content: flex-end; }
+.ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner {
+    flex: 0 0 auto;
+}
+.ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner span,
+.ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner kbd {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+.ai-assistant-panel-speak-toggle {
+    /*
+     * The same ground as the banner beside it, at every width.
+     *
+     * Collapsed, both ends already carried a surface (R173T57). Expanded, the
+     * banner was a filled pill and the toggle was bare and transparent, so one
+     * end of the row looked like a control and the other like a glyph resting
+     * next to it. The row itself stays transparent either way -- what changed
+     * is that both ends now read as the same kind of thing.
+     */
+    background-color: var(
+        --pst-color-on-background,
+        var(--color-background-secondary, #f5f5f5)
+    );
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pst-color-text-muted, #71717a);
+    cursor: pointer;
+}
+/* Matched heights, so the pair sits on one baseline rather than a pill beside a
+   smaller circle. */
+.ai-assistant-panel-speak-row[data-collapsed="false"] .ai-assistant-panel-speak-toggle {
+    align-self: stretch;
+    min-height: 100%;
+}
+.ai-assistant-panel-speak-toggle:hover,
+.ai-assistant-panel-speak-toggle:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, #808080 12%);
+    color: inherit;
+}
+[data-bs-theme="dark"] .ai-assistant-panel-speak-toggle:hover,
+[data-bs-theme="dark"] .ai-assistant-panel-speak-toggle:focus-visible,
+.dark .ai-assistant-panel-speak-toggle:hover,
+.dark .ai-assistant-panel-speak-toggle:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e6e6e6;
+}
+/* The chevron points the way the next press goes, rotated from the announced
+   state so the glyph and `aria-expanded` cannot disagree. */
+.ai-assistant-panel-speak-toggle svg {
+    width: .85rem;
+    height: .85rem;
+    transition: transform .12s ease-out;
+    transform: rotate(90deg);
+}
+.ai-assistant-panel-speak-toggle[aria-expanded="true"] svg { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-speak-toggle svg { transition: none; }
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-speak-toggle { color: ButtonText; }
+}
+
+/* ── Collapsed, the row stops costing a row ────────────────────────────────
+   Collapsed the hint is one icon, and it was still holding a full-width flex
+   line with empty space beside it. The transcript now takes that width: the
+   pill floats at the bottom-trailing corner of the panel and the row it used
+   to occupy is gone from the flow.
+
+   The trade is stated rather than hidden: a floating control can cover the
+   last line of a message, so the transcript keeps a small end padding while
+   the hint is collapsed. That padding is smaller than the row it replaces, so
+   the transcript gains height as well as width — but it is not free, and
+   pretending otherwise would mean a pill that sometimes sits on top of the
+   final line of an answer. */
+/*
+ * Zero-height, lifted -- not absolutely positioned.
+ *
+ * The previous attempt used `position: absolute; bottom: calc(100% + …)` on
+ * the assumption that the footer was the positioning ancestor. It is not: the
+ * row is `panel.appendChild(speakRow)`, a sibling of the footer and a child of
+ * the panel, so `100%` resolved against the panel's full height and the pill
+ * was pushed clear off the top of it. It did not move; it left.
+ *
+ * Collapsing the row's own height to zero and lifting its contents needs no
+ * positioning ancestor at all. The row keeps its place in the panel's column,
+ * between the transcript and the footer, so the pill always lands just above
+ * the composer however tall the composer has grown -- which is the property
+ * the absolute version was reaching for and got wrong.
+ */
+.ai-assistant-panel-speak-row[data-collapsed="true"] > * {
+    /* Lifted fully above its own zero-height box, into the space the
+       transcript's end padding reserves for it. */
+    transform: translateY(-100%);
+}
+/* A backdrop, because the pill now sits over transcript text rather than over
+   panel background. Without it the glyph competes with whatever is behind it. */
+.ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
+.ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle {
+    background: var(--pst-color-surface, #fff);
+    box-shadow: 0 1px 6px rgb(0 0 0 / .16);
+}
+[data-bs-theme="dark"] .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
+[data-bs-theme="dark"] .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle,
+.dark .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
+.dark .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle {
+    background: #2b2f36;
+    box-shadow: 0 1px 6px rgb(0 0 0 / .5);
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
+    .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle {
+        border: 1px solid ButtonText;
+        background: Canvas;
+    }
+}
+
+/* ── Model picker: primary action plus its own options chevron ─────────────
+   The same shape the mic uses — a primary control with a narrow chevron beside
+   it — so a reader who has met one has met the other. The two are joined
+   visually but remain two buttons, because they do two different things and a
+   nested button is invalid markup besides. */
+.ai-assistant-panel-inline-picker-wrapper {
+    display: inline-flex;
+    align-items: stretch;
+    min-width: 0;
+}
+.ai-assistant-panel-inline-picker-wrapper .ai-assistant-panel-inline-model-picker {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    min-width: 0;
+}
+.ai-assistant-panel-inline-picker-more {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    /* Same tokens as the picker it is joined to: one segmented control drawn
+       from one set of values. It was transparent with a border only on touch,
+       so at rest on a desktop the pair read as a bordered button with a bare
+       glyph stuck to it. The shared edge is dropped so the two have one
+       outline rather than two meeting in the middle. */
+    background: transparent;
+    border: 1px solid var(
+        --pst-color-border,
+        var(--color-foreground-border, rgba(127, 127, 127, 0.3))
+    );
+    border-inline-start: 0;
+    color: var(--pst-color-text-muted, var(--color-foreground-secondary, #888));
+    transition: color 0.15s ease, background-color 0.15s ease;
+    cursor: pointer;
+}
+/* A hairline between them, so the pair reads as one control with two targets
+   rather than two buttons that happen to touch. */
+.ai-assistant-panel-inline-picker-more::before {
+    content: "";
+    align-self: center;
+    width: 1px;
+    height: 1.1em;
+    margin-inline-end: .25rem;
+    background: color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
+}
+.ai-assistant-panel-inline-picker-more:hover,
+.ai-assistant-panel-inline-picker-more:focus-visible {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, #808080 12%);
+    color: inherit;
+}
+[data-bs-theme="dark"] .ai-assistant-panel-inline-picker-more:hover,
+[data-bs-theme="dark"] .ai-assistant-panel-inline-picker-more:focus-visible,
+.dark .ai-assistant-panel-inline-picker-more:hover,
+.dark .ai-assistant-panel-inline-picker-more:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e6e6e6;
+}
+.ai-assistant-panel-inline-picker-more svg {
+    width: .8rem;
+    height: .8rem;
+    transition: transform .12s ease-out;
+}
+.ai-assistant-panel-inline-picker-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-inline-picker-more svg { transition: none; }
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-inline-picker-more { color: ButtonText; }
+}
+
+/* ── Shared menu: never taller than the screen ─────────────────────────────
+   Placement flips the menu above its trigger when there is no room below, but
+   a twelve-model list is taller than the space either way. Bounding it by the
+   viewport is what stops the last items being cut off, and it holds whatever
+   the panel has been resized to because `vh` measures the screen rather than
+   the panel.
+
+   `20rem` caps it on a tall desktop screen, where half the viewport would be a
+   menu long enough to lose the trigger it belongs to. */
+/* Coarse pointers get more of the screen: a thumb scrolls a long list more
+   readily than it reaches a menu that has been flipped and clamped. */
+@media (pointer: coarse) {
+    .ai-assistant-panel-changed-file-menu { max-height: min(60vh, 24rem); }
+}
+
+/* The menu's box must include its own border and padding in the height the
+   placement routine measures and bounds, or the computed max-height clips the
+   content by exactly the chrome. */
+.ai-assistant-panel-changed-file-menu {
+    box-sizing: border-box;
+    /*
+     * As wide as its longest row, no wider.
+     *
+     * A fixed width made short menus look padded and truncated the long labels
+     * in the model list -- the one place where the label is the information.
+     * `max-content` sizes to the longest row instead.
+     *
+     * It needs a ceiling, which the placement routine supplies as an inline
+     * `max-width` computed from the same panel-and-viewport bounds that limit
+     * the height. A CSS-only cap would have to guess a panel width, and this
+     * panel is resizable.
+     */
+    width: max-content;
+}
+/* Rows fill the menu rather than sizing it: with `max-content` a row that sets
+   its own width would decide the menu's, and the widest hint would win over
+   the widest label. */
+.ai-assistant-panel-changed-file-menu-item {
+    width: 100%;
+    box-sizing: border-box;
+}
+/* The hint is secondary text and must not be what makes a menu wide. It wraps
+   at the width the labels established. */
+.ai-assistant-panel-changed-file-menu-hint {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+/* ── Shared menu, under the name of what it is ─────────────────────────────
+   `.ai-assistant-panel-changed-file-menu` is the legacy name, kept because it
+   is in the shipped DOM. It is named after one of four callers, so a rule
+   written for "the file menu" silently restyled the preview and the model
+   picker too. New rules use `.ai-assistant-menu`, which is what the builder
+   actually produces, and the two are applied together so nothing that selects
+   the old name breaks. */
+.ai-assistant-menu[data-placement="above"] { transform-origin: bottom center; }
+.ai-assistant-menu[data-placement="below"] { transform-origin: top center; }
+/* Surface-specific overrides go through the caller's own class rather than the
+   shared one, so changing a menu on one surface cannot reach the others. */
+.ai-assistant-panel-attachment-preview .ai-assistant-menu { z-index: 41; }
+
+/* ── Hamburger menu: bounded by the panel it hangs in ──────────────────────
+   It had no height bound at all, so on a small panel its lower entries ran
+   past the bottom edge with nothing to scroll and no indication they existed.
+
+   `100%` is the right unit here, unlike the shared popup menus. This one is
+   absolutely positioned *inside* the panel, so a percentage resolves against
+   the panel's own box and tracks a resize with no JavaScript. `3.3rem` is the
+   offset it already sits at, and the second term leaves the bottom margin.
+
+   The `vh` term still matters for a panel taller than the window: the screen
+   clips what the panel does not. */
+/* A submenu opened inside it scrolls with it rather than establishing a second
+   scroll region: two nested scrollers in a menu this size means a reader can
+   scroll the wrong one. */
+.ai-assistant-panel-hamburger[data-more-open="true"] { overscroll-behavior: contain; }
+@media (pointer: coarse) {
+    /* Same reasoning as the shared menus: a thumb scrolls a long list more
+       readily than it reaches a clamped one. */
+    .ai-assistant-panel-hamburger { max-height: min(calc(100% - 3.3rem - 0.75rem), 85vh); }
+}
+
+/* ── Model chevron on touch devices ────────────────────────────────────────
+   1.6rem with a transparent background is a fine cursor target and a poor
+   thumb one, and on touch there is no hover to reveal that it is a control at
+   all. It ends up both hard to hit and hard to notice — the two failures
+   compounding, since a control you cannot see is one you will not aim at. */
+/* Resting visibility, so it does not depend on a hover that never happens. */
+[data-bs-theme="dark"] .ai-assistant-panel-inline-picker-more,
+.dark .ai-assistant-panel-inline-picker-more {
+    color: var(--pst-color-text-muted, #9aa4b2);
+}
+@media (pointer: coarse) {
+    .ai-assistant-panel-inline-picker-more {
+        /* 44px: the smallest target the platform guidelines call comfortable,
+           and the size a thumb actually hits without aiming. */
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        width: auto;
+        /* Given a resting ground, since hover cannot supply one. */
+        background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
+        color: inherit;
+    }
+    [data-bs-theme="dark"] .ai-assistant-panel-inline-picker-more,
+    .dark .ai-assistant-panel-inline-picker-more {
+        background: rgba(255, 255, 255, 0.10);
+        color: #e6e6e6;
+    }
+    .ai-assistant-panel-inline-picker-more svg { width: 1.1rem; height: 1.1rem; }
+    /* The divider is decoration at this size and only narrows the target. */
+    .ai-assistant-panel-inline-picker-more::before { display: none; }
+    /* The picker beside it grows to match, or the pair looks broken. */
+    .ai-assistant-panel-inline-picker-wrapper .ai-assistant-panel-inline-model-picker {
+        min-height: 2.75rem;
+    }
+}
+/* Pressed state, which on touch is the only feedback there is. */
+.ai-assistant-panel-inline-picker-more:active {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 84%, #808080 16%);
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-inline-picker-more { border: 1px solid ButtonText; }
+}
+
+/* ── Footer actions: the enlarged chevron must not crowd the mic ───────────
+   R173T74 gave the chevron a 44px target on coarse pointers. In a row with
+   `gap: 0.1rem` and no wrapping that pushed it into the microphone beside it:
+   two adjacent controls, both thumb-sized, with almost nothing between them —
+   the reader aims at one and hits the other.
+
+   The gap grows with the targets rather than being fixed, and the picker pair
+   may wrap to its own line before either control is squeezed. Wrapping is the
+   right failure here: two rows of reachable controls beats one row of
+   overlapping ones. */
+@media (pointer: coarse) {
+    .ai-assistant-panel-footer-actions-right {
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        row-gap: 0.35rem;
+    }
+    .ai-assistant-panel-inline-picker-wrapper { min-width: 0; }
+    /* The mic keeps a target of its own: it is the control the enlarged
+       chevron was encroaching on. */
+    .ai-assistant-panel-footer-btn--mic {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        flex: 0 0 auto;
+    }
+}
+
+/* ── The expanded hint floats too ──────────────────────────────────────────
+   Collapsed it was lifted out of the flow (R173T58) so the transcript took the
+   row and the space beside the pill showed the conversation through it.
+   Expanded it was still an in-flow row, so that same space was panel
+   background: opaque, and nothing behind it.
+
+   Both states now behave the same way. The difference between them is what is
+   drawn, not whether the row occupies a line. */
+/* The transcript reserves the room in both states, not only when collapsed --
+   a floating control that covers the last line of an answer is the cost, and
+   it has to be paid whichever form the control is in. */
+.ai-assistant-panel:has(.ai-assistant-panel-speak-row) .ai-assistant-panel-body {
+    padding-bottom: 2.75rem;
+}
+
+/* ── The chevron shares the picker's ground ────────────────────────────────
+   The two are joined into one segmented control, so they should be drawn from
+   one set of tokens. The chevron was transparent with a border of its own only
+   on touch, which made the pair read as a bordered button with a bare glyph
+   stuck to it -- most visibly at rest on a desktop, where nothing hovered.
+
+   Same background and same border token as the picker; the shared edge is
+   removed so the pair has one outline rather than two meeting in the middle. */
+/* The hairline between them is the picker's own border edge, so the separate
+   pseudo-element divider is no longer needed and would double it. */
+.ai-assistant-panel-inline-picker-wrapper .ai-assistant-panel-inline-model-picker {
+    border-inline-end: 1px solid var(
+        --pst-color-border,
+        var(--color-foreground-border, rgba(127, 127, 127, 0.3))
+    );
+}
+.ai-assistant-panel-inline-picker-more::before { display: none; }
+/* Hover follows the picker's, so hovering either half lights the same way. */
+.ai-assistant-panel-inline-picker-more:hover,
+.ai-assistant-panel-inline-picker-more:focus-visible {
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a));
+}
+
+
+/* ── Chevron triggers, wherever they are ───────────────────────────────────
+   The model picker's chevron and the preview title bar's are the same kind of
+   control: a small glyph button that opens a menu. R173T74 gave the first one
+   the corrections a touch device needs and the second was left behind, so the
+   same gesture behaved differently depending on which surface a reader was on.
+
+   Listed together rather than copied, so a third chevron inherits them by
+   being added here instead of by someone remembering. */
+.ai-assistant-panel-inline-picker-more,
+.ai-assistant-panel-attachment-preview-menu-btn {
+    /* Safari and Firefox each apply their own button chrome, which renders the
+       glyph at a different height from the control beside it. */
+    -webkit-appearance: none;
+    appearance: none;
+    /* Removes the ~300ms tap delay and the grey flash on iOS Safari and Android
+       Chrome, both of which read as a control that did not respond. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+/* Pressed feedback: on touch there is no hover to precede it, so this is the
+   only signal the press registered. */
+.ai-assistant-panel-inline-picker-more:active,
+.ai-assistant-panel-attachment-preview-menu-btn:active {
+    background: color-mix(in srgb, var(--pst-color-surface, #fff) 84%, #808080 16%);
+}
+@media (pointer: coarse) {
+    /* The same 44px both get: a thumb does not aim differently because the
+       control is in a dialog rather than a composer. */
+    .ai-assistant-panel-attachment-preview-menu-btn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+    .ai-assistant-panel-attachment-preview-menu-btn svg { width: 1.1rem; height: 1.1rem; }
+}
+
+
+/* Menu item glyphs: decoration in the strict sense -- aria-hidden, with the
+   accessible name coming from the label text, so removing an icon changes
+   nothing announced. */
+.ai-assistant-panel-changed-file-menu-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    /* Aligned to the label's first line rather than centred on the whole item:
+       a two-line hint would otherwise drag the glyph to the middle of a block
+       it is meant to head. */
+    margin-top: .05rem;
+    color: var(--pst-color-text-muted, #71717a);
+}
+.ai-assistant-panel-changed-file-menu-icon svg { width: .85rem; height: .85rem; }
+.ai-assistant-panel-changed-file-menu-text { display: grid; gap: .05rem; min-width: 0; }
+.ai-assistant-panel-changed-file-menu-item:hover .ai-assistant-panel-changed-file-menu-icon,
+.ai-assistant-panel-changed-file-menu-item:focus-visible .ai-assistant-panel-changed-file-menu-icon {
+    color: inherit;
+}
+@media (forced-colors: active) {
+    .ai-assistant-panel-changed-file-menu-icon { color: ButtonText; }
 }

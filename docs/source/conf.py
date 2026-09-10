@@ -49,6 +49,7 @@ extensions = [
     "sphinx.ext.intersphinx",  # Link to other projects’ documentation
     # "sphinx.ext.linkcode",  # Add external links to source code 'sphinx.ext.linkcode', 'numpydoc.linkcode'
     'sphinx.ext.mathjax',  # Render mathematical expressions using MathJax.
+    'sphinx.ext.autodoc',  # https://github.com/sglvladi/Sphinx-RTD-Tutorial/blob/master/docs/source/conf.py
     'sphinx.ext.viewcode',  # Add links to highlighted source code
     # Third-party extensions (load after built-ins and matplotlib/IPython)
     # sphinx-design extension (the modern replacement for sphinx-panels) or sphinx-togglebutton.
@@ -63,12 +64,11 @@ extensions = [
     # "sphinxext.rediraffe",
     # "myst_parser",
     # "ablog",
-    # "sphinxcontrib.youtube",
-    "_sphinx_ext._sphinxcontrib_youtube",
-    "_sphinx_ext.youtube_catalog",
+    "_sphinx_ext._pydata_component_list",
+    "_sphinx_ext._sphinx_gallery_grid",
+    "_sphinx_ext._sphinxcontrib_youtube",  # "sphinxcontrib.youtube",
+    "_sphinx_ext._sphinx_youtube_gallery",
     "_sphinx_ext._sphinx_ai_assistant",
-    "_sphinx_ext._pydata_sphinx_theme.gallery_directive",
-    "_sphinx_ext._pydata_sphinx_theme.component_directive",
 ]
 
 # -- Sitemap -----------------------------------------------------------------
@@ -82,6 +82,19 @@ extensions = [
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This patterns also effect to html_static_path and html_extra_path
+# Exclude patterns for files and directories to ignore when looking for source files
+# Prevent Sphinx from scanning temporary files, virtualenvs, or root build dirs
+exclude_patterns = [  # glob-style
+    "build",  # Ignore the _build directory where generated files are stored
+
+    # "_tags",
+    # "learn",
+    # "learn/hands-on/edtech/**/includes/*.inc",
+]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -102,7 +115,7 @@ language = None  # 'en' (English)
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = []
+# exclude_patterns = []
 
 default_role = 'literal'
 

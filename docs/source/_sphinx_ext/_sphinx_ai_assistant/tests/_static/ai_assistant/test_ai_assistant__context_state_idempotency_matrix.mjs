@@ -91,6 +91,7 @@ ok(enabledFn() === false, 'when storage becomes readable, explicit stored tab pr
   var _TRANSCRIPT_PERSIST_PERMISSION_KEY = 'remember-pref';
   var _CONVERSATION_ID_KEY='conv';
   var _TRANSCRIPT_KEY='transcript', _FEEDBACK_STATE_KEY='feedback';
+  var _TRANSCRIPT_COUNT_KEY = 'ai-assistant-transcript-count';
   var _PINNED_PAGE_CONTEXT_KEY='pins', _CURRENT_PAGE_CONTEXT_EXCLUSIONS_KEY='exclusions', _CONSUMED_PAGE_CONTEXT_KEY='consumed';
   var _conversationId='conv-live';
   let loads=0, saves=0, deletes=[];
@@ -121,7 +122,12 @@ ok(enabledFn() === false, 'when storage becomes readable, explicit stored tab pr
   ok(storage.get('ctx-pref')==='false', 'Remember OFF leaves current-page preference untouched');
   const deleteCount=deletes.length;
   setRememberFn(false);
-  ok(storage.get('remember-pref')==='false' && deletes.length===deleteCount+7, 'repeated Remember OFF remains state-idempotent while pruning persisted conversation state');
+  // Eight, not seven: the transcript integrity marker is pruned with the
+  // transcript it describes. A marker left behind would make the next restore
+  // compare a fresh conversation against a stale expected length and report a
+  // shortfall that never happened.
+  ok(storage.get('remember-pref')==='false' && deletes.length===deleteCount+8, 'repeated Remember OFF remains state-idempotent while pruning persisted conversation state');
+  ok(deletes.includes('ai-assistant-transcript-count'), 'the transcript integrity marker is pruned alongside the transcript');
   setRememberFn(true);
   ok(storage.get('remember-pref')==='true', 'Remember OFF→ON can be re-enabled after repeated OFF without corrupting control state');
 }

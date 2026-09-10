@@ -92,6 +92,12 @@ def setup(app):
     app.add_config_value(
         "video_download_limit", utils.DEFAULT_DOWNLOAD_LIMIT, "env", types=[int]
     )
+    app.add_config_value(
+        "video_download_max_bytes",
+        utils.DEFAULT_DOWNLOAD_MAX_BYTES,
+        "env",
+        types=[int],
+    )
     app.connect("builder-inited", _backfill_epub_handlers)
     app.connect("builder-inited", utils.configure_image_download)
     app.connect("env-merge-info", utils.merge_download_images)

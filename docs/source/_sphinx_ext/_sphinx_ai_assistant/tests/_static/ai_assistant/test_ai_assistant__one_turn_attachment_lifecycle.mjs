@@ -63,7 +63,12 @@ ok(clear.includes("_composerReplayAttachmentContext = ''"), 'clear consumes expl
 
 ok(record.includes('entry.resources = resourceManifest'), 'transcript stores canonical live resource manifest');
 ok(load.includes('_sanitizeTurnResourceManifest') && load.includes('_TURN_RESOURCE_PERSIST_MAX_ITEMS'), 'persisted transcript revalidates compact resource manifests');
-ok(src.includes('{ resources: m.resources || m.attachments, resourceRuntime: m.resourceRuntime || null }'), 'transcript replay uses common user-turn renderer with legacy metadata fallback plus memory-only preview capability');
+// The replay meta object gained a restored-activity field; the two contracts
+// this assertion guards -- legacy `attachments` fallback and memory-only
+// runtime -- are unchanged and asserted individually rather than as one literal.
+ok(src.includes('resources: m.resources || m.attachments,'), 'transcript replay keeps the legacy metadata fallback');
+ok(src.includes('resourceRuntime: m.resourceRuntime || null,'), 'transcript replay keeps preview capability memory-only');
+ok(src.includes('restoredActivity: m.activity || null'), 'transcript replay carries the persisted activity summary');
 ok(append.includes('turnMeta'), 'live message append uses same turn metadata path');
 
 ok(render.includes("files.className = 'ai-assistant-panel-attachments ai-assistant-panel-user-turn-attachments'"), 'user turn reuses composer attachment-strip classes');

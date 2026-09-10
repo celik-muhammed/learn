@@ -1573,7 +1573,16 @@
     function _panelUnlockComposerAfterCancel() {
         var input = document.getElementById('ai-assistant-panel-input');
         var sendBtn = document.getElementById('ai-assistant-panel-send');
-        var body = document.getElementById('ai-assistant-panel-body');
+        // Boundary defaults to the transcript, but a caller may widen it.
+        //
+        // The transcript is right for a menu that has room in it. On a short
+        // panel it is not: the menu was clamped to whatever height the body
+        // happened to have -- 181px in one report -- and its lower rows became
+        // unreachable. A menu with items you cannot see is worse than one that
+        // overlaps the composer.
+        var body = (opts && opts.boundarySelector)
+            ? document.querySelector(opts.boundarySelector)
+            : document.getElementById('ai-assistant-panel-body');
         if (body) _hideTypingIndicator(body);
         if (input) input.disabled = false;
         if (sendBtn) sendBtn.disabled = _attachmentStagePending > 0;
@@ -1720,6 +1729,14 @@
         // Filled 16x16 glyph; inline SVG inherits currentColor (dark-mode safe).
         // Mirror of new-chat-compose.svg / _SVG_NEW_CHAT_COMPOSE in _static/__init__.py.
         newChatCompose: '<svg viewBox="0 0 16 16" fill="none"><path fill="currentColor" d="M13.75 10c0-2.389-.983-4.131-1.696-5.08-.19.437-.74 1.33-2.054 1.33-.765 0-1.3-.334-1.643-.712-.306-.338-.455-.706-.513-.902l-.01-.037c-.097-.36-.176-.738-.253-1.079-.079-.35-.159-.676-.262-.98-.108-.318-.24-.6-.412-.844-.865 1.82-2.002 3.05-2.899 4.151C2.98 7.111 2.25 8.22 2.25 10c0 1.545.923 2.955 2.374 3.831-.074-.277-.115-.565-.123-.855l-.001-.104c0-.957.522-1.784 1.107-2.472.58-.685 1.352-1.371 1.952-1.968l.024-.022c.245-.22.622-.213.858.022.613.61 1.372 1.31 1.956 2.012.575.691 1.103 1.52 1.103 2.428l-.001.104c-.008.29-.049.578-.123.855 1.45-.876 2.374-2.286 2.374-3.831M15 10c0 2.817-2.241 5.046-5.036 5.756l-.133.032c-.297.07-.601-.085-.72-.366-.118-.28-.016-.607.242-.77l.053-.035c.528-.362.824-.967.843-1.674l.001-.07c0-.443-.271-.977-.814-1.63-.416-.5-.92-.99-1.438-1.494-.52.5-1.019.965-1.438 1.46-.533.627-.81 1.164-.81 1.663l.001.071c.02.73.335 1.353.896 1.71.258.163.36.488.241.77-.114.272-.403.425-.691.371l-.028-.006C3.313 15.116 1 12.862 1 10c0-2.22.957-3.611 2.039-4.941C4.119 3.73 5.305 2.473 6.104.4l.014-.033c.073-.16.21-.284.38-.338.181-.057.378-.03.536.076l.074.05c.756.533 1.148 1.26 1.394 1.983.126.37.218.75.299 1.107.083.368.152.703.24 1.03l.008.026c.025.074.096.245.235.398.142.157.356.301.716.301.34 0 .537-.111.66-.222.137-.123.216-.277.26-.385l.012-.036c.03-.094.063-.263.101-.478.018-.1.04-.221.063-.312.009-.035.03-.123.075-.208.013-.026.082-.165.242-.263.097-.06.24-.109.408-.088.142.017.248.078.319.135l.028.023.049.046C12.6 3.575 15 5.996 15 10"/></svg>',
+        // Git logomark, from the official asset. `fill="currentColor"` rather
+        // than one of the three published fixed-colour variants: the button
+        // already carries the accent token, which has a light and a dark value
+        // and a forced-colours fallback, so inheriting gives correct contrast
+        // in every theme from one asset. Shipping white/black/orange copies
+        // would mean choosing between them at runtime and getting the
+        // forced-colours case wrong.
+        gitMark:'<svg viewBox="0 0 78 78" width="14" height="14" fill="currentColor" aria-hidden="true"><path transform="translate(10 10) rotate(-45 29 29)" d="M5,58c-2.76142,0 -5,-2.23858 -5,-5v-48c0,-2.76142 2.23858,-5 5,-5h33v12.54404c-2.06553,0.94801 -3.5,3.03446 -3.5,5.45596c0,0.73514 0.13221,1.43941 0.37415,2.09031l-15.28384,15.28384c-0.6509,-0.24194 -1.35517,-0.37415 -2.09031,-0.37415c-3.31371,0 -6,2.68629 -6,6c0,3.31371 2.68629,6 6,6c3.31371,0 6,-2.68629 6,-6c0,-0.73514 -0.13221,-1.43941 -0.37415,-2.09031l14.87415,-14.87415l0,11.50851c-2.06553,0.94801 -3.5,3.03446 -3.5,5.45596c0,3.31371 2.68629,6 6,6c3.31371,0 6,-2.68629 6,-6c0,-2.42149 -1.43447,-4.50795 -3.5,-5.45596l0,-12.08808c2.06553,-0.94801 3.5,-3.03446 3.5,-5.45596c0,-2.42149 -1.43447,-4.50795 -3.5,-5.45596l0,-12.54404h10c2.76142,0 5,2.23858 5,5v48c0,2.76142 -2.23858,5 -5,5z"/></svg>',
         exportTxt:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
         // Pencil — Edit & resend a previous question.
         editAns:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
@@ -2439,8 +2456,18 @@
         // ── 1. Extract fenced code blocks → placeholders ──────────────────
         // Must happen first so inner backtick/asterisk patterns are not
         // processed by the inline rules below.
+        // The opening run length is captured and back-referenced so a fence
+        // closes only on a run of the same length. The previous pattern
+        // hardcoded exactly three backticks, which silently truncated any
+        // generated file that legitimately CONTAINS a fence -- the ordinary
+        // case for this panel, whose whole job is editing Markdown and reST
+        // documentation full of code-block examples. A model wrapping
+        // `guide.md` in four backticks had its file cut at the first inner
+        // ``` and the truncated head was registered as the complete file.
+        // CommonMark defines exactly this rule; matching it is a return to
+        // the standard, not a local dialect.
         var codeBlocks = [];
-        var result = text.replace(/```([^\n`]*)\n?([\s\S]*?)```/g, function (_, info, code) {
+        var result = text.replace(/(`{3,})([^\n`]*)\n?([\s\S]*?)\1/g, function (_, fence, info, code) {
             var idx = codeBlocks.length;
             var parsedInfo = _parseCodeFenceInfo(info || '');
             codeBlocks.push({
@@ -2676,6 +2703,197 @@
      *
      * @param {HTMLElement} root  Bubble element to scan (not the whole panel).
      */
+
+    // ── Contextual artifact naming ────────────────────────────────────────
+    //
+    // Generated code used to download as `snippet-1.py` / `snippet-<stamp>.py`
+    // regardless of what it was. Every save therefore needed a manual rename
+    // before it meant anything, and two answers in one session produced two
+    // files whose names said nothing about which was which.
+    //
+    // The name is derived deterministically from context the reader can
+    // already see -- the nearest preceding heading in the same answer, else
+    // the question that produced it -- so the same answer always yields the
+    // same filename. It is a *suggested download name* only: it never becomes
+    // a ledger key, never merges two blocks into one logical file, and an
+    // explicit `file=` path always outranks it (those blocks are owned by the
+    // File drafts surface and never reach this function).
+    var _ARTIFACT_NAME_MAX_CHARS = 48;
+    var _ARTIFACT_NAME_RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+
+    function _artifactNameSlug(value) {
+        var text = String(value == null ? '' : value)
+            .normalize ? String(value == null ? '' : value).normalize('NFKD') : String(value == null ? '' : value);
+        text = text.toLowerCase()
+            .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, _ARTIFACT_NAME_MAX_CHARS)
+            .replace(/-+$/g, '');
+        if (!text || _ARTIFACT_NAME_RESERVED.test(text)) return '';
+        return text;
+    }
+
+    /** Nearest heading text preceding `wrap` inside the same answer bubble. */
+    function _artifactNameFromHeading(root, wrap) {
+        if (!root || !wrap || typeof root.querySelectorAll !== 'function') return '';
+        var nodes;
+        try { nodes = root.querySelectorAll('h1,h2,h3,h4,h5,h6,.ai-md-pre-wrap'); }
+        catch (_) { return ''; }
+        var heading = '';
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i] === wrap) break;
+            if (/^H[1-6]$/.test(nodes[i].tagName || '')) heading = nodes[i].textContent || '';
+        }
+        return _artifactNameSlug(heading);
+    }
+
+    /** Most recent user question in this conversation, slugified. */
+    function _artifactNameFromQuestion() {
+        try {
+            for (var i = _transcript.length - 1; i >= 0; i--) {
+                var entry = _transcript[i];
+                if (entry && entry.role === 'user' && typeof entry.text === 'string') {
+                    return _artifactNameSlug(entry.text);
+                }
+            }
+        } catch (_) {}
+        return '';
+    }
+
+    /**
+     * Suggested download filename for one unnamed code block.
+     *
+     * @param {HTMLElement} root  Answer bubble being scanned.
+     * @param {HTMLElement} wrap  The block's `.ai-md-pre-wrap` wrapper.
+     * @param {string} lang       Fence language tag, may be empty.
+     * @param {string} ext        Extension already resolved from `_LANG_EXT`.
+     * @param {number} index      Zero-based position among unnamed blocks.
+     * @param {number} total      Count of unnamed blocks in this answer.
+     * @returns {string} A filename that is always non-empty and extension-correct.
+     */
+    function _artifactContextualFilename(root, wrap, lang, ext, index, total) {
+        var base = _artifactNameFromHeading(root, wrap) || _artifactNameFromQuestion();
+        var langSlug = _artifactNameSlug(lang);
+        if (!base) base = langSlug ? langSlug + '-snippet' : 'snippet';
+        // Disambiguate only when the answer actually holds several unnamed
+        // blocks; a single block gets the clean name.
+        var suffix = (total > 1) ? ('-' + (index + 1)) : '';
+        // Reserve the suffix's room BEFORE truncating the base. Truncating the
+        // joined string instead dropped the index whenever the base already
+        // filled the budget, so every block in a long-question answer resolved
+        // to one identical filename -- silently overwriting on download, which
+        // is the exact collision this resolver exists to prevent.
+        var room = Math.max(1, _ARTIFACT_NAME_MAX_CHARS - suffix.length);
+        var stem = base.slice(0, room).replace(/-+$/g, '') + suffix;
+        if (!stem || stem === suffix) stem = 'snippet' + suffix;
+        return stem + '.' + ext;
+    }
+
+    /**
+     * Join two actions on one artifact into a single segmented control.
+     *
+     * Used by both artifact surfaces -- the snippet cards inside an answer and
+     * the Presented files section beneath it. They are the same control on the
+     * same kind of object, and a reader meets them minutes apart; two
+     * implementations would drift in exactly the details that are hard to see
+     * and easy to get wrong.
+     *
+     * The two segments stay two real <button> elements. Nesting one inside the
+     * other is invalid HTML and browsers resolve it by dropping one of the two
+     * click targets, with which one varying by engine. The joining is
+     * presentational; `role="group"` with a name is what carries the
+     * relationship to assistive technology.
+     *
+     * @param {string} ariaLabel  Names the artifact both segments act on.
+     * @param {HTMLElement} primary   Large segment (preview).
+     * @param {HTMLElement} secondary Small segment (download).
+     * @returns {HTMLElement}
+     */
+    /**
+     * Give a button a leading icon and a text label.
+     *
+     * `innerHTML` is used for the glyph because ICONS entries are build-time
+     * constants in this file, never user or model content -- the same
+     * treatment every other icon in the panel gets. The label goes in its own
+     * element afterwards, so the accessible name comes from `aria-label` and
+     * the glyph never becomes part of the announced text.
+     *
+     * @param {HTMLElement} btn   Button to decorate, in place.
+     * @param {string} iconSvg    Entry from ICONS.
+     * @param {string} labelText  Visible label.
+     * @returns {HTMLElement} The same button.
+     */
+    function _decorateIconButton(btn, iconSvg, labelText) {
+        if (!btn) return btn;
+        var glyph = document.createElement('span');
+        glyph.className = 'ai-md-artifact-btn-icon';
+        glyph.setAttribute('aria-hidden', 'true');
+        glyph.innerHTML = iconSvg;      // ICONS constant, not user content.
+        btn.textContent = '';
+        btn.appendChild(glyph);
+        var label = document.createElement('span');
+        label.className = 'ai-md-artifact-btn-label';
+        label.textContent = labelText;
+        btn.appendChild(label);
+        return btn;
+    }
+
+    function _buildArtifactSegmentGroup(ariaLabel, primary, secondary) {
+        var group = document.createElement('span');
+        group.className = 'ai-md-artifact-group';
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', ariaLabel);
+        group.appendChild(primary);
+        var sep = document.createElement('span');
+        sep.className = 'ai-md-artifact-sep';
+        sep.setAttribute('aria-hidden', 'true');
+        group.appendChild(sep);
+        group.appendChild(secondary);
+        return group;
+    }
+
+    /**
+     * Number every remaining code block in a finished answer.
+     *
+     * `_collapseArtifactPreBlocks` numbers the complete files it collapses.
+     * This numbers what is left -- short files, and every snippet that never
+     * declared a path -- so a reader can cite a line in any block they are
+     * looking at rather than only in the ones large enough to have been
+     * collapsed.
+     *
+     * Runs at finalization for the same reason the collapse does: on the
+     * per-chunk path it would wrap a block whose fence is still arriving and
+     * re-wrap it on every chunk.
+     *
+     * Idempotent through the sheet marker, so a re-render cannot nest one
+     * sheet inside another.
+     */
+    function _numberRemainingCodeBlocks(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') return 0;
+        var wraps;
+        try { wraps = root.querySelectorAll('.ai-md-pre-wrap'); }
+        catch (_) { return 0; }
+        var numbered = 0;
+        Array.prototype.forEach.call(wraps, function (wrap) {
+            if (wrap.getAttribute('data-ai-line-numbered') === 'true') return;
+            // Already inside a sheet from the collapse pass.
+            if (wrap.parentNode && wrap.parentNode.classList &&
+                    wrap.parentNode.classList.contains('ai-md-file-sheet')) {
+                wrap.setAttribute('data-ai-line-numbered', 'true');
+                return;
+            }
+            var pre = wrap.querySelector('pre.ai-md-pre');
+            var code = pre && pre.querySelector('code');
+            if (!pre || !code) return;
+            _buildLineNumberedSheet(wrap, code.textContent || '',
+                'ai-md-file-sheet ai-md-snippet-sheet');
+            wrap.setAttribute('data-ai-line-numbered', 'true');
+            numbered += 1;
+        });
+        return numbered;
+    }
+
     function _appendArtifactCards(root, activity) {
         if (!root) { return []; }
         var explicitKeys = _syncExplicitCodeArtifacts(root, activity);
@@ -2692,6 +2910,26 @@
         // the latest-revision Changed files surface instead of this snippet list.
         var files = [];
 
+        // Collapse complete files before the cards are built. Called here and
+        // only here: _appendArtifactCards runs once after the stream finishes,
+        // whereas the per-chunk sync would re-wrap a file on every chunk.
+        _collapseArtifactPreBlocks(root);
+        // Everything the collapse pass did not already put in a sheet.
+        _numberRemainingCodeBlocks(root);
+
+        // Blocks carrying an explicit `file=` path are owned by the File
+        // drafts surface, so the contextual namer only ever sees, and only
+        // ever counts, the unnamed remainder. Counting the full list here
+        // would number a lone snippet "-2" because a named file preceded it.
+        var unnamedTotal = 0;
+        wraps.forEach(function (wrap) {
+            var namedPre = wrap.querySelector('pre.ai-md-pre');
+            if (!namedPre || !namedPre.querySelector('code')) return;
+            if (_generatedArtifactSafePath(namedPre.getAttribute('data-artifact-path') || '')) return;
+            unnamedTotal += 1;
+        });
+        var unnamedIndex = 0;
+
         wraps.forEach(function (wrap, i) {
             var pre = wrap.querySelector('pre.ai-md-pre');
             var codeEl = pre && pre.querySelector('code');
@@ -2702,13 +2940,39 @@
             var lang = (pre.getAttribute('data-lang') || '').toLowerCase();
             var ext = _LANG_EXT[lang] || 'txt';
             var typeLabel = lang ? (lang.charAt(0).toUpperCase() + lang.slice(1)) : 'Text';
-            var filename = 'snippet-' + (i + 1) + '.' + ext;
+            var filename = _artifactContextualFilename(root, wrap, lang, ext, unnamedIndex, unnamedTotal);
+            unnamedIndex += 1;
 
             var card = document.createElement('button');
             card.type = 'button';
             card.className = 'ai-md-artifact-card';
-            card.setAttribute('aria-label', 'Download ' + filename);
-            card.title = 'Download ' + filename;
+
+            // Promotion control is built here and appended after the card, so a
+            // reader can give an anonymous fragment an identity at the moment
+            // they realise they want to keep working on it.
+            // Same shape as a tracked-file card: one card that downloads, one
+            // ⋮ for everything else. The snippet card previously carried a
+            // second full-width "Save as file…" button, which read as a peer
+            // of Download and made a two-snippet answer four buttons wide.
+            var snippetMenu = (function (codeText, langTag, suggestedName) {
+                return _buildOverflowMenu('More options for ' + suggestedName, [
+                    { icon: ICONS.terms, label: 'Save as a tracked file\u2026',
+                      hint: 'Gives it revisions, diffs and patch export',
+                      run: function () {
+                          _promoteSnippetToFile(root, codeText, langTag, suggestedName);
+                      } },
+                    { icon: ICONS.exportTxt, label: 'Download as\u2026',
+                      hint: 'Download under a name you choose',
+                      run: function () {
+                          var raw = window.prompt(
+                              'Download this snippet as\\n\\nThe name is used for the ' +
+                              'download only; nothing is tracked.', suggestedName);
+                          if (raw === null) return;
+                          var chosen = _artifactNameSlugPreservingExtension(raw) || suggestedName;
+                          _downloadBlob(codeText, 'text/plain', chosen);
+                      } }
+                ], 'ai-md-artifact-overflow');
+            }(codeEl ? codeEl.textContent : '', lang, filename));
 
             var iconWrap = document.createElement('span');
             iconWrap.className = 'ai-md-artifact-icon';
@@ -2728,19 +2992,61 @@
             info.appendChild(typeEl);
             card.appendChild(info);
 
-            var dlLabel = document.createElement('span');
-            dlLabel.className = 'ai-md-artifact-download-label';
-            dlLabel.textContent = 'Download';
-            card.appendChild(dlLabel);
-
-            (function (codeElRef, fname) {
+            // The big card previews; the small Download control downloads.
+            //
+            // Previously the whole card downloaded, so the only way to see what
+            // a snippet contained was to put a file on disk and open it. A
+            // quick check before committing to a download is what a reader
+            // wants most of the time, and it is the cheaper of the two actions
+            // to get wrong.
+            //
+            // Download is therefore a SIBLING button, not a span inside the
+            // card: a button nested in a button is invalid, and browsers
+            // resolve it by ignoring one of the two click targets -- which one
+            // varies. Siblings also give the download control its own focus
+            // stop and its own accessible name.
+            (function (codeText, fname, label) {
+                card.setAttribute('aria-label', 'Preview ' + fname);
+                card.title = 'Preview ' + fname + ' \u2014 download is the button beside it';
                 card.addEventListener('click', function () {
+                    _openAttachmentPreview({
+                        kind: 'text',
+                        name: fname,
+                        previewText: codeText,
+                        size: _utf8ByteLength(codeText || ''),
+                        lineCount: codeText ? codeText.split(/\r?\n/).length : 0,
+                        status: label + ' \u00b7 answer snippet \u00b7 not a tracked file',
+                        badge: 'SNIPPET',
+                        sendEligible: false,
+                        turnScoped: true
+                    }, card);
+                });
+            }(codeEl ? codeEl.textContent : '', filename, typeLabel));
+
+            var dlBtn = document.createElement('button');
+            dlBtn.type = 'button';
+            dlBtn.className = 'ai-md-artifact-download-label';
+            _decorateIconButton(dlBtn, ICONS.exportTxt, 'Download');
+            dlBtn.setAttribute('aria-label', 'Download ' + filename);
+            dlBtn.title = 'Download ' + filename;
+            (function (codeElRef, fname) {
+                dlBtn.addEventListener('click', function () {
                     _downloadBlob(codeElRef.textContent, 'text/plain', fname);
                 });
             }(codeEl, filename));
             files.push({ filename: filename, content: codeEl.textContent });
 
-            list.appendChild(card);
+            var cardRow = document.createElement('span');
+            cardRow.className = 'ai-md-artifact-row';
+            // Preview and Download read as one control with a divider between
+            // them, not as two buttons that happen to sit together. They stay
+            // two real <button> elements -- a button inside a button is invalid
+            // and browsers drop one of the two click targets -- so the joining
+            // is presentational, and `role="group"` with a name is what tells
+            // assistive technology the two belong to the same artifact.
+            cardRow.appendChild(_buildArtifactSegmentGroup(filename, card, dlBtn));
+            cardRow.appendChild(snippetMenu);
+            list.appendChild(cardRow);
         });
 
         if (files.length > 1) {
@@ -2748,10 +3054,7 @@
             allBtn.type = 'button';
             allBtn.className = 'ai-md-artifact-download-all-btn';
             allBtn.setAttribute('aria-label', 'Download all ' + files.length + ' files as a zip');
-            allBtn.innerHTML = ICONS.exportTxt;
-            var allLbl = document.createElement('span');
-            allLbl.textContent = 'Download all';
-            allBtn.appendChild(allLbl);
+            _decorateIconButton(allBtn, ICONS.exportTxt, 'Download all');
             allBtn.addEventListener('click', function () {
                 var zipBlob = _buildZipBlob(files.map(function (f) {
                     return { name: f.filename, content: f.content };
@@ -14610,7 +14913,11 @@
             var context = _zipEditBuildModelContext(modelRows, referenceRows);
             var userMessage = _zipEditBuildUserMessage(sourceRows, referenceRows, modelInstruction);
             var chatContract = await _chatContractDiscover(st.target.endpoint);
-            if (chatContract !== _CHAT_CONTRACT_V1) throw new Error('ZIP_EDIT_CHAT_CONTRACT_REQUIRED');
+            var chatContractId = chatContract && typeof chatContract === 'object'
+                ? chatContract.contract : chatContract;
+            if (chatContractId !== _CHAT_CONTRACT_V1 && chatContractId !== _CHAT_CONTRACT_V2) {
+                throw new Error('ZIP_EDIT_CHAT_CONTRACT_REQUIRED');
+            }
             if (referenceRows.length && (!st.resourceCaps || !_resourceExecutionAvailable(st.resourceCaps, st.target.model))) {
                 throw new Error('ZIP_EDIT_MEDIA_ROUTE_UNAVAILABLE');
             }
@@ -15043,7 +15350,168 @@
         st.dialog.style.top = top + 'px';
     }
 
+    // ── Preview window: move, resize, minimise, maximise ──────────────────
+    //
+    // The header already carried `data-drag-handle="true"` with no behaviour
+    // behind it anywhere in the file -- an attribute promising something
+    // nothing kept.
+    //
+    // Geometry is remembered for the session but not persisted. A reader who
+    // moves the window once usually wants it there for the next file too;
+    // carrying that across page loads is a different decision, and storing
+    // window coordinates in the same budget as the transcript is not obviously
+    // worth a turn of history.
+    var _previewWindow = { mode: 'normal', geom: null, restore: null };
+    var _PREVIEW_MIN_W = 320;
+    var _PREVIEW_MIN_H = 180;
+    //: How much of the window must remain on screen. Enough that the header --
+    //: which carries every control including close -- can always be grabbed
+    //: again. A window draggable somewhere it cannot be dragged back from is a
+    //: window the reader has lost.
+    var _PREVIEW_KEEP_VISIBLE = 64;
+
+    function _previewViewport() {
+        return {
+            w: Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1),
+            h: Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1)
+        };
+    }
+
+    /** Clamp a proposed geometry so the header stays reachable. */
+    function _previewClamp(geom) {
+        var v = _previewViewport();
+        // The floor is itself capped by the viewport. Written the other way
+        // round, `Math.max(320, …)` wins on a 280px screen and the window is
+        // sized wider than the display it is on -- the minimum meant to keep
+        // the controls usable instead pushes them off the edge.
+        var w = Math.max(Math.min(_PREVIEW_MIN_W, v.w), Math.min(geom.width, v.w));
+        var h = Math.max(Math.min(_PREVIEW_MIN_H, v.h), Math.min(geom.height, v.h));
+        return {
+            width: w,
+            height: h,
+            left: Math.min(Math.max(geom.left, _PREVIEW_KEEP_VISIBLE - w), v.w - _PREVIEW_KEEP_VISIBLE),
+            top: Math.min(Math.max(geom.top, 0), Math.max(0, v.h - _PREVIEW_KEEP_VISIBLE))
+        };
+    }
+
+    /**
+     * Write geometry to the dialog.
+     *
+     * Setting explicit coordinates means dropping the centring transform: with
+     * it still applied every position would be offset by half the window's own
+     * size, which reads as the window jumping away from the pointer on the
+     * first drag.
+     */
+    function _previewApplyGeom(dialog, geom) {
+        if (!dialog) return;
+        if (!geom) {
+            dialog.style.left = ''; dialog.style.top = '';
+            dialog.style.width = ''; dialog.style.height = '';
+            dialog.style.transform = '';
+            return;
+        }
+        var g = _previewClamp(geom);
+        dialog.style.left = g.left + 'px';
+        dialog.style.top = g.top + 'px';
+        dialog.style.width = g.width + 'px';
+        dialog.style.height = g.height + 'px';
+        dialog.style.transform = 'none';
+        _previewWindow.geom = g;
+    }
+
+    /** Current on-screen geometry, whether centred or explicitly placed. */
+    function _previewReadGeom(dialog) {
+        var r = dialog.getBoundingClientRect();
+        return { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+
+    function _previewSetMode(mode) {
+        var st = _attachmentPreviewState;
+        var dialog = st.dialog;
+        if (!dialog) return;
+        var v = _previewViewport();
+        if (mode === 'maximized') {
+            // Remember where it was, or restoring drops the reader back to a
+            // centred default they did not choose.
+            if (_previewWindow.mode !== 'maximized') {
+                _previewWindow.restore = _previewWindow.geom || _previewReadGeom(dialog);
+            }
+            _previewApplyGeom(dialog, { left: 8, top: 8, width: v.w - 16, height: v.h - 16 });
+        } else if (mode === 'minimized') {
+            if (_previewWindow.mode !== 'minimized') {
+                _previewWindow.restore = _previewWindow.geom || _previewReadGeom(dialog);
+            }
+            var g = _previewWindow.restore;
+            _previewApplyGeom(dialog, { left: g.left, top: g.top, width: g.width, height: _PREVIEW_MIN_H });
+        } else if (_previewWindow.restore) {
+            _previewApplyGeom(dialog, _previewWindow.restore);
+        }
+        _previewWindow.mode = mode;
+        dialog.setAttribute('data-window-mode', mode);
+        if (st.minBtn) {
+            st.minBtn.setAttribute('aria-pressed', mode === 'minimized' ? 'true' : 'false');
+        }
+        if (st.maxBtn) {
+            st.maxBtn.setAttribute('aria-pressed', mode === 'maximized' ? 'true' : 'false');
+            st.maxBtn.setAttribute('aria-label',
+                mode === 'maximized' ? 'Restore preview size' : 'Maximise preview');
+        }
+    }
+
+    /** Pointer-drag the window by its header. */
+    function _previewBindDrag(dialog, header) {
+        var active = null;
+        header.addEventListener('pointerdown', function (ev) {
+            // Buttons in the header are controls, not handles.
+            if (ev.button !== 0 || (ev.target && ev.target.closest &&
+                    ev.target.closest('button'))) return;
+            var start = _previewReadGeom(dialog);
+            active = { x: ev.clientX, y: ev.clientY, geom: start };
+            // Capture so the drag survives the pointer leaving the header --
+            // otherwise a fast drag drops the window wherever it lost contact.
+            try { header.setPointerCapture(ev.pointerId); } catch (_) {}
+            dialog.setAttribute('data-dragging', 'true');
+            ev.preventDefault();
+        });
+        header.addEventListener('pointermove', function (ev) {
+            if (!active) return;
+            _previewApplyGeom(dialog, {
+                left: active.geom.left + (ev.clientX - active.x),
+                top: active.geom.top + (ev.clientY - active.y),
+                width: active.geom.width,
+                height: active.geom.height
+            });
+            if (_previewWindow.mode === 'maximized') _previewWindow.mode = 'normal';
+        });
+        function end(ev) {
+            if (!active) return;
+            active = null;
+            try { header.releasePointerCapture(ev.pointerId); } catch (_) {}
+            dialog.removeAttribute('data-dragging');
+        }
+        header.addEventListener('pointerup', end);
+        header.addEventListener('pointercancel', end);
+        // Double-click is the affordance readers already expect from a title
+        // bar, and it costs no additional control.
+        header.addEventListener('dblclick', function (ev) {
+            if (ev.target && ev.target.closest && ev.target.closest('button')) return;
+            _previewSetMode(_previewWindow.mode === 'maximized' ? 'normal' : 'maximized');
+        });
+    }
+
+    /** Reset window mode on close; geometry survives, mode does not. */
+    function _previewResetMode() {
+        if (_previewWindow.mode === 'minimized') {
+            // A minimised window reopening as a title bar looks like a broken
+            // preview. Position is a preference; collapsed is a transient
+            // state, and reopening is a new intent to read the file.
+            if (_previewWindow.restore) _previewWindow.geom = _previewWindow.restore;
+            _previewWindow.mode = 'normal';
+        }
+    }
+
     function _closeAttachmentPreview(restoreFocus) {
+        _previewResetMode();
         var st = _attachmentPreviewState;
         if (!st.layer) return;
         st.layer.hidden = true;
@@ -15101,13 +15569,84 @@
 
         var close = document.createElement('button');
         close.type = 'button';
+        // Minimise and maximise sit before Close, in the order a reader expects
+        // from a title bar. Close stays last so its position never moves as the
+        // other two change label.
+        var minBtn = document.createElement('button');
+        minBtn.type = 'button';
+        minBtn.className = 'ai-assistant-panel-attachment-preview-window-btn';
+        minBtn.setAttribute('aria-label', 'Minimise preview');
+        minBtn.setAttribute('aria-pressed', 'false');
+        minBtn.title = 'Minimise';
+        minBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="18"></line></svg>';
+        minBtn.addEventListener('click', function () {
+            _previewSetMode(_previewWindow.mode === 'minimized' ? 'normal' : 'minimized');
+        });
+
+        var maxBtn = document.createElement('button');
+        maxBtn.type = 'button';
+        maxBtn.className = 'ai-assistant-panel-attachment-preview-window-btn';
+        maxBtn.setAttribute('aria-label', 'Maximise preview');
+        maxBtn.setAttribute('aria-pressed', 'false');
+        maxBtn.title = 'Maximise';
+        maxBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>';
+        maxBtn.addEventListener('click', function () {
+            _previewSetMode(_previewWindow.mode === 'maximized' ? 'normal' : 'maximized');
+        });
+
+        _attachmentPreviewState.minBtn = minBtn;
+        _attachmentPreviewState.maxBtn = maxBtn;
+        _previewBindDrag(dialog, header);
+        // A window left half off-screen after the viewport shrinks is one the
+        // reader cannot reach; re-clamping on resize keeps it recoverable.
+        window.addEventListener('resize', function () {
+            if (_previewWindow.geom) _previewApplyGeom(dialog, _previewWindow.geom);
+        });
+
+        var close = document.createElement('button');
         close.className = 'ai-assistant-panel-attachment-preview-close';
         close.setAttribute('aria-label', 'Close attachment preview');
         close.innerHTML = ICONS.close;
         close.addEventListener('click', function () { _closeAttachmentPreview(true); });
 
         header.appendChild(heading);
-        header.appendChild(close);
+        // One controls group, appended after the heading.
+        //
+        // Minimise and maximise were appended at their construction site,
+        // which ran before the heading was added, so the title bar rendered as
+        // "minimise maximise title close": the window controls split around
+        // the thing they act on, and Close separated from its two peers.
+        //
+        // Grouping them is what stops that recurring. With three siblings in a
+        // container the order is stated in one place, and adding a fourth
+        // control cannot land it on the far side of the title by accident.
+        // A chevron menu for actions on the file itself, kept separate from the
+        // three window controls beside it: one group acts on the document, the
+        // other on the window showing it, and merging them would make Close
+        // look like a peer of Download.
+        //
+        // Built from the shared menu so it inherits the keyboard behaviour --
+        // Escape returning focus to the trigger, outside-click dismissal, one
+        // menu open at a time -- rather than growing a fourth copy of it.
+        var docMenu = _buildOverflowMenu('File actions', function () {
+            var it = _attachmentPreviewState.item;
+            if (!it) return [];
+            return [
+                { label: 'Download', hint: 'Save this file as it is previewed', icon: ICONS.exportTxt,
+                  run: function () {
+                      _downloadBlob(it.previewText || '', 'text/plain',
+                          _artifactNameSlugPreservingExtension(it.name || '') || 'preview.txt');
+                  } }
+            ];
+        }, 'ai-assistant-panel-attachment-preview-menu-btn', ICONS.chevronDown);
+
+        var controls = document.createElement('div');
+        controls.className = 'ai-assistant-panel-attachment-preview-controls';
+        controls.appendChild(docMenu);
+        controls.appendChild(minBtn);
+        controls.appendChild(maxBtn);
+        controls.appendChild(close);
+        header.appendChild(controls);
         dialog.appendChild(header);
 
         var body = document.createElement('div');
@@ -15382,6 +15921,12 @@
             pre.className = 'ai-assistant-panel-attachment-preview-code';
             pre.textContent = item.previewText;
             st.body.appendChild(pre);
+            // Every preview is numbered, not only the inline file sheet. A
+            // reader asking for a change at a particular line needs to be able
+            // to read that line number off the thing they are looking at --
+            // and the overlay is where a long file is actually read.
+            _buildLineNumberedSheet(pre, item.previewText,
+                'ai-md-file-sheet ai-assistant-panel-attachment-preview-sheet');
             if (item.kind === 'text') {
                 var note = document.createElement('p');
                 note.className = 'ai-assistant-panel-attachment-preview-note';
@@ -15585,8 +16130,41 @@
         return true;
     }
 
+    /**
+     * Drop a continuation whose staged chip has just been removed.
+     *
+     * The chip and the working-file registry are two views of one intent, and
+     * the reader can act on either. Removing the chip without clearing the
+     * registry left the file registered as continuing: inert on an endpoint
+     * that cannot carry working files, and on one that can, a file the reader
+     * had explicitly removed travelling anyway, bound to a revision, as though
+     * they had asked for it.
+     */
+    function _syncContinuationForRemovedItem(item) {
+        if (!item || item.sourceKind !== 'working-file') return;
+        var path = item.relativePath ||
+            (typeof item.name === 'string' ? item.name : '');
+        if (!path) return;
+        var keys = Object.keys(_workingFileContinuations);
+        for (var i = 0; i < keys.length; i++) {
+            var entry = _generatedArtifactLedger[keys[i]];
+            if (!entry) continue;
+            if (entry.path === path || entry.path.split('/').pop() === path) {
+                delete _workingFileContinuations[keys[i]];
+                _generatedArtifactRefreshRefs(keys[i]);
+                break;
+            }
+        }
+        _refreshContinuationTray();
+    }
+
     function _removeComposerResourceItem(item) {
         if (!item) return false;
+        // Runs before the item is detached, while its descriptor is still
+        // readable. Reached from the chip's close button, the attachment
+        // manager, and the Stop continuing menu item -- every path a reader
+        // can take to the same intent.
+        _syncContinuationForRemovedItem(item);
         var previewItem = _attachmentPreviewState.item;
         if (previewItem === item || (
             item.kind === 'page' && previewItem && previewItem.kind === 'page' &&
@@ -16227,6 +16805,14 @@
 
     /** sessionStorage key for the persisted transcript. */
     var _TRANSCRIPT_KEY = 'ai-assistant-transcript';
+    //: Whether the speak hint is collapsed to its icon. Read on build so the
+    //: reader's choice survives the next panel open in the same session.
+    //: Collapsed, never removed: a hint that can only be destroyed is one a
+    //: reader will not risk putting away.
+    var _SPEAK_HINT_COLLAPSED_KEY = 'ai-assistant-speak-hint-collapsed';
+    // Written with every successful transcript save; compared on restore so a
+    // conversation the browser silently truncated can be identified as such.
+    var _TRANSCRIPT_COUNT_KEY = 'ai-assistant-transcript-count';
 
     /**
      * Set of answer indices (0-based) for which feedback has been submitted
@@ -16483,7 +17069,7 @@
             _saveConsumedPageContexts();
             if (_conversationId) _ssSet(_CONVERSATION_ID_KEY, _conversationId);
         } else {
-            _ssDel(_TRANSCRIPT_KEY);
+            _ssDel(_TRANSCRIPT_KEY); _ssDel(_TRANSCRIPT_COUNT_KEY);
             _ssDel(_CONVERSATION_ID_KEY);
             _ssDel(_FEEDBACK_STATE_KEY);
             _ssDel(_PINNED_PAGE_CONTEXT_KEY);
@@ -16500,8 +17086,21 @@
     function _ssGet(key) {
         try { return sessionStorage.getItem(key); } catch (_) { return null; }
     }
+    /**
+     * Write to session storage, reporting whether the write actually landed.
+     *
+     * The previous version swallowed every failure. That is defensible for a
+     * cache and indefensible for the transcript: quota exhaustion, private
+     * browsing and disabled storage all fail here, and the panel went on
+     * showing "Remember conversation" switched on while nothing survived a
+     * reload. A switch that describes a capability the browser is refusing is
+     * worse than no switch, because the reader stops taking their own notes.
+     *
+     * @returns {boolean} True when the value was stored.
+     */
     function _ssSet(key, val) {
-        try { sessionStorage.setItem(key, val); } catch (_) { /* ignore */ }
+        try { sessionStorage.setItem(key, val); return true; }
+        catch (_) { return false; }
     }
     function _ssDel(key) {
         try { sessionStorage.removeItem(key); } catch (_) { /* ignore */ }
@@ -16529,8 +17128,61 @@
                 delete row.resourceRuntime;
                 return row;
             });
-            _ssSet(_TRANSCRIPT_KEY, JSON.stringify(persisted));
-        } catch (_) {}
+            var stored = _ssSet(_TRANSCRIPT_KEY, JSON.stringify(persisted));
+            if (stored) {
+                // An integrity marker, not a duplicate of the data. On reload,
+                // a transcript shorter than its own marker says means the
+                // browser dropped turns -- which otherwise looks exactly like
+                // a complete conversation and is the more dangerous of the two
+                // failures, because nothing about it appears wrong.
+                _ssSet(_TRANSCRIPT_COUNT_KEY, String(persisted.length));
+                _persistenceReportHealthy();
+            } else {
+                _persistenceReportUnavailable('quota');
+            }
+        } catch (_) {
+            _persistenceReportUnavailable('serialization');
+        }
+    }
+
+    // ── Persistence health ────────────────────────────────────────────────
+    var _persistenceUnavailableNotified = false;
+
+    function _persistenceReportHealthy() {
+        _persistenceUnavailableNotified = false;
+    }
+
+    /**
+     * Tell the reader once that this conversation will not survive a reload.
+     *
+     * Once per condition, never per keystroke: a warning that repeats becomes
+     * noise and is dismissed along with the ones that matter. The panel keeps
+     * working from memory either way -- this reports a lost guarantee, not a
+     * broken feature.
+     */
+    function _persistenceReportUnavailable(reason) {
+        if (_persistenceUnavailableNotified) return;
+        _persistenceUnavailableNotified = true;
+        var detail = (reason === 'serialization')
+            ? 'this conversation could not be serialized for storage'
+            : 'browser storage is full, disabled, or unavailable in private browsing';
+        showNotification(
+            'This conversation is available for as long as the page stays open, but it will not ' +
+            'survive a reload \u2014 ' + detail + '.', true);
+    }
+
+    /**
+     * Compare a restored transcript against the count that was written with it.
+     *
+     * @returns {number} Turns the browser dropped, or 0.
+     */
+    function _persistenceRestoredShortfall(restoredLength) {
+        var raw = _ssGet(_TRANSCRIPT_COUNT_KEY);
+        if (raw === null || raw === undefined || raw === '') return 0;
+        var expected = Number(raw);
+        if (!isFinite(expected) || expected <= 0) return 0;
+        var missing = Math.floor(expected) - Math.max(0, Number(restoredLength) || 0);
+        return missing > 0 ? missing : 0;
     }
 
     function _saveFeedbackState() {
@@ -16620,11 +17272,15 @@
      * Defensive: any malformed entry is dropped, never thrown.
      */
     function _loadTranscript() {
-        if (!_persistEnabled()) { _ssDel(_TRANSCRIPT_KEY); _ssDel(_CONVERSATION_ID_KEY); return; }
+        if (!_persistEnabled()) {
+            _ssDel(_TRANSCRIPT_KEY); _ssDel(_CONVERSATION_ID_KEY); _ssDel(_TRANSCRIPT_COUNT_KEY);
+            return;
+        }
         var raw = _ssGet(_TRANSCRIPT_KEY);
         if (!raw) return;
         if (raw.length > _TRANSCRIPT_RESTORE_MAX_STORAGE_CHARS) {
-            _ssDel(_TRANSCRIPT_KEY); _ssDel(_CONVERSATION_ID_KEY); return;
+            _ssDel(_TRANSCRIPT_KEY); _ssDel(_CONVERSATION_ID_KEY); _ssDel(_TRANSCRIPT_COUNT_KEY);
+            return;
         }
         try {
             var arr = JSON.parse(raw);
@@ -16636,6 +17292,8 @@
                         (e.role !== 'user' && e.role !== 'assistant' && e.role !== 'error')) {
                     throw new Error('invalid transcript entry');
                 }
+                var restoredActivity = (e.role === 'assistant')
+                    ? _activityRestoreSummary(e.activity) : null;
                 var model = null;
                 if (e.role === 'assistant' && e.model && typeof e.model === 'object' && !Array.isArray(e.model)) {
                     model = {};
@@ -16656,12 +17314,24 @@
                     displayText: displayText,
                     resources: resources.totalCount ? resources : undefined,
                     ts: Number.isFinite(Number(e.ts)) ? Number(e.ts) : null,
-                    model: model
+                    model: model,
+                    activity: restoredActivity || undefined
                 });
             }
             _transcript = restored;
+            // A truncated restore looks exactly like a complete conversation,
+            // which is why it is the failure worth naming. Reported once, and
+            // only when the marker proves turns are missing.
+            var missing = _persistenceRestoredShortfall(restored.length);
+            if (missing) {
+                showNotification(
+                    missing + ' earlier turn' + (missing === 1 ? '' : 's') +
+                    ' could not be restored \u2014 browser storage dropped ' +
+                    (missing === 1 ? 'it' : 'them') + '. What is shown above is incomplete.', true);
+            }
         } catch (_) {
-            _transcript = []; _ssDel(_TRANSCRIPT_KEY); _ssDel(_CONVERSATION_ID_KEY);
+            _transcript = [];
+            _ssDel(_TRANSCRIPT_KEY); _ssDel(_CONVERSATION_ID_KEY); _ssDel(_TRANSCRIPT_COUNT_KEY);
         }
     }
 
@@ -16712,6 +17382,13 @@
         };
         if (typeof displayText === 'string' && displayText !== text) {
             entry.displayText = displayText.slice(0, _TRANSCRIPT_RESTORE_MAX_TEXT_CHARS);
+        }
+        if (role === 'assistant' && turnMeta && turnMeta.activity) {
+            // Captured at record time, when the rows are final. Capturing
+            // earlier would persist a half-finished timeline; later would race
+            // the next turn reusing the live object.
+            var activitySummary = _activityPersistSummary(turnMeta.activity);
+            if (activitySummary) entry.activity = activitySummary;
         }
         if (role === 'user' && turnMeta) {
             var resourceSource = turnMeta.resources || turnMeta.attachments;
@@ -16824,9 +17501,21 @@
         if (!body) return;
         body.innerHTML = '';
         _renderWelcome(body);
-        // Restore speak banner — _dismissSpeakBanner() sets inline display:none
-        // when the user sends a message; clear it so the banner is visible again
-        // on a fresh conversation exactly as it was on first page load.
+        // Restore the speak hint. `_dismissSpeakBanner()` collapses the row when
+        // the reader sends a message; a cleared conversation is a fresh start,
+        // so it expands again exactly as on first load. The inline display is
+        // also cleared, for a hint put away by the older code path before this
+        // panel was rebuilt.
+        var speakRowEl = document.querySelector('.ai-assistant-panel-speak-row');
+        if (speakRowEl) {
+            speakRowEl.setAttribute('data-collapsed', 'false');
+            var speakToggleEl = speakRowEl.querySelector('.ai-assistant-panel-speak-toggle');
+            if (speakToggleEl) {
+                speakToggleEl.setAttribute('aria-expanded', 'true');
+                speakToggleEl.setAttribute('aria-label', 'Collapse the speak hint');
+                speakToggleEl.title = 'Collapse hint';
+            }
+        }
         var banner = document.getElementById('ai-assistant-panel-speak-banner');
         if (banner) { banner.style.display = ''; }
         var input = document.getElementById('ai-assistant-panel-input');
@@ -16997,6 +17686,22 @@
             // the caller explicitly asks otherwise.
             includeSessionId: _flag('includeSessionId', !sharePolicy),
         };
+    }
+
+    /**
+     * Default content preset for a share destination.
+     *
+     * A local device file and a published link have different exposure, so
+     * they get different defaults. Anything that leaves the device keeps the
+     * privacy-lighter default; a file the reader keeps gets the provenance
+     * that makes a transcript worth keeping.
+     *
+     * @param {string} destination  ``download`` | ``local`` | ``self_contained`` | ``global``
+     * @returns {string} Preset name for :func:`_conversationContentPreset`.
+     */
+    function _conversationPresetForDestination(destination) {
+        return (destination === 'download' || destination === 'local')
+            ? 'complete' : 'standard';
     }
 
     /** Resolve one named content preset into canonical snapshot options. */
@@ -17403,6 +18108,13 @@
         if (session.page_title) lines.push('Page title: ' + session.page_title);
         if (session.page_url) lines.push('Page: ' + session.page_url);
         if (session.exported_at_iso) lines.push('Exported: ' + session.exported_at_iso);
+        // Emitted whenever the snapshot carries it, exactly like every field
+        // above. The snapshot has already had the reader's review applied, so
+        // a format that drops a field the reader chose to include is deciding
+        // for them -- and quietly, since the same export in JSON, YAML, TOML or
+        // HTML carried it. Every other session field here follows the same
+        // if-present rule; this one was simply missing from the list.
+        if (session.id) lines.push('Session: ' + session.id);
         lines.push('', '----------------------------------------', '');
         (snap.records || []).forEach(function (r) {
             if (!r) return;
@@ -18624,9 +19336,78 @@
      * @param {function} [onSuccess]  Called only after a confirmed copy
      *   (Clipboard API resolved, or execCommand succeeded) — never on failure.
      */
+    // ── data-raw without duplicated file bodies ───────────────────────────
+    //
+    // `data-raw` preserves the answer's markdown for copy, share and export.
+    // For a snippet answer that is exactly right: the fenced code IS the
+    // answer, and a few dozen lines cost nothing.
+    //
+    // For a file-editing answer it is waste with consequences. A 600-line
+    // `index.rst` is then held three times -- in the rendered `<pre>`, in
+    // `data-raw`, and in the artifact ledger -- and the `data-raw` copy is the
+    // one that is also serialized into session storage with the transcript,
+    // where it competes with the persistence budget for bytes nobody reads.
+    //
+    // So file bodies are elided to a marker and rehydrated on demand. The
+    // ledger already owns those bytes and already resolves the latest
+    // revision; reading them back at copy time is a lookup, not a second copy.
+    var _RAW_FILE_MARKER_PREFIX = '\u27e6ai-assistant:file-body ';
+    var _RAW_FILE_MARKER_SUFFIX = '\u27e7';
+    var _RAW_ELIDE_MIN_CHARS = 2000;
+
+    /**
+     * Replace complete-file bodies in answer markdown with a short marker.
+     *
+     * Only bodies that both declare a path and are large enough to matter are
+     * elided: below the threshold the marker costs more than the text it
+     * replaces, and an anonymous snippet has no ledger entry to rehydrate from.
+     */
+    function _elideFileBodiesForRaw(markdown) {
+        if (typeof markdown !== 'string' || markdown.length < _RAW_ELIDE_MIN_CHARS) {
+            return markdown;
+        }
+        return markdown.replace(/(`{3,})([^\n`]*)\n?([\s\S]*?)\1/g,
+            function (whole, fence, info, body) {
+                var parsed = _parseCodeFenceInfo(info || '');
+                var path = _generatedArtifactSafePath(parsed && parsed.path ? parsed.path : '');
+                if (!path || body.length < _RAW_ELIDE_MIN_CHARS) return whole;
+                // No newline after the marker: the captured body already
+                // carries its own line terminator, and adding one here made
+                // the round-trip gain a blank line before the closing fence.
+                // A body that ends without a newline round-trips too, because
+                // the marker stands exactly where the body stood.
+                return fence + (info || '') + '\n' +
+                    _RAW_FILE_MARKER_PREFIX + path + _RAW_FILE_MARKER_SUFFIX + fence;
+            });
+    }
+
+    /**
+     * Answer markdown with any elided file bodies restored.
+     *
+     * Rehydrates from the ledger, then from the rendered `<pre>` still in the
+     * bubble, and only then leaves the marker in place -- a visible marker is
+     * better than silently shipping an empty file body into an export.
+     */
+    function _bubbleRawText(bubbleEl, fallback) {
+        var raw = (bubbleEl && bubbleEl.getAttribute('data-raw')) || fallback || '';
+        if (raw.indexOf(_RAW_FILE_MARKER_PREFIX) === -1) return raw;
+        return raw.replace(
+            /\u27e6ai-assistant:file-body ([^\u27e7\n]+)\u27e7/g,
+            function (marker, path) {
+                var entry = _generatedArtifactLedger[path];
+                if (entry && typeof entry.content === 'string') return entry.content;
+                if (bubbleEl && typeof bubbleEl.querySelector === 'function') {
+                    var pre = bubbleEl.querySelector(
+                        'pre.ai-md-pre[data-artifact-path="' + String(path).replace(/"/g, '\\"') + '"]');
+                    var code = pre && pre.querySelector('code');
+                    if (code) return code.textContent || '';
+                }
+                return marker;
+            });
+    }
+
     function copyAnswer(text, bubbleEl, onSuccess) {
-        var raw = (bubbleEl && bubbleEl.getAttribute('data-raw')) || text;
-        copyToClipboard(raw, false, onSuccess);
+        copyToClipboard(_bubbleRawText(bubbleEl, text), false, onSuccess);
     }
 
     /**
@@ -18727,6 +19508,13 @@
      */
     // Language → file extension, for the per-block download button.
     // Falls back to .txt for anything not listed rather than guessing.
+    // Language tag -> file extension.  An unmapped tag falls back to `.txt`,
+    // which is correct for genuinely unknown languages and wrong for a
+    // language this project actually documents: an `rst` answer was being
+    // saved as `snippet-1.txt` on a site whose sources are reStructuredText.
+    // Treat this as a maintained allowlist of the formats this documentation
+    // toolchain emits -- Sphinx sources, Cython, packaging and config files --
+    // not as a generic highlighter table.
     var _LANG_EXT = {
         python: 'py', py: 'py', javascript: 'js', js: 'js', typescript: 'ts',
         ts: 'ts', jsx: 'jsx', tsx: 'tsx', json: 'json', yaml: 'yaml',
@@ -18735,7 +19523,19 @@
         'c++': 'cpp', java: 'java', go: 'go', rust: 'rs', rs: 'rs',
         ruby: 'rb', rb: 'rb', php: 'php', xml: 'xml', markdown: 'md',
         md: 'md', toml: 'toml', ini: 'ini', dockerfile: 'Dockerfile',
-        r: 'r', kotlin: 'kt', swift: 'swift'
+        r: 'r', kotlin: 'kt', swift: 'swift',
+        // Sphinx/reST sources -- the documentation format this panel ships on.
+        rst: 'rst', rest: 'rst', restructuredtext: 'rst',
+        // Cython and typed Python surfaces used across this project.
+        cython: 'pyx', pyx: 'pyx', pxd: 'pxd', pyi: 'pyi',
+        // Config/data formats that otherwise silently became `.txt`.
+        cfg: 'cfg', conf: 'conf', properties: 'properties',
+        csv: 'csv', tsv: 'tsv', jsonc: 'jsonc', jsonl: 'jsonl',
+        mjs: 'mjs', cjs: 'cjs', svg: 'svg', tex: 'tex', bib: 'bib',
+        // Patch text is routinely emitted by review answers.
+        diff: 'diff', patch: 'patch',
+        make: 'mk', makefile: 'Makefile', cmake: 'cmake',
+        text: 'txt', plaintext: 'txt', txt: 'txt'
     };
 
     function _enhanceCodeBlocks(root) {
@@ -18788,9 +19588,17 @@
                     dlBtn.addEventListener('click', function () {
                         var lang = (preRef.getAttribute('data-lang') || '').toLowerCase();
                         var ext  = _LANG_EXT[lang] || 'txt';
-                        var stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                        // Same resolver as the end-of-answer cards, so the
+                        // toolbar button and the card for one block never
+                        // disagree about what the file is called. An explicit
+                        // `file=` path still wins outright.
+                        var explicitPath = _generatedArtifactSafePath(
+                            preRef.getAttribute('data-artifact-path') || '');
+                        var wrapRef = preRef.parentNode;
+                        var rootRef = wrapRef && wrapRef.parentNode;
                         _downloadBlob(codeElRef.textContent, 'text/plain',
-                            'snippet-' + stamp + '.' + ext);
+                            explicitPath || _artifactContextualFilename(
+                                rootRef, wrapRef, lang, ext, 0, 1));
                     });
                 }(codeEl, pre));
                 toolbar.appendChild(dlBtn);
@@ -18940,7 +19748,7 @@
      *   swallowed (user cancelled share sheet — no error toast needed).
      */
     function _shareAnswer(answerText, questionText, bubbleEl, btn, answerIndex) {
-        var raw    = (bubbleEl && bubbleEl.getAttribute('data-raw')) || answerText;
+        var raw    = _bubbleRawText(bubbleEl, answerText);
         var cfg    = _cfg();
         var aiName = cfg.panelTitle || 'AI Assistant';
         var pageUrl = ((typeof _pageUrl === 'function') ? _pageUrl() : ((typeof location !== 'undefined') ? location.href : ''));
@@ -19493,13 +20301,22 @@
             modelList.appendChild(modelHeading);
 
             var activeQuickId = _getActiveModelId(quickModels);
-            // Keep the active model visible even when the configured list is
-            // much longer than the compact six-item quick surface.
+            // Every configured model, active one first.
+            //
+            // This kept the first six and dropped the rest in silence. With a
+            // twelve-model configuration the reader saw six and had no way to
+            // tell that from a six-model configuration -- the menu is titled
+            // "Try a different model" and was quietly answering "these six".
+            // Nothing distinguished the shown from the hidden either: the cut
+            // fell wherever the configured order happened to put it.
+            //
+            // Length is a scrolling problem, not a truncation problem. The
+            // list is height-clamped and scrolls, so a long configuration
+            // costs a scroll rather than six missing entries.
             var quickDisplayModels = [];
             var activeQuickModel = _findModel(quickModels, activeQuickId);
             if (activeQuickModel) quickDisplayModels.push(activeQuickModel);
             quickModels.forEach(function (candidate) {
-                if (quickDisplayModels.length >= 6) return;
                 if (!activeQuickModel || candidate.id !== activeQuickModel.id) {
                     quickDisplayModels.push(candidate);
                 }
@@ -19591,6 +20408,17 @@
                 modelToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
                 modelList.setAttribute('data-open', open ? 'true' : 'false');
                 modelList.hidden = !open;
+                // Re-place the menu now that its content height has changed.
+                //
+                // The placement routine ran when the menu opened, with this
+                // list collapsed, and wrote a `max-height` for that content.
+                // Expanding the list made the menu taller than the bound it was
+                // given, so the new rows sat below a clamp computed before they
+                // existed. A disclosure that changes a bounded element's height
+                // has to tell whatever computed the bound.
+                var ownerMenu = modelList.closest &&
+                    modelList.closest('.ai-assistant-panel-bubble-action-more-menu');
+                if (ownerMenu) _positionBubbleMoreMenuWithinPanelBody(ownerMenu);
                 if (open) {
                     // Selection can change from the header/footer or another
                     // answer menu after this bubble was rendered. Refresh the
@@ -19639,8 +20467,11 @@
                     'ai-assistant-panel-bubble-action--retry';
                 retryMenuBtn.type = 'button';
                 retryMenuBtn.setAttribute('role', 'menuitem');
-                retryMenuBtn.setAttribute('aria-label', 'Retry this answer');
-                retryMenuBtn.title = 'Retry — re-send the same question';
+                retryMenuBtn.setAttribute('aria-label', 'Ask this question again with the current context');
+                // Same correction as the user-bubble control: the question is
+                // re-sent, the request is rebuilt. "The same question" is true;
+                // "the same request" would not be.
+                retryMenuBtn.title = 'Ask again \u2014 the question is re-sent and the request is rebuilt from the current context';
                 // Swapped from ICONS.retry (single-arrow feather glyph) to the
                 // clearer two-arrow sync Octicon — see ICONS.syncRetry above.
                 retryMenuBtn.innerHTML = ICONS.syncRetry;
@@ -19966,7 +20797,12 @@
         if (!cfg.panelApiEnabled || _stubUsesLocalFallback(cfg, active)) {
             return 'Local chat. This conversation stays in this browser tab; this model reply makes no network request.';
         }
-        return 'Privacy boundary: your message and selected page context may be sent to the configured AI endpoint. Retention and AI-training policies depend on that provider.';
+        // Once an endpoint can accept bounded history, the old sentence is no
+        // longer the whole truth, and a privacy notice that understates what
+        // leaves the browser is worse than none. What actually went with each
+        // request is named per turn in that turn's activity receipt; this
+        // notice states the boundary, the receipt states the instance.
+        return 'Privacy boundary: your message, selected page context, and — when the endpoint supports it — a bounded number of recent turns from this conversation may be sent to the configured AI endpoint. Each turn\u2019s activity panel names exactly what was sent. Retention and AI-training policies depend on that provider.';
     }
 
     /** Build the compact DuckDuckGo-inspired status row shown once chat starts. */
@@ -20099,7 +20935,11 @@
                 undefined,
                 m.ts,
                 m.text,
-                { resources: m.resources || m.attachments, resourceRuntime: m.resourceRuntime || null }
+                {
+                    resources: m.resources || m.attachments,
+                    resourceRuntime: m.resourceRuntime || null,
+                    restoredActivity: m.activity || null
+                }
             );
         });
         body.scrollTop = body.scrollHeight;
@@ -20713,6 +21553,193 @@
         });
     }
 
+    /**
+     * Keep a file overflow menu inside the panel body.
+     *
+     * The menu was placed by CSS alone -- `inset-inline-end: 0; top: 100%` --
+     * which is correct only when there happens to be room below and to the
+     * left. A file row near the bottom of the body, or a narrow panel, pushed
+     * the menu past the edge where it was clipped or scrolled out of reach,
+     * and the reader could not get to Save as, Patch or Continue at all.
+     *
+     * The panel already solves this for the bubble action menu and the
+     * feedback popup. Reusing that routine means the file menu flips and
+     * clamps by the same rules rather than acquiring a third set -- and
+     * inherits the transformed/scaled-panel correction, which a fresh
+     * implementation would have got wrong before anyone noticed.
+     */
+    /**
+     * Place a menu against its own trigger, clamped to the viewport.
+     *
+     * Replaces the panel-body clamp for these menus. That routine measures
+     * against `.ai-assistant-panel-body`, and a trigger in the footer sits
+     * outside it: no side "fits", so the fallback clamped the menu into the
+     * body's own box and it appeared in the middle of the panel, unattached to
+     * the button that opened it.
+     *
+     * `position: fixed` is what makes this reliable. The triggers live in four
+     * different subtrees -- artifact rows, the composer footer, the preview
+     * dialog -- with different overflow and transform ancestors, and R173T58
+     * is the cost of assuming a containing block. Fixed coordinates have only
+     * one containing block: the viewport, which is also the thing that clips
+     * the menu.
+     *
+     * @param {HTMLElement} menu Already inserted, so it can be measured.
+     * @param {HTMLElement} btn  The trigger to sit against.
+     */
+    function _positionMenuNearTrigger(menu, btn) {
+        if (!menu || !btn || typeof btn.getBoundingClientRect !== 'function') return;
+        var margin = 8;
+        //: Below this, a floor costs more than the overlap it avoids.
+        var _MENU_MIN_USABLE_H = 200;
+        var vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+        var vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+
+        // Bounded by the panel, not only by the screen.
+        //
+        // A narrow panel inside a wide window has plenty of viewport beside it,
+        // so a viewport clamp let the menu spill onto the page: a list that
+        // belongs to a control in the panel, drawn over the documentation
+        // behind it and reading as part of neither.
+        //
+        // The bound is the intersection of the two. The panel is what the menu
+        // should stay inside; the viewport is what would clip it if the panel
+        // extends past the screen, which it does when the panel is taller than
+        // the window.
+        var bounds = { left: 0, top: 0, right: vw, bottom: vh };
+        // The nearest enclosing surface, not always the panel.
+        //
+        // A menu opened from the preview dialog was bounded by the panel: the
+        // dialog is a floating window of its own, frequently wider and placed
+        // elsewhere, so the menu was clamped to a box its trigger was not in.
+        // The observed `max-width: 1193px` on a preview menu is that -- a
+        // ceiling from the wrong surface.
+        //
+        // Ordered nearest-first, so a menu inside the preview picks the dialog
+        // and one in the transcript picks the panel.
+        var panel = (typeof btn.closest === 'function')
+            ? (btn.closest('.ai-assistant-panel-attachment-preview') ||
+               btn.closest('.ai-assistant-panel'))
+            : null;
+        if (panel && typeof panel.getBoundingClientRect === 'function') {
+            var pr = panel.getBoundingClientRect();
+            // Only when the panel has a real box: a display:none or
+            // zero-height ancestor would otherwise clamp everything into a
+            // point, which is worse than not clamping at all.
+            if (pr.width > 0 && pr.height > 0) {
+                bounds.left = Math.max(bounds.left, pr.left);
+                bounds.top = Math.max(bounds.top, pr.top);
+                bounds.right = Math.min(bounds.right, pr.right);
+                bounds.bottom = Math.min(bounds.bottom, pr.bottom);
+            }
+        }
+
+        menu.style.position = 'fixed';
+        menu.style.maxHeight = '';
+        menu.style.maxWidth = '';
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+
+        // The composer is a floor, not empty space.
+        //
+        // `.ai-assistant-panel-bubble-action-more-menu` has always been bounded
+        // this way -- it clamps within `.ai-assistant-panel-body`, which ends
+        // where the footer begins -- and it reads better for it. A menu drawn
+        // over the composer looks like it belongs to the composer, and hides
+        // the draft the reader is about to send.
+        //
+        // Only for triggers ABOVE the footer. The model picker's own trigger
+        // lives inside it, and a bound above its own button would leave that
+        // menu nowhere to go.
+        var t = btn.getBoundingClientRect();
+        var footerEl = (panel && typeof panel.querySelector === 'function')
+            ? panel.querySelector('.ai-assistant-panel-footer') : null;
+        if (footerEl && typeof footerEl.getBoundingClientRect === 'function') {
+            var fr = footerEl.getBoundingClientRect();
+            // Applied only while it leaves a usable menu.
+            //
+            // Keeping a menu clear of the composer is a readability
+            // preference; showing all of its rows is not. Below a usable
+            // minimum the floor is dropped and the menu may cover the composer
+            // -- overlapping an input the reader is not using beats hiding
+            // choices they are trying to make.
+            if (fr.height > 0 && t.bottom <= fr.top &&
+                    (fr.top - bounds.top) >= _MENU_MIN_USABLE_H) {
+                bounds.bottom = Math.min(bounds.bottom, fr.top);
+            }
+        }
+
+        // Width constrained before measuring, or the rect read below is the
+        // unconstrained one and every later calculation uses a box the menu
+        // will never actually have. `max-content` lets a menu be as wide as its
+        // longest label; this is what stops that from exceeding the panel.
+        menu.style.maxWidth = Math.max(160, (bounds.right - bounds.left) - margin * 2) + 'px';
+
+        var m = menu.getBoundingClientRect();
+
+        // Where the menu's own coordinate origin actually is.
+        //
+        // R173T62 assumed `position: fixed` resolves against the viewport. It
+        // does not when an ancestor has a `transform`, and the panel has one --
+        // `transform: translateY(0) scale(1)` on the open state. A transformed
+        // ancestor becomes the containing block for fixed descendants too, so
+        // viewport coordinates from `getBoundingClientRect()` were being
+        // written into a different coordinate space and the menu landed at an
+        // offset that grew with the panel's position.
+        //
+        // Measuring the menu while pinned at (0,0) gives that origin in
+        // viewport terms, whatever the containing block turns out to be. Every
+        // coordinate below is computed in viewport space and converted once,
+        // at the end -- so this is correct with a transform, without one, and
+        // if the panel gains or drops one later.
+        var origin = { left: m.left, top: m.top };
+        var below = bounds.bottom - t.bottom - margin;
+        var above = t.top - bounds.top - margin;
+
+        // Whichever side has room; when neither does, the larger one, with the
+        // menu bounded to it so the list scrolls instead of overflowing.
+        var placeAbove = (m.height > below) && (above > below);
+        var space = Math.max(120, placeAbove ? above : below);
+        if (m.height > space) menu.style.maxHeight = space + 'px';
+
+        var h = Math.min(m.height, space);
+        var top = placeAbove ? Math.max(bounds.top + margin, t.top - h - 4)
+                             : Math.min(bounds.bottom - h - margin, t.bottom + 4);
+
+        // Aligned to the trigger's trailing edge, then clamped -- so a menu
+        // wider than the space beside it slides along the viewport rather than
+        // hanging off it.
+        var left = t.right - m.width;
+        left = Math.min(
+            Math.max(bounds.left + margin, left),
+            Math.max(bounds.left + margin, bounds.right - m.width - margin));
+
+        // Viewport coordinates converted into the containing block's space.
+        menu.style.left = Math.round(left - origin.left) + 'px';
+        menu.style.top = Math.round(Math.max(bounds.top + margin, top) - origin.top) + 'px';
+        menu.setAttribute('data-placement', placeAbove ? 'above' : 'below');
+    }
+
+    function _positionFileMenuWithinPanelBody(menu) {
+        _positionAnchoredPopupWithinPanelBody(menu, {
+            activeAttr: 'data-open',
+            activeValue: 'true',
+            // Every surface that opens one of these menus, not just the two it
+            // was written for. The model picker lives in the footer, so with
+            // only the artifact-row selectors here the routine found no anchor
+            // and a twelve-item list ran off the bottom of the screen.
+            wrapperSelector: [
+                '.ai-assistant-panel-changed-file-primary',
+                '.ai-md-artifact-row',
+                '.ai-assistant-panel-inline-picker-wrapper',
+                '.ai-assistant-panel-attachment-preview-controls'
+            ].join(','),
+            minWidth: 180,
+            maxWidth: 280,
+            horizontalAlign: 'end'
+        });
+    }
+
     function _positionBubbleMoreMenuWithinPanelBody(menu) {
         var hasModels = !!(menu && menu.classList &&
             menu.classList.contains('ai-assistant-panel-bubble-action-more-menu--has-models'));
@@ -20720,6 +21747,10 @@
             activeAttr: 'data-open',
             activeValue: 'true',
             wrapperSelector: '.ai-assistant-panel-bubble-action-more',
+            // The panel, not the transcript: this menu carries the model
+            // list, the longest in the panel, and a short body left its
+            // last entries off the bottom.
+            boundarySelector: '.ai-assistant-panel',
             minWidth: hasModels ? 224 : 144,
             maxWidth: hasModels ? 320 : 220,
             horizontalAlign: 'start'
@@ -26738,6 +27769,99 @@
     var _CHAT_CONTRACT_KEY_PREFIX = 'ai-assistant-chat-contract:';
     var _CHAT_RESOURCE_KEY_PREFIX = 'ai-assistant-resource-capabilities:';
     var _CHAT_CONTRACT_V1 = 'scikitplot-chat-v1';
+    var _CHAT_CONTRACT_V2 = 'scikitplot-chat-v2';
+
+    // Bounds used only until /health supplies the server's own. They are the
+    // conservative floor, never a negotiation position: exceeding a real
+    // server bound is an error there, not a truncation, so guessing high would
+    // turn a recoverable local decision into a failed request.
+    var _CHAT_HISTORY_FALLBACK = { maxTurns: 6, maxTurnChars: 2000, maxTotalChars: 12000 };
+
+    /**
+     * Parse the server's advertised chat-request capability.
+     *
+     * Returns the newest contract the server accepts that this client also
+     * knows, plus the history bounds it published. A server that advertises
+     * only the legacy `contract` string still resolves to v1, so an older
+     * proxy keeps working with no special case at the call site.
+     */
+    function _chatRequestCapsParse(chat) {
+        if (!chat || typeof chat !== 'object') return null;
+        var offered = [];
+        if (Array.isArray(chat.contracts)) {
+            for (var i = 0; i < chat.contracts.length && i < 8; i++) {
+                if (typeof chat.contracts[i] === 'string') offered.push(chat.contracts[i]);
+            }
+        }
+        if (typeof chat.contract === 'string' && offered.indexOf(chat.contract) === -1) {
+            offered.push(chat.contract);
+        }
+        var contract = '';
+        if (offered.indexOf(_CHAT_CONTRACT_V2) !== -1) contract = _CHAT_CONTRACT_V2;
+        else if (offered.indexOf(_CHAT_CONTRACT_V1) !== -1) contract = _CHAT_CONTRACT_V1;
+        if (!contract) return null;
+
+        var bounds = null;
+        var h = chat.history;
+        if (contract === _CHAT_CONTRACT_V2 && h && typeof h === 'object') {
+            var turns = Number(h.max_turns), tc = Number(h.max_turn_chars), total = Number(h.max_total_chars);
+            if (turns > 0 && tc > 0 && total > 0) {
+                bounds = {
+                    // Clamp to the server's numbers; never exceed them, and
+                    // never expand a smaller server bound upward.
+                    maxTurns: Math.min(Math.floor(turns), 32),
+                    maxTurnChars: Math.min(Math.floor(tc), 32000),
+                    maxTotalChars: Math.min(Math.floor(total), 128000)
+                };
+            }
+        }
+        var wf = (contract === _CHAT_CONTRACT_V2)
+            ? _workingFileCapsParse(chat.working_files) : null;
+        // v2 without usable bounds falls back to v1 semantics rather than
+        // sending history against limits it cannot see.
+        if (contract === _CHAT_CONTRACT_V2 && !bounds) contract = _CHAT_CONTRACT_V1;
+        return { contract: contract, history: bounds, workingFiles: wf };
+    }
+
+    /**
+     * Build bounded conversation history for the next request.
+     *
+     * Newest-first selection, oldest-first emission: when the budget cannot
+     * hold everything, the turns nearest the question are the ones worth
+     * keeping, but the model must still read them in the order they happened.
+     *
+     * Nothing is summarised or elided mid-turn. A turn that does not fit whole
+     * is dropped whole, and the count of dropped turns is returned so the
+     * activity surface can say what was left out. Silent truncation here would
+     * recreate exactly the failure this contract exists to fix: an answer that
+     * looks informed and is not.
+     */
+    function _chatHistoryForRequest(bounds, excludeLatestUser) {
+        var limits = bounds || _CHAT_HISTORY_FALLBACK;
+        var source = Array.isArray(_transcript) ? _transcript : [];
+        var end = source.length;
+        // The current question is sent as `user_message`; including it in
+        // history too would duplicate it in the prompt.
+        if (excludeLatestUser) {
+            while (end > 0 && source[end - 1] && source[end - 1].role !== 'user') end--;
+            if (end > 0) end--;
+        }
+        var picked = [], total = 0, dropped = 0;
+        for (var i = end - 1; i >= 0; i--) {
+            var entry = source[i];
+            if (!entry || (entry.role !== 'user' && entry.role !== 'assistant')) continue;
+            var text = typeof entry.text === 'string' ? entry.text : '';
+            if (!text) continue;
+            if (picked.length >= limits.maxTurns) { dropped++; continue; }
+            if (text.length > limits.maxTurnChars) { dropped++; continue; }
+            if (total + text.length > limits.maxTotalChars) { dropped++; continue; }
+            total += text.length;
+            picked.push({ role: entry.role, content: text });
+        }
+        picked.reverse();
+        return { turns: picked, chars: total, dropped: dropped };
+    }
+
     var _RESOURCE_MODALITIES = ['text','image','animated_image','vector_image','audio','video','document','archive','data','binary'];
     var _RESOURCE_ROUTES = ['native','tool','extract','context','unsupported'];
     var _RESOURCE_AUTO_ROUTE_ORDER = ['native','tool','extract','context'];
@@ -26972,11 +28096,12 @@
      * a custom endpoint may use the same OpenAI-compatible path.
      *
      * @param {string} endpoint
-     * @returns {Promise<string>} Contract id or ''.
+     * @returns {Promise<{contract: string, history: Object|null}>} Negotiated
+     *     contract id (`''` when none) and the server's history bounds.
      */
     async function _chatContractDiscover(endpoint) {
         var origin = _capsOrigin(endpoint);
-        if (!origin) return '';
+        if (!origin) return { contract: '', history: null, workingFiles: null };
         var key = _CHAT_CONTRACT_KEY_PREFIX + origin;
         var cached = _ssGet(key);
         if (cached !== null && cached !== undefined && cached !== '') {
@@ -26984,7 +28109,26 @@
                 var rec = JSON.parse(cached);
                 if (rec && typeof rec.t === 'number' &&
                         Date.now() - rec.t <= _CAPS_TTL_MS) {
-                    return rec.v === _CHAT_CONTRACT_V1 ? _CHAT_CONTRACT_V1 : '';
+                    // Cached records predating v2 hold a bare contract string;
+                    // reading them as v1 keeps a warm session working across
+                    // the upgrade instead of forcing a re-probe.
+                    if (rec.v && typeof rec.v === 'object') {
+                        return _chatRequestCapsParse({
+                            contracts: [rec.v.contract],
+                            history: rec.v.history ? {
+                                max_turns: rec.v.history.maxTurns,
+                                max_turn_chars: rec.v.history.maxTurnChars,
+                                max_total_chars: rec.v.history.maxTotalChars
+                            } : null,
+                            working_files: rec.v.workingFiles ? {
+                                max_files: rec.v.workingFiles.maxFiles,
+                                max_file_chars: rec.v.workingFiles.maxFileChars,
+                                max_total_chars: rec.v.workingFiles.maxTotalChars,
+                                digest: 'sha256'
+                            } : null
+                        }) || { contract: '', history: null, workingFiles: null };
+                    }
+                    return { contract: rec.v === _CHAT_CONTRACT_V1 ? _CHAT_CONTRACT_V1 : '', history: null, workingFiles: null };
                 }
             } catch (_) {}
         }
@@ -26999,20 +28143,19 @@
                 signal: ctrl ? ctrl.signal : undefined
             });
             if (timer) { clearTimeout(timer); timer = null; }
-            if (!res || !res.ok) return '';
+            if (!res || !res.ok) return { contract: '', history: null, workingFiles: null };
             var text = await _readResponseTextBounded(res, _CAPS_MAX_BYTES);
-            if (typeof text !== 'string') return '';
+            if (typeof text !== 'string') return { contract: '', history: null, workingFiles: null };
             var doc = JSON.parse(text);
             var caps = doc && typeof doc === 'object' ? doc.capabilities : null;
             var chat = caps && typeof caps === 'object' ? caps.chat_request : null;
-            var contract = chat && chat.contract === _CHAT_CONTRACT_V1
-                ? _CHAT_CONTRACT_V1 : '';
+            var negotiated = _chatRequestCapsParse(chat);
             var resourceCaps = _resourceTransportCapsParse(caps && caps.resource_transport);
-            _ssSet(key, JSON.stringify({ t: Date.now(), v: contract || false }));
+            _ssSet(key, JSON.stringify({ t: Date.now(), v: negotiated || false }));
             _ssSet(_CHAT_RESOURCE_KEY_PREFIX + origin, JSON.stringify({ t: Date.now(), v: resourceCaps || false }));
-            return contract;
+            return negotiated || { contract: '', history: null, workingFiles: null };
         } catch (_) {
-            return '';
+            return { contract: '', history: null, workingFiles: null };
         } finally {
             if (timer) clearTimeout(timer);
         }
@@ -30649,7 +31792,17 @@
             _debouncedRender();
         });
 
-        // Escape key: clear search when a query is active.
+        // Escape clears an active search filter, and stops there.
+        //
+        // This is a rung on the Escape ladder documented in the shortcuts
+        // sheet, and it was missing from that description: a reader pressing
+        // Escape to leave a filtered sheet saw the panel stay open and read it
+        // as Escape not working, when it had in fact cleared a filter they
+        // were not looking at. The ladder now names this step.
+        //
+        // The guard matters: with no query the handler does nothing and the
+        // event continues to the dispatcher, so Escape on an unfiltered sheet
+        // closes it rather than being swallowed here.
         _input.addEventListener('keydown', function (e) {
             if ((e.key === 'Escape' || e.keyCode === 27) && _query) {
                 e.stopPropagation();
@@ -34129,7 +35282,7 @@
             shortcutRow('Minimize panel', chord.split('+').map(function (t) { return t.trim(); }));
         }
         shortcutRow('Close AI Assistant', ['Escape'],
-            'Escape first stops microphone capture or a live response, then closes the lightest open menu, popup, or sheet; otherwise it closes the AI Assistant.');
+            'Escape first stops microphone capture or a live response, then clears an active search filter, then closes the lightest open menu, popup, or sheet; otherwise it closes the AI Assistant.');
         sectionTitle('Composer');
         shortcutRow('Send message', ['Enter']);
         shortcutRow('New line', ['Shift', 'Enter']);
@@ -34934,8 +36087,23 @@
         var initialMeta = _getExportFormat(initialFmt) || _getExportFormat('html') || liveFormats[0];
         var selectedFmt = initialMeta ? initialMeta.fmt : 'html';
         var selectedDestination = 'download';
-        var contentPreset = 'standard';
-        var contentOptions = _conversationContentPreset('standard');
+        // The default destination is a local device file, so the default
+        // content preset follows it.
+        //
+        // `standard` exists to protect a *published* artifact: it strips
+        // timestamps, model attribution, the session id and the source page.
+        // Applied to a local download it protects nobody -- the reader already
+        // has the conversation on screen -- and removes exactly the provenance
+        // a saved transcript is kept for. A real export produced a file whose
+        // every ts, ts_iso, model_id, model_provider, model_name, session_id
+        // and page_url was null, while the panel told the reader the file was
+        // controlled by their device.
+        //
+        // Changing the preset, not the redaction: the review screen still
+        // shows what will be included and the reader can still choose
+        // `standard` or `minimal`. Nothing is added behind their back.
+        var contentPreset = _conversationPresetForDestination('download');
+        var contentOptions = _conversationContentPreset(contentPreset);
         var boundConversationId = _getConversationId();
         var resultState = null;
         var managedArtifacts = _managedConversationArtifacts;
@@ -35541,7 +36709,20 @@
 
         function _selectDestination(key) {
             if (!destinationButtons[key] || destinationButtons[key].disabled) return false;
-            if (selectedDestination !== key) { selectedDestination = key; _markStale(); }
+            if (selectedDestination !== key) {
+                selectedDestination = key;
+                // A reader who has picked a preset keeps it; one who has not
+                // gets the default for where the file is now going, because
+                // the exposure changed under them.
+                if (contentPreset !== 'custom') {
+                    var next = _conversationPresetForDestination(key);
+                    if (next !== contentPreset) {
+                        contentPreset = next;
+                        contentOptions = _conversationContentPreset(next);
+                    }
+                }
+                _markStale();
+            }
             sheet.setAttribute('data-destination', key);
             Object.keys(destinationButtons).forEach(function (k) {
                 destinationButtons[k].setAttribute('aria-pressed', k === key ? 'true' : 'false');
@@ -38857,6 +40038,60 @@
                 _micRequiresHeldActivation = false;
                 _toggleSpeechRecognition();
             });
+
+            // ── Collapsible, not dismissable ──────────────────────────────
+            //
+            // R173T52 made this hint removable and remembered the removal. That
+            // was the wrong shape: the row is onboarding for a shortcut, and
+            // once removed there was no way back to it short of a new session.
+            // A hint that can only ever be destroyed is one a reader will not
+            // risk putting away.
+            //
+            // Collapsed it keeps the mic glyph and the affordance, at the width
+            // of one icon:
+            //
+            //     expanded    [ 🎤  Speak with your assistant   Space   ‹ ]
+            //     collapsed   [ 🎤 › ]
+            //
+            // Nothing is lost, so there is nothing to regret, and the row costs
+            // almost no height either way.
+            //
+            // A sibling button, not a nested one -- a button inside a button is
+            // invalid and browsers drop one of the two click targets.
+            var speakRow = document.createElement('div');
+            speakRow.className = 'ai-assistant-panel-speak-row';
+            speakRow.appendChild(speakBannerEl);
+
+            var speakToggle = document.createElement('button');
+            speakToggle.type = 'button';
+            speakToggle.className = 'ai-assistant-panel-speak-toggle';
+            speakToggle.innerHTML = ICONS.chevronDown;
+
+            function _applySpeakCollapsed(collapsed) {
+                speakRow.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+                // `aria-expanded` describes the hint the button controls, and
+                // the label says which way the next press goes -- a control
+                // announcing only its current state leaves a screen-reader user
+                // guessing what activating it does.
+                speakToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                speakToggle.setAttribute('aria-label',
+                    collapsed ? 'Show the speak hint' : 'Collapse the speak hint');
+                speakToggle.title = collapsed ? 'Show hint' : 'Collapse hint';
+            }
+
+            speakToggle.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                var collapsed = speakRow.getAttribute('data-collapsed') === 'true';
+                _applySpeakCollapsed(!collapsed);
+                // Session-scoped: a reader who collapsed it once should not
+                // have to again on the next answer, and a new visit is a new
+                // reader as far as this panel can tell.
+                _ssSet(_SPEAK_HINT_COLLAPSED_KEY, collapsed ? '0' : '1');
+            });
+
+            _applySpeakCollapsed(_ssGet(_SPEAK_HINT_COLLAPSED_KEY) === '1');
+            speakRow.appendChild(speakToggle);
+            speakBannerEl = speakRow;
         }
 
         // ── Footer ────────────────────────────────────────────────────────────
@@ -39927,7 +41162,40 @@
         // Inline model picker (Claude-bar style): [model ▾?]
         // Returns null when no models are configured or panelInlineModelPicker=false.
         var inlinePicker = _buildInlineModelPicker();
-        if (inlinePicker) footerActionsRight.appendChild(inlinePicker);
+        if (inlinePicker) {
+            // A second, narrow control beside the picker -- the same shape the
+            // mic already uses (`ai-assistant-mic-expand-wrapper`: a primary
+            // action with its own options chevron next to it).
+            //
+            // The picker itself is unchanged and still opens the full model
+            // sheet, where a model is chosen deliberately from a list with
+            // descriptions. The chevron is for the other case: swapping to a
+            // model the reader already knows, without leaving the composer.
+            // Two intents, two targets, rather than one control that has to
+            // guess which was meant.
+            //
+            // `inlinePicker` stays the button, not the wrapper: the sync code
+            // below writes `aria-expanded` on it, and a wrapper would have
+            // silently swallowed that.
+            var pickerWrap = document.createElement('div');
+            pickerWrap.className = 'ai-assistant-panel-inline-picker-wrapper';
+            pickerWrap.appendChild(inlinePicker);
+
+            var quickModelBtn = _buildOverflowMenu('Try a different model', function () {
+                var live = _quickModelCandidates(_cfg());
+                var currentId = _getActiveModelId(live);
+                return live.map(function (m) {
+                    return {
+                        label: (m.id === currentId ? '\u2713 ' : '') + (m.label || m.id),
+                        hint: m.id === currentId ? 'Current model' : (m.provider || ''),
+                        run: function () { _setActiveModelId(m.id); }
+                    };
+                });
+            }, 'ai-assistant-panel-inline-picker-more', ICONS.chevronDown);
+            pickerWrap.appendChild(quickModelBtn);
+
+            footerActionsRight.appendChild(pickerWrap);
+        }
 
         // Microphone button (shown only when speech is supported): [🎤 mic?]
         //
@@ -45787,7 +47055,35 @@
     }
 
     /** Dismiss the speak-with-assistant banner (one-time, on first interaction). */
+    /**
+     * Put the speak hint away once the reader has started talking to the panel.
+     *
+     * This used to hide the banner element with `display: none`. Since R173T55
+     * the banner sits inside a row alongside a collapse toggle, so hiding it
+     * left the toggle behind on its own -- a control whose only purpose is to
+     * show and hide something that was no longer there. Expanding it produced
+     * an empty row, because the thing it expands had been removed rather than
+     * collapsed.
+     *
+     * Collapsing the row is what the reader's own toggle does, so the automatic
+     * path and the manual one now reach the same state and either can undo the
+     * other. The mic pill stays available, which is the whole point of R173T55:
+     * the hint is put away, never destroyed.
+     */
     function _dismissSpeakBanner() {
+        var row = document.querySelector('.ai-assistant-panel-speak-row');
+        if (row) {
+            row.setAttribute('data-collapsed', 'true');
+            var toggle = row.querySelector('.ai-assistant-panel-speak-toggle');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.setAttribute('aria-label', 'Show the speak hint');
+                toggle.title = 'Show hint';
+            }
+            return;
+        }
+        // No row: an older layout, or the hint was never built. Fall back to
+        // the element itself so this never becomes a no-op.
         var banner = document.getElementById('ai-assistant-panel-speak-banner');
         if (banner) banner.style.display = 'none';
     }
@@ -45866,12 +47162,18 @@
         var bubble = document.createElement('div');
         bubble.className = 'ai-assistant-panel-bubble ai-assistant-panel-bubble--' + role;
 
+        if (role === 'assistant' && turnMeta && turnMeta.restoredActivity) {
+            var restoredEl = _renderRestoredActivity(turnMeta.restoredActivity);
+            if (restoredEl) body.appendChild(restoredEl);
+        }
         if (role === 'assistant') {
             // Render markdown for assistant replies — safe because _mdToHtml
             // escapes all text before applying pattern replacements and only
             // emits known-safe tags.  bubble is NOT user-controlled.
             bubble.innerHTML = _mdToHtml(text);
-            bubble.setAttribute('data-raw', text);  // preserve for copy/export
+            // Elided, not omitted: copy/share/export rehydrate through
+            // _bubbleRawText, so fidelity is unchanged and the bytes are held once.
+            bubble.setAttribute('data-raw', _elideFileBodiesForRaw(text));
             _enhanceCodeBlocks(bubble);
             _makeSectionsCollapsible(bubble);
             _typesetMath(bubble);
@@ -46032,8 +47334,10 @@
             var userRetryBtn = document.createElement('button');
             userRetryBtn.type = 'button';
             userRetryBtn.className = 'ai-assistant-panel-bubble-action ai-assistant-panel-bubble-action--retry';
-            userRetryBtn.setAttribute('aria-label', 'Retry — resend this question as-is');
-            userRetryBtn.title = 'Retry — resend this question as-is';
+            // Not "as-is": the text is identical, the request is not. Naming
+            // the current context is the only claim this panel can support.
+            userRetryBtn.setAttribute('aria-label', 'Ask this question again with the current context');
+            userRetryBtn.title = 'Ask again with the current context \u2014 history, working files and page context as they are now';
             userRetryBtn.innerHTML = ICONS.syncRetry;   // ICONS constant — safe.
             (function (canonicalQuestion) {
                 userRetryBtn.addEventListener('click', function () {
@@ -46043,6 +47347,8 @@
                     input.value = replay.question;
                     _setComposerReplayAttachmentContext(replay.attachmentContext);
                     _updateSendBtnState();
+                    var drift = _turnContextDrift(replay.question);
+                    if (drift) showNotification(drift, false);
                     handleAIPanelSubmit();
                 });
             }(typeof canonicalText === 'string' ? canonicalText : text));
@@ -46220,6 +47526,10 @@
     var _turnActivitySeq = 0;
     var _activeTurnActivity = null;
     var _generatedArtifactLedger = Object.create(null);
+    // Files the reader explicitly asked to continue, keyed by ledger key with
+    // the click timestamp as the value. Explicit opt-in only: a tracked file
+    // is not automatically part of every later question.
+    var _workingFileContinuations = Object.create(null);
     var _generatedArtifactRefs = Object.create(null);
 
     function _activityBoundedText(value, maxChars) {
@@ -46332,6 +47642,784 @@
         return rec;
     }
 
+    // ── Activity that survives a reload ───────────────────────────────────
+    //
+    // The activity timeline is how a reader checks what a turn actually did:
+    // what context was prepared, which files were presented, what was
+    // verified. On reload it vanished entirely, so a remembered conversation
+    // came back as answers with no account of how they were produced -- the
+    // one part a sceptical reader most wants to re-read.
+    //
+    // What is persisted is a SUMMARY, not the live state. The live object owns
+    // budgets, cancellation and file byte accounting, none of which mean
+    // anything after the page is gone; carrying them would persist a
+    // controller that can no longer control anything.
+    //
+    // It is bounded twice over -- step count, label and detail lengths -- for
+    // the same reason the transcript is: this rides in session storage next to
+    // it, and the persistence budget is shared, not per-feature.
+    var _ACTIVITY_PERSIST_MAX_STEPS = 12;
+    var _ACTIVITY_PERSIST_LABEL_CHARS = 120;
+    var _ACTIVITY_PERSIST_DETAIL_CHARS = 240;
+    var _ACTIVITY_STEP_KINDS = ['status', 'command', 'file', 'verify', 'note'];
+    var _ACTIVITY_STEP_STATES = ['done', 'running', 'error', 'skipped'];
+
+    /**
+     * Bounded, serializable summary of a finished turn's activity.
+     *
+     * Reads the rendered rows rather than the internal step map: the rows are
+     * exactly what the reader saw, and reconstructing from internal state
+     * risks persisting something that was never displayed.
+     *
+     * @returns {Array|null} Step summaries, or null when there is nothing to keep.
+     */
+    function _activityPersistSummary(st) {
+        if (!st || !st.list || typeof st.list.querySelectorAll !== 'function') return null;
+        var rows;
+        try { rows = st.list.querySelectorAll('.ai-assistant-panel-activity-step'); }
+        catch (_) { return null; }
+        var out = [];
+        for (var i = 0; i < rows.length && out.length < _ACTIVITY_PERSIST_MAX_STEPS; i++) {
+            var row = rows[i];
+            var labelEl = row.querySelector('.ai-assistant-panel-activity-step-label');
+            var detailEl = row.querySelector('.ai-assistant-panel-activity-step-detail');
+            var label = _activityBoundedText(labelEl ? labelEl.textContent : '',
+                _ACTIVITY_PERSIST_LABEL_CHARS);
+            if (!label) continue;
+            var statEl = row.querySelector('.ai-assistant-panel-diff-stat');
+            if (statEl) {
+                // A DOM element cannot be serialized, but its aria-label is the
+                // same sentence a screen reader already gets. Folding it into
+                // the label keeps a restored row saying what the live row said.
+                var statText = _activityBoundedText(
+                    statEl.getAttribute('aria-label') || statEl.textContent || '', 48);
+                if (statText && label.indexOf(statText) === -1) {
+                    label = _activityBoundedText(label + ' \u2014 ' + statText,
+                        _ACTIVITY_PERSIST_LABEL_CHARS);
+                }
+            }
+            var item = {
+                kind: row.getAttribute('data-kind') || 'status',
+                state: row.getAttribute('data-state') || 'done',
+                label: label
+            };
+            var detail = _activityBoundedText(detailEl ? detailEl.textContent : '',
+                _ACTIVITY_PERSIST_DETAIL_CHARS);
+            if (detail) item.detail = detail;
+            out.push(item);
+        }
+        return out.length ? out : null;
+    }
+
+    /**
+     * Validate a persisted summary read back from session storage.
+     *
+     * Session storage is same-origin but not trustworthy: any script on the
+     * page can write to it. Everything here is re-checked against the same
+     * enumerations the live renderer uses, so a tampered record can only ever
+     * produce a shorter or emptier timeline, never a different kind of one.
+     */
+    function _activityRestoreSummary(raw) {
+        if (!Array.isArray(raw)) return null;
+        var out = [];
+        for (var i = 0; i < raw.length && out.length < _ACTIVITY_PERSIST_MAX_STEPS; i++) {
+            var e = raw[i];
+            if (!e || typeof e !== 'object' || typeof e.label !== 'string') continue;
+            var label = _activityBoundedText(e.label, _ACTIVITY_PERSIST_LABEL_CHARS);
+            if (!label) continue;
+            var item = {
+                kind: _ACTIVITY_STEP_KINDS.indexOf(e.kind) === -1 ? 'status' : e.kind,
+                state: _ACTIVITY_STEP_STATES.indexOf(e.state) === -1 ? 'done' : e.state,
+                label: label
+            };
+            if (typeof e.detail === 'string') {
+                var detail = _activityBoundedText(e.detail, _ACTIVITY_PERSIST_DETAIL_CHARS);
+                if (detail) item.detail = detail;
+            }
+            out.push(item);
+        }
+        return out.length ? out : null;
+    }
+
+    /**
+     * Render a restored timeline: the same markup, without the live controls.
+     *
+     * No Stop button and no running state. The turn is over, and a control
+     * that cannot act is worse than an absent one -- it invites a click that
+     * does nothing. `data-state="done"` says so to CSS and to anything reading
+     * the DOM.
+     */
+    function _renderRestoredActivity(steps) {
+        if (!steps || !steps.length || _cfg().panelActivityTimeline === false) return null;
+        var root = document.createElement('section');
+        root.className = 'ai-assistant-panel-activity';
+        root.setAttribute('data-state', 'done');
+        root.setAttribute('data-open', 'true');
+        root.setAttribute('data-restored', 'true');
+        root.setAttribute('aria-label', 'Assistant activity');
+
+        var head = document.createElement('div');
+        head.className = 'ai-assistant-panel-activity-head';
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'ai-assistant-panel-activity-toggle';
+        toggle.setAttribute('aria-expanded', 'true');
+        var icon = document.createElement('span');
+        icon.className = 'ai-assistant-panel-activity-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = ICONS.pulse;
+        var summary = document.createElement('span');
+        summary.className = 'ai-assistant-panel-activity-summary';
+        // "3 steps" says nothing a reader wanted to know. Naming the outcome --
+        // how many files, how many steps -- is what makes the collapsed row
+        // worth reading without opening it.
+        var fileSteps = steps.filter(function (st) { return st.kind === 'file'; }).length;
+        var summaryBits = [];
+        if (fileSteps) {
+            summaryBits.push(fileSteps + (fileSteps === 1 ? ' file' : ' files'));
+        }
+        summaryBits.push(steps.length + (steps.length === 1 ? ' step' : ' steps'));
+        summary.textContent = summaryBits.join(' \u00b7 ');
+        var caret = document.createElement('span');
+        caret.className = 'ai-assistant-panel-activity-caret';
+        caret.setAttribute('aria-hidden', 'true');
+        caret.innerHTML = ICONS.chevronDown;
+        toggle.appendChild(icon); toggle.appendChild(summary); toggle.appendChild(caret);
+        head.appendChild(toggle);
+
+        var panel = document.createElement('div');
+        panel.className = 'ai-assistant-panel-activity-panel';
+        // Open on restore, unlike a live turn. After a reload the reader has
+        // lost every other cue about what happened; making them click twice to
+        // see the list is the wrong default. What stays collapsed is each
+        // step's DETAIL -- the shape is recoverable at a glance, the specifics
+        // on request.
+        panel.hidden = false;
+        var note = document.createElement('p');
+        note.className = 'ai-assistant-panel-activity-note';
+        note.textContent = 'Restored from this browser session. Live details such as timings are not kept.';
+        var list = document.createElement('div');
+        list.className = 'ai-assistant-panel-activity-list';
+        steps.forEach(function (step) {
+            var row = document.createElement('div');
+            row.className = 'ai-assistant-panel-activity-step';
+            row.setAttribute('data-state', step.state);
+            row.setAttribute('data-kind', step.kind);
+            var indicator = document.createElement('span');
+            indicator.className = 'ai-assistant-panel-activity-step-indicator';
+            indicator.setAttribute('aria-hidden', 'true');
+            indicator.textContent = _activityStepIndicator(step.state, step.kind);
+            var content = document.createElement('div');
+            content.className = 'ai-assistant-panel-activity-step-content';
+
+            if (step.detail) {
+                // A step with a detail is its own disclosure. Every detail
+                // expanded at once is a wall; every detail hidden behind one
+                // outer toggle is all-or-nothing. Per-step is the only shape
+                // that lets a reader inspect exactly the step they doubt.
+                var stepId = 'ai-activity-step-' + (++_FILE_DISCLOSURE_SEQ);
+                var stepBtn = document.createElement('button');
+                stepBtn.type = 'button';
+                stepBtn.className = 'ai-assistant-panel-activity-step-toggle';
+                stepBtn.setAttribute('aria-expanded', 'false');
+                stepBtn.setAttribute('aria-controls', stepId);
+                var stepLabel = document.createElement('span');
+                stepLabel.className = 'ai-assistant-panel-activity-step-label';
+                stepLabel.textContent = step.label;
+                var stepCaret = document.createElement('span');
+                stepCaret.className = 'ai-assistant-panel-activity-step-caret';
+                stepCaret.setAttribute('aria-hidden', 'true');
+                stepCaret.textContent = '\u203a';
+                stepBtn.appendChild(stepLabel); stepBtn.appendChild(stepCaret);
+                var detailEl = document.createElement('div');
+                detailEl.className = 'ai-assistant-panel-activity-step-detail';
+                detailEl.id = stepId;
+                detailEl.hidden = true;
+                // A command step's detail is a command, and reading a command
+                // as prose invites misreading it. Monospace, preserved
+                // whitespace, and never executed by anything here.
+                if (step.kind === 'command') {
+                    detailEl.classList.add('ai-assistant-panel-activity-step-detail--code');
+                }
+                detailEl.textContent = step.detail;
+                stepBtn.addEventListener('click', function () {
+                    var open = stepBtn.getAttribute('aria-expanded') === 'true';
+                    stepBtn.setAttribute('aria-expanded', open ? 'false' : 'true');
+                    detailEl.hidden = open;
+                });
+                content.appendChild(stepBtn);
+                content.appendChild(detailEl);
+            } else {
+                var labelEl = document.createElement('span');
+                labelEl.className = 'ai-assistant-panel-activity-step-label';
+                labelEl.textContent = step.label;
+                content.appendChild(labelEl);
+            }
+            row.appendChild(indicator); row.appendChild(content);
+            list.appendChild(row);
+        });
+        panel.appendChild(note); panel.appendChild(list);
+        root.appendChild(head); root.appendChild(panel);
+        toggle.addEventListener('click', function () {
+            var open = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+            root.setAttribute('data-open', open ? 'false' : 'true');
+            panel.hidden = open;
+        });
+        return root;
+    }
+
+    // ── Revision diff statistics ──────────────────────────────────────────
+    //
+    // A file card that says only "Latest revision r3" tells the reader a
+    // change happened but not how big it was, so every revision looks
+    // equally significant and a one-word tweak is indistinguishable from a
+    // rewrite. These two integers are the smallest honest summary: lines
+    // added and lines removed relative to the immediately preceding
+    // revision of the same path.
+    //
+    // Computed ONCE at registration and stored as numbers, never by keeping
+    // the previous revision's bytes around. Retaining old content to diff on
+    // demand would multiply this panel's memory ceiling by the revision
+    // count and hand the eviction logic a second, competing owner.
+    //
+    // Determinism matters more than minimality here: the same pair of
+    // revisions must always report the same numbers, in any browser, or the
+    // figure is not evidence. Common prefix/suffix lines are trimmed first
+    // (which resolves the overwhelmingly common append/edit-in-place case
+    // exactly), then an LCS runs over the remaining core within a fixed
+    // budget. Above that budget the core is compared as line multisets --
+    // still exact for "how many lines are not matched by an identical line
+    // on the other side", still deterministic, and never a heuristic guess.
+    var _DIFF_STAT_MAX_LINES = 20000;
+    var _DIFF_STAT_LCS_BUDGET = 4000000;
+
+    function _diffStatSplitLines(text) {
+        if (typeof text !== 'string' || text === '') return [];
+        var lines = text.split(/\r\n|\r|\n/);
+        // A trailing newline terminates the last line rather than starting an
+        // empty one; counting it would report +1 for every file that ends
+        // properly.
+        if (lines.length && lines[lines.length - 1] === '') lines.pop();
+        return lines;
+    }
+
+    function _diffStatMultiset(before, after) {
+        var counts = Object.create(null), i, key;
+        for (i = 0; i < before.length; i++) {
+            key = '\u0000' + before[i];
+            counts[key] = (counts[key] || 0) + 1;
+        }
+        var added = 0;
+        for (i = 0; i < after.length; i++) {
+            key = '\u0000' + after[i];
+            if (counts[key] > 0) { counts[key] -= 1; } else { added += 1; }
+        }
+        var matched = after.length - added;
+        return { added: added, removed: before.length - matched, exact: false };
+    }
+
+    function _diffStatLcs(before, after) {
+        var n = before.length, m = after.length;
+        var prev = new Int32Array(m + 1), cur = new Int32Array(m + 1), i, j, tmp;
+        for (i = 1; i <= n; i++) {
+            cur[0] = 0;
+            for (j = 1; j <= m; j++) {
+                cur[j] = (before[i - 1] === after[j - 1])
+                    ? prev[j - 1] + 1
+                    : (prev[j] >= cur[j - 1] ? prev[j] : cur[j - 1]);
+            }
+            tmp = prev; prev = cur; cur = tmp;
+        }
+        var common = prev[m];
+        return { added: m - common, removed: n - common, exact: true };
+    }
+
+    /**
+     * Count lines added and removed between two revisions of one file.
+     *
+     * @param {string|null} beforeText  Previous revision content, or null/'' for a new file.
+     * @param {string} afterText        New revision content.
+     * @returns {{added: number, removed: number, exact: boolean}}
+     *          `exact` is false only when the changed core exceeded the LCS
+     *          budget and the multiset comparison was used instead.
+     */
+    function _diffLineStat(beforeText, afterText) {
+        var before = _diffStatSplitLines(beforeText);
+        var after = _diffStatSplitLines(afterText);
+        if (before.length > _DIFF_STAT_MAX_LINES || after.length > _DIFF_STAT_MAX_LINES) {
+            return _diffStatMultiset(before, after);
+        }
+        if (!before.length) return { added: after.length, removed: 0, exact: true };
+        if (!after.length) return { added: 0, removed: before.length, exact: true };
+
+        var start = 0;
+        var maxStart = Math.min(before.length, after.length);
+        while (start < maxStart && before[start] === after[start]) start += 1;
+        var endB = before.length, endA = after.length;
+        while (endB > start && endA > start && before[endB - 1] === after[endA - 1]) {
+            endB -= 1; endA -= 1;
+        }
+        var coreB = before.slice(start, endB);
+        var coreA = after.slice(start, endA);
+        if (!coreB.length) return { added: coreA.length, removed: 0, exact: true };
+        if (!coreA.length) return { added: 0, removed: coreB.length, exact: true };
+        if (coreB.length * coreA.length > _DIFF_STAT_LCS_BUDGET) {
+            return _diffStatMultiset(coreB, coreA);
+        }
+        return _diffStatLcs(coreB, coreA);
+    }
+
+    /** Build the `+N −M` element pair, or null when nothing changed. */
+    function _diffStatElement(entry) {
+        if (!entry || !entry.diff) return null;
+        var added = Math.max(0, Number(entry.diff.added) || 0);
+        var removed = Math.max(0, Number(entry.diff.removed) || 0);
+        if (!added && !removed) return null;
+        var wrap = document.createElement('span');
+        wrap.className = 'ai-assistant-panel-diff-stat';
+        // One accessible sentence on the wrapper; the coloured numbers inside
+        // are decorative to a screen reader, so colour never carries meaning
+        // on its own. The sign characters do that job for sighted readers too.
+        var label = added + (added === 1 ? ' line added' : ' lines added') + ', ' +
+            removed + (removed === 1 ? ' line removed' : ' lines removed');
+        if (entry.diff.exact === false) label += ' (approximate for a very large file)';
+        wrap.setAttribute('aria-label', label);
+        wrap.title = label;
+        if (added) {
+            var plus = document.createElement('span');
+            plus.className = 'ai-assistant-panel-diff-stat-add';
+            plus.setAttribute('aria-hidden', 'true');
+            plus.textContent = '+' + added;
+            wrap.appendChild(plus);
+        }
+        if (removed) {
+            var minus = document.createElement('span');
+            minus.className = 'ai-assistant-panel-diff-stat-del';
+            minus.setAttribute('aria-hidden', 'true');
+            minus.textContent = '\u2212' + removed;
+            wrap.appendChild(minus);
+        }
+        return wrap;
+    }
+
+    // ── Unified diff + git-compatible patch export ────────────────────────
+    //
+    // Why this exists instead of a server-side git service
+    // ---------------------------------------------------
+    // Git-style tracking is genuinely wanted here: stable identity, a parent
+    // per revision, real diffs, revert. What is NOT wanted is a proxy that
+    // stores the reader's document content in order to provide it. That would
+    // move this panel's privacy boundary from "the current message and the
+    // context you selected" to "everything you have ever edited", require
+    // per-reader identity where today there is none, and put a working tree
+    // plus hook execution inside a request handler.
+    //
+    // So the panel emits git's *interchange format* instead of running git.
+    // A revision chain with parent pointers and content hashes is git's data
+    // model; a `git am` mailbox is how that model crosses a boundary. The
+    // reader applies it in their own repository, with their own identity, and
+    // the server never holds a byte of it.
+    //
+    // Hunk generation reuses the same prefix/suffix trim as the diff stat so
+    // the two can never disagree about what changed. Above the budget the
+    // patch degrades to a whole-file replacement, which is still a *correct*
+    // patch -- coarser, never wrong -- and says so in its own body.
+    var _DIFF_HUNK_LCS_BUDGET = 1440000;   // ~1200 x 1200 changed core lines
+    var _DIFF_HUNK_CONTEXT = 3;
+
+    function _diffBacktrack(before, after) {
+        var n = before.length, m = after.length;
+        // Full DP table is required to recover the edit script (the stat path
+        // needs only the final length and uses two rows).
+        var dp = new Int32Array((n + 1) * (m + 1));
+        var i, j, w = m + 1;
+        for (i = n - 1; i >= 0; i--) {
+            for (j = m - 1; j >= 0; j--) {
+                dp[i * w + j] = (before[i] === after[j])
+                    ? dp[(i + 1) * w + (j + 1)] + 1
+                    : Math.max(dp[(i + 1) * w + j], dp[i * w + (j + 1)]);
+            }
+        }
+        var ops = [];
+        i = 0; j = 0;
+        while (i < n && j < m) {
+            if (before[i] === after[j]) { ops.push([' ', before[i]]); i++; j++; }
+            else if (dp[(i + 1) * w + j] >= dp[i * w + (j + 1)]) { ops.push(['-', before[i]]); i++; }
+            else { ops.push(['+', after[j]]); j++; }
+        }
+        while (i < n) { ops.push(['-', before[i]]); i++; }
+        while (j < m) { ops.push(['+', after[j]]); j++; }
+        return ops;
+    }
+
+    function _diffOps(before, after) {
+        var start = 0, maxStart = Math.min(before.length, after.length);
+        while (start < maxStart && before[start] === after[start]) start += 1;
+        var endB = before.length, endA = after.length;
+        while (endB > start && endA > start && before[endB - 1] === after[endA - 1]) {
+            endB -= 1; endA -= 1;
+        }
+        var coreB = before.slice(start, endB), coreA = after.slice(start, endA);
+        var ops = [], k;
+        for (k = 0; k < start; k++) ops.push([' ', before[k]]);
+        if (coreB.length * coreA.length > _DIFF_HUNK_LCS_BUDGET) {
+            // Coarse but correct: replace the changed core wholesale.
+            for (k = 0; k < coreB.length; k++) ops.push(['-', coreB[k]]);
+            for (k = 0; k < coreA.length; k++) ops.push(['+', coreA[k]]);
+            ops.coarse = true;
+        } else {
+            var core = _diffBacktrack(coreB, coreA);
+            for (k = 0; k < core.length; k++) ops.push(core[k]);
+        }
+        for (k = endB; k < before.length; k++) ops.push([' ', before[k]]);
+        return ops;
+    }
+
+    /**
+     * Build unified-diff hunks for one file revision pair.
+     *
+     * @param {string|null} beforeText  Previous content; null/'' means new file.
+     * @param {string} afterText        Current content.
+     * @returns {{body: string, added: number, removed: number, coarse: boolean, newFile: boolean}}
+     */
+    function _diffUnified(beforeText, afterText) {
+        var before = _diffStatSplitLines(beforeText);
+        var after = _diffStatSplitLines(afterText);
+        var newFile = !before.length;
+        var ops = _diffOps(before, after);
+
+        // Line numbers for every op position, computed once. Deriving them
+        // while emitting hunks is what produced overlapping ranges in the
+        // first implementation: trailing context was counted into one hunk and
+        // then walked over again as the next hunk's leading context, so hunk 2
+        // started on a line hunk 1 had already claimed and `git am` rejected
+        // the patch. Precomputing removes the possibility entirely.
+        var oldAt = new Int32Array(ops.length + 1);
+        var newAt = new Int32Array(ops.length + 1);
+        var i, oldLine = 1, newLine = 1, added = 0, removed = 0;
+        for (i = 0; i < ops.length; i++) {
+            oldAt[i] = oldLine; newAt[i] = newLine;
+            if (ops[i][0] === ' ') { oldLine++; newLine++; }
+            else if (ops[i][0] === '-') { oldLine++; removed++; }
+            else { newLine++; added++; }
+        }
+        oldAt[ops.length] = oldLine; newAt[ops.length] = newLine;
+
+        var changes = [];
+        for (i = 0; i < ops.length; i++) if (ops[i][0] !== ' ') changes.push(i);
+        if (!changes.length) {
+            return { body: '', added: 0, removed: 0, coarse: !!ops.coarse, newFile: newFile };
+        }
+
+        // Group changes into hunks, merging any two whose separation is within
+        // twice the context width -- the standard rule, and the reason two
+        // hunks can never share a line.
+        var groups = [], current = [changes[0], changes[0]];
+        for (i = 1; i < changes.length; i++) {
+            if (changes[i] - current[1] <= _DIFF_HUNK_CONTEXT * 2) { current[1] = changes[i]; }
+            else { groups.push(current); current = [changes[i], changes[i]]; }
+        }
+        groups.push(current);
+
+        var hunks = groups.map(function (g) {
+            var from = Math.max(0, g[0] - _DIFF_HUNK_CONTEXT);
+            var to = Math.min(ops.length - 1, g[1] + _DIFF_HUNK_CONTEXT);
+            var lines = [], oldCount = 0, newCount = 0, k;
+            for (k = from; k <= to; k++) {
+                lines.push(ops[k][0] + ops[k][1]);
+                if (ops[k][0] !== '+') oldCount++;
+                if (ops[k][0] !== '-') newCount++;
+            }
+            // A zero-length side is addressed by the line *before* it, which is
+            // what `@@ -0,0` means for a file created from nothing.
+            var oldStart = oldCount ? oldAt[from] : Math.max(0, oldAt[from] - 1);
+            var newStart = newCount ? newAt[from] : Math.max(0, newAt[from] - 1);
+            return '@@ -' + oldStart + ',' + oldCount +
+                ' +' + newStart + ',' + newCount + ' @@\n' + lines.join('\n');
+        });
+
+        return {
+            body: hunks.join('\n') + '\n',
+            added: added, removed: removed,
+            coarse: !!ops.coarse, newFile: newFile
+        };
+    }
+
+    function _patchSafeSubjectText(value) {
+        return String(value == null ? '' : value)
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/[\u0000-\u001f\u007f]/g, '')
+            .trim()
+            .slice(0, 72);
+    }
+
+    /**
+     * Render one revision as a `git am`-compatible mailbox patch.
+     *
+     * Deliberately omits the `index <blob>..<blob>` line: computing git blob
+     * SHA-1s in the browser would require an async digest for a value that
+     * `git apply` and `git am` do not need for text patches, and a wrong or
+     * invented index line would make an otherwise valid patch fail to apply.
+     *
+     * The author is the panel, never the reader: this file has no identity for
+     * the person using it and must not fabricate one. The reader's own git
+     * records who applied it.
+     */
+    function _gitPatchText(entry, opts) {
+        opts = opts || {};
+        if (!entry || typeof entry.content !== 'string') return '';
+        var baseContent = (entry.base && typeof entry.base.content === 'string')
+            ? entry.base.content : null;
+        var diff = _diffUnified(baseContent, entry.content);
+        var path = entry.path;
+        var oldPath = diff.newFile ? '/dev/null' : ('a/' + path);
+        var subject = _patchSafeSubjectText(opts.subject ||
+            ((diff.newFile ? 'Add ' : 'Update ') + path)) || 'Update file';
+
+        var head = [
+            'From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001',
+            'From: sphinx-ai-assistant <ai-assistant@localhost>',
+            'Date: ' + new Date().toUTCString(),
+            'Subject: [PATCH] ' + subject,
+            '',
+            'Generated in the browser by the documentation assistant panel.',
+            'This patch was NOT applied to any repository; applying it is your',
+            'own explicit action.',
+            ''
+        ];
+        if (diff.newFile) {
+            head.push('The previous revision was not retained in this browser session, so');
+            head.push('the file is emitted in full rather than as an incremental change.');
+            head.push('');
+        } else {
+            head.push('Base: revision r' + entry.base.revision + ' \u2192 r' + _artifactContentRevision(entry) + '.');
+            head.push('');
+        }
+        if (diff.coarse) {
+            head.push('The changed region exceeded the in-browser diff budget, so it is');
+            head.push('expressed as a whole-region replacement rather than minimal hunks.');
+            head.push('');
+        }
+        head.push('---');
+
+        var fileHead = [
+            'diff --git a/' + path + ' b/' + path
+        ];
+        if (diff.newFile) fileHead.push('new file mode 100644');
+        fileHead.push('--- ' + oldPath);
+        fileHead.push('+++ b/' + path);
+
+        return head.join('\n') + '\n' + fileHead.join('\n') + '\n' + diff.body +
+            '-- \n2.0.0\n';
+    }
+
+    /** Suggested filename for a revision patch: stable, ordered, portable. */
+    function _gitPatchFilename(entry) {
+        var stem = _artifactNameSlug(entry.path.replace(/\//g, '-')) || 'file';
+        var seq = String(Math.max(1, _artifactContentRevision(entry) || 1));
+        while (seq.length < 4) seq = '0' + seq;
+        return seq + '-' + stem + '.patch';
+    }
+
+
+    // ── Working files on the wire, and stale-response protection ──────────
+    //
+    // A file continued across turns needs more than its bytes: it needs the
+    // revision and digest the request was built from. Without that binding,
+    // a slow answer generated from r3 silently commits as r5 after the reader
+    // has already moved to r4, and the file they end up with is not the file
+    // either party thought they were producing.
+    //
+    // The server neither resolves nor trusts these values -- it holds no copy
+    // of the reader's file. They travel inside the validated envelope so that
+    // *this* side can compare them against the ledger when the answer lands.
+    // Used only before discovery has told us the endpoint's real limits.
+    //
+    // `maxFiles: 1` was the wrong kind of caution. Guessing high risks a
+    // rejected request the reader can see and retry; guessing low silently
+    // dropped every file but one from "Continue editing all", which looks like
+    // a broken button rather than a limit. These mirror the server's own
+    // defaults, and anything beyond them is rejected by the server with a
+    // message naming the bound -- a visible failure instead of a quiet one.
+    var _WORKING_FILE_FALLBACK = { maxFiles: 4, maxFileChars: 48000, maxTotalChars: 96000 };
+
+    function _workingFileCapsParse(wf) {
+        if (!wf || typeof wf !== 'object') return null;
+        var files = Number(wf.max_files), fc = Number(wf.max_file_chars), total = Number(wf.max_total_chars);
+        if (!(files > 0 && fc > 0 && total > 0)) return null;
+        // Only SHA-256 is understood. An endpoint advertising a different
+        // digest gets no working files rather than a digest it did not ask
+        // for under a field name that says sha256.
+        if (wf.digest && wf.digest !== 'sha256') return null;
+        return {
+            maxFiles: Math.min(Math.floor(files), 8),
+            maxFileChars: Math.min(Math.floor(fc), 200000),
+            maxTotalChars: Math.min(Math.floor(total), 400000)
+        };
+    }
+
+    /** Lowercase hex SHA-256 of a string, or '' when the browser cannot. */
+    async function _sha256Hex(text) {
+        try {
+            if (!(typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder === 'function')) {
+                return '';
+            }
+            var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            var bytes = new Uint8Array(buf), out = '';
+            for (var i = 0; i < bytes.length; i++) {
+                out += (bytes[i] < 16 ? '0' : '') + bytes[i].toString(16);
+            }
+            return out;
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * Select tracked files to send, newest revision first, within bounds.
+     *
+     * Only files the reader explicitly continued are eligible. Sending every
+     * tracked file would quietly turn an unrelated question into a multi-file
+     * request and spend the reader's context budget without being asked.
+     */
+    async function _workingFilesForRequest(bounds) {
+        var limits = bounds || _WORKING_FILE_FALLBACK;
+        var keys = Object.keys(_workingFileContinuations);
+        var chosen = [], total = 0, skipped = 0, i;
+        keys.sort(function (a, b) {
+            return (_workingFileContinuations[b] || 0) - (_workingFileContinuations[a] || 0);
+        });
+        for (i = 0; i < keys.length; i++) {
+            var entry = _generatedArtifactLedger[keys[i]];
+            if (!_generatedArtifactIsAvailable(entry)) { skipped++; continue; }
+            if (chosen.length >= limits.maxFiles) { skipped++; continue; }
+            if (entry.content.length > limits.maxFileChars) { skipped++; continue; }
+            if (total + entry.content.length > limits.maxTotalChars) { skipped++; continue; }
+            var digest = await _sha256Hex(entry.content);
+            // No digest means no binding, and an unbound working file cannot
+            // be checked for staleness later. Sending it anyway would produce
+            // the appearance of protection without the substance.
+            if (!digest) { skipped++; continue; }
+            total += entry.content.length;
+            chosen.push({
+                key: entry.key,
+                wire: {
+                    path: entry.path,
+                    revision: Math.max(0, _artifactContentRevision(entry)),
+                    sha256: digest,
+                    content: entry.content
+                }
+            });
+        }
+        return { files: chosen, chars: total, skipped: skipped };
+    }
+
+    /**
+     * Decide whether an answer still owns the file revision it was built from.
+     *
+     * Called at registration time, before a new revision is minted.
+     */
+    function _workingFileBindingIsCurrent(binding) {
+        if (!binding) return true;
+        var entry = _generatedArtifactLedger[binding.key];
+        if (!entry) return true;
+        // Compared on content, not on ledger events: an eviction that fired
+        // mid-request did not change the file the answer was built from.
+        return _artifactContentRevision(entry) === Number(binding.revision);
+    }
+
+    /**
+     * The revision number that describes this file's CONTENT.
+     *
+     * `revision` is a ledger event counter: it advances when a preview is
+     * evicted or a file is removed, neither of which changes a byte. Showing
+     * that number to a reader as "r5" implies four content changes that did
+     * not happen, and binding staleness to it would reject a perfectly current
+     * answer because an unrelated eviction happened to fire mid-request.
+     *
+     * Records written before the split carry no `contentRevision`; falling
+     * back to `revision` keeps them readable rather than renumbering history.
+     */
+
+    // ── Per-turn context receipt ──────────────────────────────────────────
+    //
+    // "Retry - resend this question as-is" was accurate when a request was the
+    // question and nothing else. It stopped being accurate the moment history
+    // and working files began travelling with it: identical text now produces
+    // a materially different request depending on how many turns have
+    // accumulated and which revision each file sits at.
+    //
+    // Two honest options existed. Retain a byte-for-byte snapshot of every
+    // turn's assembled context so exact replay is real, or stop claiming it.
+    // Snapshots would multiply session storage by the transcript length to
+    // support one button, and would keep page text and file contents alive
+    // long after the reader finished with them -- a retention decision taken
+    // on their behalf for a convenience they never asked for.
+    //
+    // So the receipt records what a turn was built FROM, as counts and
+    // identifiers rather than bytes, and the control states what it will
+    // actually do. A button that tells the truth about a smaller capability
+    // is worth more than one that overstates a larger one.
+    var _TURN_CONTEXT_RECEIPTS = [];
+    var _TURN_CONTEXT_RECEIPT_MAX = 32;
+
+    function _recordTurnContextReceipt(receipt) {
+        if (!receipt) return;
+        _TURN_CONTEXT_RECEIPTS.push(receipt);
+        // A receipt is a convenience, never load-bearing; the oldest go first.
+        while (_TURN_CONTEXT_RECEIPTS.length > _TURN_CONTEXT_RECEIPT_MAX) {
+            _TURN_CONTEXT_RECEIPTS.shift();
+        }
+    }
+
+    /** Newest receipt recorded for exactly this question text, if any. */
+    function _turnContextReceiptFor(question) {
+        var want = String(question == null ? '' : question);
+        for (var i = _TURN_CONTEXT_RECEIPTS.length - 1; i >= 0; i--) {
+            if (_TURN_CONTEXT_RECEIPTS[i].question === want) return _TURN_CONTEXT_RECEIPTS[i];
+        }
+        return null;
+    }
+
+    /**
+     * Describe how the context differs from what that question last used.
+     *
+     * Matched on the question text so the sentence always describes a request
+     * that really happened. No receipt means no claim: the notice is omitted
+     * rather than guessed at.
+     *
+     * @returns {string} A reader-facing sentence, or '' when nothing changed.
+     */
+    function _turnContextDrift(question) {
+        var r = _turnContextReceiptFor(question);
+        if (!r) return '';
+        var parts = [];
+        var nowTurns = Array.isArray(_transcript) ? _transcript.length : 0;
+        if (typeof r.transcriptLength === 'number' && nowTurns !== r.transcriptLength) {
+            var delta = nowTurns - r.transcriptLength;
+            parts.push(delta > 0
+                ? (delta + ' later turn' + (delta === 1 ? '' : 's') + ' now exist')
+                : 'the conversation is shorter than it was');
+        }
+        (r.workingFiles || []).forEach(function (wf) {
+            var entry = _generatedArtifactLedger[wf.key];
+            if (!entry) { parts.push(wf.path + ' is no longer tracked'); return; }
+            var now = _artifactContentRevision(entry);
+            if (now !== wf.revision) {
+                parts.push(wf.path + ' is now r' + now + ' (was r' + wf.revision + ')');
+            }
+        });
+        if (!parts.length) return '';
+        return 'Context has changed since it was last asked: ' + parts.join('; ') + '.';
+    }
+
+    function _artifactContentRevision(entry) {
+        if (!entry) return 0;
+        return (typeof entry.contentRevision === 'number')
+            ? entry.contentRevision : (Number(entry.revision) || 0);
+    }
+
     function _generatedArtifactSafePath(value) {
         if (typeof value !== 'string') return '';
         var path = value.trim();
@@ -46343,20 +48431,35 @@
         return _attachmentSafeRelativePath(path);
     }
 
+    function _generatedArtifactEntryBytes(entry) {
+        if (!_generatedArtifactIsAvailable(entry)) return 0;
+        var total = _utf8ByteLength(entry.content || '');
+        // The retained previous revision is charged to the same budget. A
+        // second, uncounted owner of retained bytes would make the session
+        // ceiling a number that no longer describes what is held.
+        if (entry.base && typeof entry.base.content === 'string') {
+            total += _utf8ByteLength(entry.base.content);
+        }
+        return total;
+    }
+
     function _generatedArtifactSessionBytes(excludePath) {
         var total = 0;
         Object.keys(_generatedArtifactLedger).forEach(function (key) {
             if (key === excludePath) return;
-            var entry = _generatedArtifactLedger[key];
-            if (_generatedArtifactIsAvailable(entry)) total += _utf8ByteLength(entry.content || '');
+            total += _generatedArtifactEntryBytes(_generatedArtifactLedger[key]);
         });
         return total;
     }
 
     function _generatedArtifactMakeRetentionUnavailable(entry, reason) {
         if (!_generatedArtifactIsAvailable(entry)) return 0;
-        var freed = _utf8ByteLength(entry.content || '');
+        var freed = _generatedArtifactEntryBytes(entry);
         entry.content = null;
+        // Drop the retained base with the content. A base kept alive after its
+        // successor was evicted would let a patch be generated from bytes the
+        // ledger has already declared unavailable.
+        entry.base = null;
         entry.state = 'unavailable';
         entry.reason = reason || 'Preview was evicted from this browser session.';
         entry.sourceLabel = 'preview unavailable';
@@ -46402,6 +48505,18 @@
         return entry.sourceLabel || 'latest preview';
     }
 
+    /** Text form of the diff stat for status lines and aria labels. */
+    function _generatedArtifactDiffSuffix(entry) {
+        if (!entry || !entry.diff) return '';
+        var added = Math.max(0, Number(entry.diff.added) || 0);
+        var removed = Math.max(0, Number(entry.diff.removed) || 0);
+        if (!added && !removed) return '';
+        var parts = [];
+        if (added) parts.push('+' + added);
+        if (removed) parts.push('\u2212' + removed);
+        return ' \u00b7 ' + parts.join(' ');
+    }
+
     function _generatedArtifactPreviewItem(entry) {
         var lines = entry.content ? entry.content.split(/\r?\n/).length : 0;
         return {
@@ -46410,14 +48525,15 @@
             previewText: entry.content,
             size: _utf8ByteLength(entry.content || ''),
             lineCount: lines,
-            status: 'Latest revision r' + entry.revision + ' \u00b7 ' + _generatedArtifactStateLabel(entry),
+            status: 'Latest revision r' + _artifactContentRevision(entry) + _generatedArtifactDiffSuffix(entry) +
+                ' \u00b7 ' + _generatedArtifactStateLabel(entry),
             badge: 'FILE',
             sendEligible: false,
             turnScoped: false
         };
     }
 
-    function _generatedArtifactOpenLatest(key, trigger) {
+    function _generatedArtifactOpenLatest(key, trigger, opts) {
         var entry = _generatedArtifactLedger[key];
         if (!entry) {
             showNotification('That generated file is no longer retained in this session.', true);
@@ -46427,7 +48543,12 @@
             showNotification('Latest revision r' + entry.revision + ' of ' + entry.path + ' is ' + _generatedArtifactStateLabel(entry) + (entry.reason ? ': ' + entry.reason : '.'), true);
             return;
         }
-        _openAttachmentPreview(_generatedArtifactPreviewItem(entry), trigger);
+        var item = _generatedArtifactPreviewItem(entry);
+        // Sheet mode is the same viewer asked to show everything. A second
+        // viewer could disagree with the first about what the file contains,
+        // which is the one thing a preview must never do.
+        if (opts && opts.sheet) item.sheet = true;
+        _openAttachmentPreview(item, trigger);
     }
 
     function _generatedArtifactDownloadLatest(key) {
@@ -46438,6 +48559,671 @@
         }
         var filename = entry.path.split('/').pop() || 'generated-file.txt';
         _downloadBlob(entry.content, entry.mediaType || 'text/plain', filename);
+    }
+
+    // ── Per-file overflow menu ────────────────────────────────────────────
+    //
+    // The card had grown to five visible controls. Preview and Download are
+    // what almost every reader wants; the rest are for readers who already
+    // know they want them. Rather than a second disclosure row, everything
+    // else moves behind one ⋮ menu, which is the same affordance the panel
+    // subbar already uses -- a reader who has met it once has met it here.
+    //
+    // "Open in a sheet" lives here deliberately. Quick preview answers most
+    // questions, and the full sheet is for the cases it does not: a long file,
+    // a multi-step review, a small screen. Offering both as equal peers would
+    // make the reader choose before they know which they need.
+    var _fileMenuOpen = null;
+
+    function _closeFileMenu() {
+        if (!_fileMenuOpen) return;
+        var rec = _fileMenuOpen;
+        _fileMenuOpen = null;
+        if (rec.menu && rec.menu.parentNode) rec.menu.parentNode.removeChild(rec.menu);
+        if (rec.btn) rec.btn.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', rec.onDocClick, true);
+        document.removeEventListener('keydown', rec.onKeyDown, true);
+        if (rec.onReflow) {
+            if (rec.scroller) rec.scroller.removeEventListener('scroll', rec.onReflow, true);
+            window.removeEventListener('resize', rec.onReflow);
+        }
+    }
+
+    /**
+     * Build the ⋮ control for one tracked file.
+     *
+     * @param {string} key   Ledger key.
+     * @param {Object} entry Ledger entry, for labelling only.
+     * @returns {HTMLElement}
+     */
+    /**
+     * Build a ⋮ trigger and its menu.
+     *
+     * One builder, every caller. The snippet card and the tracked-file card
+     * were about to grow two near-identical menus with two sets of focus,
+     * Escape and outside-click handling -- and the second copy is where the
+     * keyboard support quietly goes missing.
+     *
+     * @param {string} ariaLabel  Full sentence naming what the menu acts on.
+     * @param {Array<{label: string, hint: string, run: Function}>} items
+     * @param {string} [className] Trigger class, for per-surface sizing.
+     * @returns {HTMLElement}
+     */
+    function _buildOverflowMenu(ariaLabel, items, className, iconSvg) {
+        // `items` may be a function, and for any menu whose contents depend on
+        // state it must be. Passing an array freezes the menu at row-build
+        // time: a Continue/Stop toggle built then still read "Stop continuing"
+        // after the file had been dropped, so the next click stopped an
+        // already-stopped continuation and the file appeared impossible to
+        // re-add. Evaluated per open, the label always describes the state the
+        // reader is actually in.
+        var resolveItems = (typeof items === 'function')
+            ? items
+            : function () { return items; };
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = className || 'ai-assistant-panel-changed-file-overflow';
+        btn.setAttribute('aria-label', ariaLabel);
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.title = 'More options';
+        // ICONS constant, not user content. Defaulted rather than required so
+        // the three existing callers keep the ⋮ they were written against.
+        btn.innerHTML = iconSvg || ICONS.overflowV;
+
+        btn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            var wasOpen = _fileMenuOpen && _fileMenuOpen.btn === btn;
+            _closeFileMenu();
+            if (wasOpen) return;
+
+            var menu = document.createElement('div');
+            // Two class names on purpose.
+            //
+            // `ai-assistant-menu` is what this builder actually makes: a menu,
+            // used by file rows, snippet rows, the preview title bar and the
+            // model picker. The shared styling hangs off it.
+            //
+            // `ai-assistant-panel-changed-file-menu` is kept because it is the
+            // name in the shipped DOM and in every existing rule; removing it
+            // would be a silent breaking change for anyone selecting on it. But
+            // it is named after one caller, so styling "the file menu" was
+            // restyling three unrelated surfaces -- which is exactly the
+            // confusion reported. New rules go on the neutral name.
+            menu.className = 'ai-assistant-menu ai-assistant-panel-changed-file-menu';
+            menu.setAttribute('role', 'menu');
+            menu.setAttribute('aria-label', ariaLabel);
+
+            // Extendable by design: one list, one shape. A future action is a
+            // row here rather than another button on the card.
+            resolveItems().forEach(function (item) {
+                var row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'ai-assistant-panel-changed-file-menu-item';
+                row.setAttribute('role', 'menuitem');
+                // Optional leading glyph, aria-hidden: the accessible name is
+                // the label text, and an announced icon would read as part of
+                // it. Items without one still align, because the gutter is
+                // reserved rather than collapsed -- a half-indented list is
+                // harder to scan than one with no icons at all.
+                var iconWrap = document.createElement('span');
+                iconWrap.className = 'ai-assistant-panel-changed-file-menu-icon';
+                iconWrap.setAttribute('aria-hidden', 'true');
+                if (item.icon) iconWrap.innerHTML = item.icon;  // ICONS constant.
+                row.appendChild(iconWrap);
+
+                var text = document.createElement('span');
+                text.className = 'ai-assistant-panel-changed-file-menu-text';
+                var lab = document.createElement('span');
+                lab.className = 'ai-assistant-panel-changed-file-menu-label';
+                lab.textContent = item.label;
+                var hint = document.createElement('span');
+                hint.className = 'ai-assistant-panel-changed-file-menu-hint';
+                hint.textContent = item.hint;
+                text.appendChild(lab); text.appendChild(hint);
+                row.appendChild(text);
+                row.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    _closeFileMenu();
+                    item.run();
+                });
+                menu.appendChild(row);
+            });
+
+            var rec = {
+                btn: btn, menu: menu,
+                onDocClick: function (e) {
+                    // `contains`, not identity.
+                    //
+                    // This runs on `document` in the CAPTURE phase, so it sees
+                    // a click before the trigger's own handler does. The
+                    // trigger holds an `<svg>`, so a click lands on the glyph
+                    // and `e.target !== btn` was true: pressing the open
+                    // trigger closed the menu here, and the trigger's handler
+                    // then found nothing open and reopened it. The menu could
+                    // be opened and never closed from its own button.
+                    //
+                    // `btn.contains` covers the button and everything drawn
+                    // inside it, which is what "clicked the trigger" means.
+                    if (!menu.contains(e.target) && !btn.contains(e.target)) _closeFileMenu();
+                },
+                onKeyDown: function (e) {
+                    if (e.key !== 'Escape') return;
+                    // Focus returns to the trigger: closing a menu with the
+                    // keyboard must not strand focus at the top of the page.
+                    _closeFileMenu();
+                    if (typeof btn.focus === 'function') btn.focus();
+                }
+            };
+            btn.parentNode.appendChild(menu);
+            menu.setAttribute('data-open', 'true');
+            btn.setAttribute('aria-expanded', 'true');
+            // Measured after insertion: the routine reads the rendered box, so
+            // placing before the menu is in the document would size it from
+            // nothing and clamp everything to the top-left corner.
+            _positionMenuNearTrigger(menu, btn);
+            _fileMenuOpen = rec;
+            rec.onReflow = function () { _positionMenuNearTrigger(menu, btn); };
+            document.addEventListener('click', rec.onDocClick, true);
+            document.addEventListener('keydown', rec.onKeyDown, true);
+            // A menu anchored to a row inside a scrolling body has to follow
+            // that row, or it detaches from its trigger the moment the reader
+            // scrolls -- which is exactly when a long file list is being read.
+            var scroller = document.getElementById('ai-assistant-panel-body');
+            if (scroller) scroller.addEventListener('scroll', rec.onReflow, true);
+            window.addEventListener('resize', rec.onReflow);
+            rec.scroller = scroller;
+            var first = menu.querySelector('.ai-assistant-panel-changed-file-menu-item');
+            if (first && typeof first.focus === 'function') first.focus();
+        });
+        return btn;
+    }
+
+    /** The tracked-file menu: everything the card no longer shows as a button. */
+    function _buildFileOverflow(key, entry) {
+        return _buildOverflowMenu('More options for ' + entry.path, function () { return [
+            { label: 'Open in a sheet', hint: 'Full view with line numbers', icon: ICONS.terms,
+              run: function () { _generatedArtifactOpenSheet(key); } },
+            { label: 'Save as\u2026', hint: 'Download under a name you choose', icon: ICONS.exportTxt,
+              run: function () { _generatedArtifactSaveAs(key); } },
+            { label: 'Download patch', hint: 'Apply with git am', icon: ICONS.gitMark,
+              run: function () { _generatedArtifactDownloadPatch(key); } },
+            _workingFileContinuations[key]
+                ? { label: 'Stop continuing', hint: 'Remove from your next message', icon: ICONS.close,
+                    run: function () { _generatedArtifactStopContinuing(key); } }
+                : { label: 'Continue editing', hint: 'Attach to your next message', icon: ICONS.chevronDown,
+                    run: function () { _generatedArtifactContinueEditing(key); } }
+        ]; });
+    }
+
+    /**
+     * Open a tracked file as a full sheet rather than the quick preview.
+     *
+     * Reuses the attachment preview surface the quick preview already uses, so
+     * this is the same viewer asked to show everything -- not a second viewer
+     * that could disagree with the first about what the file contains.
+     */
+    function _generatedArtifactOpenSheet(key) {
+        var entry = _generatedArtifactLedger[key];
+        if (!_generatedArtifactIsAvailable(entry)) {
+            if (entry) {
+                showNotification('Revision r' + _artifactContentRevision(entry) + ' of ' +
+                    entry.path + ' is ' + _generatedArtifactStateLabel(entry) +
+                    ', so it cannot be opened.', true);
+            }
+            return;
+        }
+        _generatedArtifactOpenLatest(key, null, { sheet: true });
+    }
+
+    /**
+     * Download a tracked file under a name the reader chooses.
+     *
+     * Deliberately a *download alias*, not a rename. The ledger is keyed by
+     * path and every control resolves the latest revision through that key;
+     * letting a save dialog rewrite it would orphan the revision chain, the
+     * diff base, the patch header and any binding an in-flight request holds.
+     * So the file keeps its identity and the reader gets the bytes under
+     * whatever filename suits their filesystem.
+     */
+    function _generatedArtifactSaveAs(key) {
+        var entry = _generatedArtifactLedger[key];
+        if (!_generatedArtifactIsAvailable(entry)) {
+            if (entry) {
+                showNotification('Revision r' + _artifactContentRevision(entry) + ' of ' +
+                    entry.path + ' is ' + _generatedArtifactStateLabel(entry) +
+                    ', so it cannot be saved.', true);
+            }
+            return;
+        }
+        var suggested = entry.path.split('/').pop() || 'generated-file.txt';
+        var raw = window.prompt(
+            'Save ' + entry.path + ' as\n\n' +
+            'This downloads the current bytes under a name you choose. The ' +
+            'tracked file keeps its own path, so revisions and patches still ' +
+            'line up.',
+            suggested);
+        if (raw === null) return;
+        var chosen = _artifactNameSlugPreservingExtension(raw) || suggested;
+        _downloadBlob(entry.content, entry.mediaType || 'text/plain', chosen);
+    }
+
+    /**
+     * Sanitize a reader-supplied download filename, keeping its extension.
+     *
+     * The slug rules that protect derived names apply here too -- a save
+     * dialog is still a path a browser will act on -- but the extension is
+     * preserved rather than slugged away, because that is usually the only
+     * part the reader actually cared about typing.
+     */
+    function _artifactNameSlugPreservingExtension(value) {
+        var text = String(value == null ? '' : value).trim();
+        // Strip any directory the reader typed: this writes to their download
+        // folder, and a path here would be a claim the panel cannot honour.
+        text = text.split(/[\\/]/).pop() || '';
+        var dot = text.lastIndexOf('.');
+        var stem = dot > 0 ? text.slice(0, dot) : text;
+        var ext = dot > 0 ? text.slice(dot + 1) : '';
+        var safeStem = _artifactNameSlug(stem);
+        var safeExt = _artifactNameSlug(ext);
+        if (!safeStem) return '';
+        return safeExt ? safeStem + '.' + safeExt : safeStem;
+    }
+
+    // ── Snippet -> working file, and continuing a file across turns ───────
+    //
+    // The rendered panel showed the shape of the problem plainly: two code
+    // blocks, fifteen `snippet-` references, and zero `data-artifact-path`.
+    // When a model does not declare `file=`, everything it writes stays an
+    // anonymous fragment -- it cannot be tracked, diffed, patched, or
+    // continued, no matter how good the naming heuristic gets.
+    //
+    // So identity becomes something the reader can confer. Promoting a snippet
+    // gives it a path, which admits it to the same ledger every declared file
+    // uses: revisions, +/- statistics, patch export, latest-state resolution.
+    // Nothing downstream needs a second code path, because a promoted snippet
+    // IS a generated file from that moment on.
+    //
+    // Continuing a file reuses the composer attachment pipeline rather than
+    // inventing a second context channel. The bounds, classification,
+    // transport rules and privacy preflight that already govern an uploaded
+    // file then govern this too, automatically and by construction.
+
+    function _promotePathPrompt(suggested) {
+        var raw = window.prompt(
+            'Save as a tracked file.\n\n' +
+            'Enter a repository-relative path. The file then gains revisions, ' +
+            'diffs and patch export, and can be continued in later questions.',
+            suggested || '');
+        if (raw === null) return null;
+        var path = _generatedArtifactSafePath(String(raw).trim());
+        if (!path) {
+            showNotification('That path cannot be used. Give a relative path with no "..", no leading slash and no drive letter.', true);
+            return null;
+        }
+        return path;
+    }
+
+    /**
+     * Promote an unnamed code block into a tracked working file.
+     *
+     * @param {string} code       Block contents.
+     * @param {string} lang       Fence language tag, used only to suggest a path.
+     * @param {string} suggested  Contextual filename already derived for download.
+     */
+    function _promoteSnippetToFile(root, code, lang, suggested) {
+        var path = _promotePathPrompt(suggested);
+        if (!path) return;
+        var existing = _generatedArtifactLedger[path];
+        if (existing && existing.content === code) {
+            showNotification(path + ' already tracks exactly this content at revision r' + existing.revision + '.', false);
+            return;
+        }
+        // Deliberately routed through the ordinary registration path: a
+        // promoted snippet that collides with an existing path becomes the
+        // next revision of that file, which is what a reader who typed the
+        // same path twice means. Silent merge is only wrong when the name was
+        // *derived*; here the reader chose it.
+        var entry = _registerGeneratedArtifact({
+            path: path,
+            content: code,
+            language: lang || '',
+            origin: 'promoted-snippet'
+        });
+        if (!entry) {
+            showNotification('That file could not be tracked.', true);
+            return;
+        }
+        showNotification(
+            path + ' is now tracked at revision r' + _artifactContentRevision(entry) +
+            '. It is a browser draft only and has not been written anywhere.', false);
+        // Surfaces in this answer when it has no file section yet; otherwise
+        // the existing section's refs already resolve latest state for it.
+        _appendChangedFileSummary(root, [entry.key]);
+        _generatedArtifactRefreshRefs(entry.key);
+    }
+
+    /**
+     * Stage the latest revision of a tracked file as context for the next turn.
+     *
+     * Reuses the composer attachment pipeline on purpose. A working file is an
+     * ordinary bounded text attachment as far as transport and privacy are
+     * concerned, and giving it a private channel would put its bytes outside
+     * the preflight that tells the reader what is about to be sent.
+     */
+    // Remembered from the last successful discovery so a Continue click can
+    // tell, before any request is built, whether the endpoint will carry
+    // working files itself.
+    var _lastWorkingFileCaps = null;
+
+    function _continuationCount() {
+        return Object.keys(_workingFileContinuations).length;
+    }
+
+    /**
+     * Queue a tracked file to travel with the next message.
+     *
+     * Queuing is intent, not transport. On an endpoint that accepts
+     * `working_files` the request builder reads this registry and sends each
+     * file bound to its revision and digest -- so staging a composer
+     * attachment here as well sent the same bytes twice, once unbound. That
+     * doubled the token cost of every continued file and gave the model two
+     * copies to reconcile, which is worse than either copy alone.
+     *
+     * The attachment path remains for endpoints that cannot take working
+     * files, where it is the only way the bytes travel at all.
+     */
+    function _generatedArtifactContinueEditing(key, opts) {
+        var entry = _generatedArtifactLedger[key];
+        var quiet = opts && opts.quiet;
+        if (!_generatedArtifactIsAvailable(entry)) {
+            if (entry && !quiet) {
+                showNotification('Revision r' + _artifactContentRevision(entry) + ' of ' +
+                    entry.path + ' is ' + _generatedArtifactStateLabel(entry) +
+                    ', so it cannot be continued.', true);
+            }
+            return false;
+        }
+        if (_workingFileContinuations[entry.key]) return true;
+
+        // Staged for every endpoint, not only those without working-file
+        // support. Two representations of "this travels with my next message"
+        // -- a registry and a chip, each authoritative on some endpoints --
+        // could not be kept in step by hand: removing the chip left the
+        // registry set, and on a working-file endpoint no chip existed at all,
+        // so files travelled with nothing in the composer to show for it.
+        //
+        // The chip is now the visible truth on every endpoint. It already has
+        // preview, remove, the attachment manager and the privacy preflight
+        // built around it; the registry rides alongside it and is kept in sync
+        // from one place. The double-send this could cause is prevented where
+        // it belongs -- at request build, where the transport is chosen.
+        var name = entry.path.split('/').pop() || 'file.txt';
+        var file;
+        try {
+            file = new File([entry.content], name, {
+                type: entry.mediaType || 'text/plain'
+            });
+        } catch (_) {
+            if (!quiet) {
+                showNotification('This browser cannot stage the file for continuation.', true);
+            }
+            return false;
+        }
+        _stageComposerFiles([{
+            file: file,
+            relativePath: entry.path,
+            sourceKind: 'working-file'
+        }], _attachmentStageGeneration);
+
+        _workingFileContinuations[entry.key] = Date.now();
+        _generatedArtifactRefreshRefs(entry.key);
+        _refreshContinuationTray();
+        if (!quiet) {
+            _primeComposerForContinuation();
+            showNotification(entry.path + ' r' + _artifactContentRevision(entry) +
+                ' will travel with your next message, bound to that revision.', false);
+        }
+        return true;
+    }
+
+    /**
+     * Unstage the composer attachment a fallback continuation created.
+     *
+     * Deleting only the registry key left the bytes staged, so a "dropped"
+     * file still travelled with the next message and re-adding it staged a
+     * second copy. Stop has to undo everything Continue did, or it is not a
+     * stop.
+     */
+    function _unstageContinuationAttachment(path) {
+        if (!Array.isArray(_composerAttachments)) return;
+        for (var i = _composerAttachments.length - 1; i >= 0; i--) {
+            var item = _composerAttachments[i];
+            if (item && item.sourceKind === 'working-file' &&
+                    (item.relativePath === path || item.name === path.split('/').pop())) {
+                _removeComposerResourceItem(item);
+                break;
+            }
+        }
+    }
+
+    /** Drop one file from the next message. */
+    function _generatedArtifactStopContinuing(key) {
+        var entry = _generatedArtifactLedger[key];
+        if (!_workingFileContinuations[key]) return;
+        delete _workingFileContinuations[key];
+        if (entry) _unstageContinuationAttachment(entry.path);
+        _generatedArtifactRefreshRefs(key);
+        _refreshContinuationTray();
+        showNotification((entry ? entry.path : 'That file') +
+            ' will not travel with your next message.', false);
+    }
+
+    /**
+     * Keep the tray honest after any change to the queue.
+     *
+     * The tray is built when the section renders; without this it kept
+     * reporting the count it had at that moment, which is the same class of
+     * staleness that made the menu toggle unusable.
+     */
+    /**
+     * Write the label that describes what the next click will do.
+     *
+     * Read from the live count rather than captured at build time: a control
+     * built once keeps its opening label, which is exactly how the menu toggle
+     * became unusable in R173T27.
+     */
+    function _applyContinueAllLabel(btn) {
+        if (!btn) return;
+        var total = Math.max(0, Number(btn.getAttribute('data-ai-continue-all-total')) || 0);
+        var queued = _continuationCount();
+        if (queued) {
+            btn.textContent = 'Remove all ' + queued +
+                (queued === 1 ? ' attached file' : ' attached files');
+            btn.setAttribute('aria-label',
+                'Remove all ' + queued + ' attached files from your next message');
+            btn.title = 'Detach every file currently travelling with your next message';
+        } else {
+            btn.textContent = 'Continue editing all ' + total + ' files';
+            btn.setAttribute('aria-label',
+                'Attach all ' + total + ' presented files to your next message');
+            btn.title = 'Attach as many as this endpoint accepts per request';
+        }
+    }
+
+    // Coalesces the nested refreshes a bulk operation would otherwise cause:
+    // clearing N files calls the removal path N times, and each of those
+    // reaches this function.
+    var _continuationRefreshDepth = 0;
+
+    function _refreshContinuationTray() {
+        // Named for the tray it started as; it now refreshes every surface that
+        // describes the queue.
+        //
+        // Four surfaces answer "what travels with my next message": the
+        // composer chips, the attachment manager, this section's tray, and the
+        // bulk control. Each mutation used to refresh whichever ones its author
+        // remembered -- which is why clearing the queue emptied the registry
+        // and left every chip on screen, and why the menu and the button each
+        // went stale in their own checkpoint.
+        //
+        // One function refreshes all four, and every mutation calls it. That is
+        // the only arrangement that has survived contact with this feature.
+        if (_continuationRefreshDepth > 0) return;
+        _continuationRefreshDepth++;
+        try {
+            _refreshContinuationSurfaces();
+        } finally {
+            _continuationRefreshDepth--;
+        }
+    }
+
+    function _refreshContinuationSurfaces() {
+        // The chips and the manager read from `_composerAttachments`, which the
+        // removal path mutates without redrawing: its own callers did that,
+        // and a caller that forgot left the state changed and the screen
+        // unchanged.
+        try { _renderComposerAttachments(); } catch (_) {}
+        try { _renderAttachmentManagerList(); } catch (_) {}
+        var buttons = document.querySelectorAll('.ai-assistant-panel-changed-files-continue-all');
+        Array.prototype.forEach.call(buttons, _applyContinueAllLabel);
+        var trays = document.querySelectorAll('.ai-assistant-panel-changed-files-tray');
+        var n = _continuationCount();
+        Array.prototype.forEach.call(trays, function (tray) {
+            var text = tray.querySelector('span');
+            if (n) {
+                tray.hidden = false;
+                if (text) {
+                    text.textContent = n + (n === 1 ? ' file travels' : ' files travel') +
+                        ' with your next message';
+                }
+            } else {
+                tray.hidden = true;
+            }
+        });
+    }
+
+    /** Drop every queued file. */
+    function _generatedArtifactClearContinuations() {
+        var n = _continuationCount();
+        if (!n) return;
+        // Held down for the whole sweep so the surfaces are drawn once, from
+        // the final state, rather than N times from intermediate ones.
+        _continuationRefreshDepth++;
+        try {
+            Object.keys(_workingFileContinuations).forEach(function (key) {
+                var e = _generatedArtifactLedger[key];
+                delete _workingFileContinuations[key];
+                if (e) _unstageContinuationAttachment(e.path);
+                _generatedArtifactRefreshRefs(key);
+            });
+        } finally {
+            _continuationRefreshDepth--;
+        }
+        _refreshContinuationTray();
+        showNotification(n + (n === 1 ? ' file' : ' files') +
+            ' removed from your next message.', false);
+    }
+
+    /**
+     * Queue every available tracked file, up to the endpoint's own limits.
+     *
+     * Continuing several files one menu at a time is the common case for a
+     * multi-file review, and doing it by hand means the reader discovers the
+     * per-request cap only by hitting it. Queuing in one action reports what
+     * fitted and what did not, before the request is built rather than after
+     * it is rejected.
+     */
+    function _generatedArtifactContinueAll() {
+        var limits = _lastWorkingFileCaps || _WORKING_FILE_FALLBACK;
+        var keys = Object.keys(_generatedArtifactLedger).sort();
+        var added = 0, skipped = 0, chars = 0, i;
+        for (i = 0; i < keys.length; i++) {
+            var entry = _generatedArtifactLedger[keys[i]];
+            if (!_generatedArtifactIsAvailable(entry)) { skipped++; continue; }
+            if (_workingFileContinuations[entry.key]) { chars += entry.content.length; continue; }
+            if (_continuationCount() >= limits.maxFiles) { skipped++; continue; }
+            if (entry.content.length > limits.maxFileChars) { skipped++; continue; }
+            if (chars + entry.content.length > limits.maxTotalChars) { skipped++; continue; }
+            if (_generatedArtifactContinueEditing(entry.key, { quiet: true })) {
+                chars += entry.content.length;
+                added++;
+            } else { skipped++; }
+        }
+        if (!added && !skipped) {
+            showNotification('Every tracked file is already attached to your next message.', false);
+            return;
+        }
+        _primeComposerForContinuation();
+        _refreshContinuationTray();
+        var parts = [];
+        if (added) parts.push(added + (added === 1 ? ' file' : ' files') + ' attached');
+        if (skipped) {
+            // Named, not silently dropped: a reader who cannot see what was
+            // left out cannot tell a short answer from an incomplete request.
+            parts.push(skipped + (skipped === 1 ? ' file' : ' files') +
+                ' left out (unavailable, or beyond this endpoint\u2019s per-request limits)');
+        }
+        showNotification(parts.join(' \u00b7 ') + '.', !!skipped && !added);
+    }
+
+    /** Put a neutral instruction in an empty composer, never over the reader's. */
+    function _primeComposerForContinuation() {
+        var input = document.getElementById('ai-assistant-panel-input');
+        if (!input) return;
+        if (!String(input.value || '').trim()) {
+            var n = _continuationCount();
+            input.value = n === 1
+                ? 'Continue editing the attached file. Return the complete updated file.'
+                : 'Continue editing the ' + n + ' attached files. Return each complete updated file.';
+        }
+        if (typeof input.focus === 'function') input.focus();
+    }
+
+    /**
+     * Export every tracked file as one `git am`-able series.
+     *
+     * A concatenated mailbox is what git itself produces for a range, so a
+     * multi-file turn applies as an ordered set of commits rather than as
+     * several downloads the reader has to sequence by hand.
+     */
+    function _generatedArtifactDownloadPatchSeries() {
+        var keys = Object.keys(_generatedArtifactLedger).sort();
+        var parts = [], skipped = 0;
+        keys.forEach(function (key) {
+            var entry = _generatedArtifactLedger[key];
+            if (!_generatedArtifactIsAvailable(entry)) { skipped++; return; }
+            var text = _gitPatchText(entry, {
+                subject: (entry.base ? 'Update ' : 'Add ') + entry.path
+            });
+            if (text) parts.push(text); else skipped++;
+        });
+        if (!parts.length) {
+            showNotification('There are no available file revisions to export as a patch series.', true);
+            return;
+        }
+        if (skipped) {
+            showNotification(skipped + ' file revision(s) were omitted because they are not available.', false);
+        }
+        _downloadBlob(parts.join('\n'), 'text/x-patch', 'ai-assistant-changes.patch');
+    }
+
+    function _generatedArtifactDownloadPatch(key) {
+        var entry = _generatedArtifactLedger[key];
+        if (!_generatedArtifactIsAvailable(entry)) {
+            if (entry) {
+                showNotification('A patch cannot be produced for ' + entry.path +
+                    ' because revision r' + _artifactContentRevision(entry) + ' is ' +
+                    _generatedArtifactStateLabel(entry) + '.', true);
+            }
+            return;
+        }
+        var text = _gitPatchText(entry);
+        if (!text) {
+            showNotification('A patch could not be produced for ' + entry.path + '.', true);
+            return;
+        }
+        _downloadBlob(text, 'text/x-patch', _gitPatchFilename(entry));
     }
 
     function _generatedArtifactRefreshRefs(key) {
@@ -46491,6 +49277,13 @@
         var meta = document.createElement('span');
         meta.className = 'ai-assistant-panel-activity-file-meta';
         button.appendChild(label);
+        // The size of the change belongs on the timeline row, not only on the
+        // file card further down: a reader scanning the timeline to see what a
+        // turn did should not have to scroll to learn whether "Updated file"
+        // meant a typo or a rewrite. Same element builder as the card, so the
+        // two can never disagree about the numbers.
+        var stat = _diffStatElement(entry);
+        if (stat) button.appendChild(stat);
         button.appendChild(meta);
         row.appendChild(indicator);
         row.appendChild(button);
@@ -46513,6 +49306,8 @@
             mediaType: _activityBoundedText(opts.mediaType || (old && old.mediaType) || 'text/plain', 120) || 'text/plain',
             language: _activityBoundedText(opts.language || (old && old.language) || '', 40),
             revision: old ? old.revision + 1 : 1,
+            // Unchanged on purpose: losing a preview is not an edit.
+            contentRevision: _artifactContentRevision(old),
             state: state,
             reason: reason,
             source: opts.source === 'endpoint' ? 'endpoint' : 'answer',
@@ -46601,6 +49396,21 @@
             content: content,
             mediaType: mediaType,
             language: _activityBoundedText(spec.language || '', 40),
+            // Diffed against the previous revision's bytes while they are
+            // still in hand. `old.content` is null once a revision has been
+            // evicted or was never previewable, and _diffLineStat treats that
+            // as a new file rather than inventing a comparison.
+            diff: _diffLineStat(old && old.content, content),
+            baseRevision: old ? _artifactContentRevision(old) : 0,
+            contentRevision: old ? _artifactContentRevision(old) + 1 : 1,
+            // Retained only when the predecessor is still available AND small
+            // enough to sit inside the same per-file ceiling as the content
+            // itself. When it is not retained, patch export degrades to a
+            // whole-file emission that says so, rather than inventing a base.
+            base: (_generatedArtifactIsAvailable(old) &&
+                   _utf8ByteLength(old.content) <= _TURN_ACTIVITY_FILE_MAX_BYTES)
+                ? { revision: old.revision, content: old.content }
+                : null,
             revision: old ? old.revision + 1 : 1,
             state: 'available',
             reason: '',
@@ -46778,6 +49588,37 @@
         return { lang: lang, path: path };
     }
 
+    /** Binding this turn declared for `path`, if any. */
+    function _turnWorkingFileBinding(st, path) {
+        var list = st && st.workingFileBindings;
+        if (!Array.isArray(list)) return null;
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] && list[i].path === path) return list[i];
+        }
+        return null;
+    }
+
+    /**
+     * Present an answer that lost its claim on a file, without discarding it.
+     *
+     * The reader may still want these bytes -- they are a real answer to a
+     * real question. What they must not be is silently promoted over a newer
+     * revision, so the block stays readable and downloadable and says exactly
+     * why it was not committed.
+     */
+    function _markStaleAnswerCandidate(pre, path, binding, current) {
+        var wrap = pre && pre.parentNode;
+        if (!wrap || wrap.querySelector('.ai-md-stale-candidate')) return;
+        var note = document.createElement('p');
+        note.className = 'ai-md-stale-candidate';
+        note.setAttribute('role', 'status');
+        note.textContent = 'Not applied to ' + path + '. This answer was generated from revision r' +
+            binding.revision + ', but ' + path + ' is now at revision r' +
+            (current ? _artifactContentRevision(current) : binding.revision) +
+            '. Compare it before using it \u2014 it has not replaced the newer revision.';
+        wrap.appendChild(note);
+    }
+
     function _syncExplicitCodeArtifacts(root, st) {
         var keys = [];
         if (!root || _cfg().panelGeneratedFilePreview === false) return keys;
@@ -46785,6 +49626,19 @@
             var path = _generatedArtifactSafePath(pre.getAttribute('data-artifact-path') || '');
             var code = pre.querySelector('code');
             if (!path || !code) return;
+            // Stale-response protection. If this answer was generated from a
+            // revision the ledger has since moved past, the answer does not
+            // own the file any more. It is surfaced as a candidate the reader
+            // can compare, never committed as the next revision -- otherwise a
+            // slow reply built from r3 lands as r5 over the reader's own r4,
+            // and the file they keep is one neither party authored.
+            var binding = _turnWorkingFileBinding(st, path);
+            if (binding && !_workingFileBindingIsCurrent(binding)) {
+                var current = _generatedArtifactLedger[binding.key];
+                _markStaleAnswerCandidate(pre, path, binding, current);
+                if (st) st.staleWorkingFiles = (st.staleWorkingFiles || 0) + 1;
+                return;
+            }
             var entry = _registerGeneratedArtifact({
                 path: path,
                 content: code.textContent,
@@ -46797,6 +49651,148 @@
         return keys;
     }
 
+    /**
+     * Wrap a `<pre>` in a sheet with a line-number gutter beside it.
+     *
+     * The numbers live in their own element and never enter the `<pre>`.
+     * Prefixing each line is the usual shortcut and it poisons every copy,
+     * every download and every patch taken from the block -- a reader who
+     * selects the whole sheet must get the file, not the file with a number
+     * welded to each line.
+     *
+     * `aria-hidden` keeps the gutter out of the accessibility tree, because a
+     * screen reader announcing "one import sys two import os" is worse than no
+     * numbers at all; `user-select: none` and `pointer-events: none` in the
+     * stylesheet keep it out of selections and clicks.
+     *
+     * @param {HTMLElement} pre  Block to wrap, in place if it has a parent.
+     * @param {string} text      Content the numbers are counted from.
+     * @param {string} sheetCls  Sheet class for the surface's own styling.
+     * @returns {HTMLElement} The sheet element containing gutter and pre.
+     */
+    function _buildLineNumberedSheet(pre, text, sheetCls) {
+        var lines = text ? String(text).split(/\r\n|\r|\n/).length : 0;
+        var sheet = document.createElement('div');
+        sheet.className = sheetCls || 'ai-md-file-sheet';
+        var gutter = document.createElement('div');
+        gutter.className = 'ai-md-file-gutter';
+        gutter.setAttribute('aria-hidden', 'true');
+        var numbers = [];
+        for (var ln = 1; ln <= lines; ln++) numbers.push(ln);
+        gutter.textContent = numbers.join('\n');
+        gutter.style.setProperty('--ai-gutter-digits', String(String(lines).length));
+        var parent = pre.parentNode;
+        var next = pre.nextSibling;
+        sheet.appendChild(gutter);
+        sheet.appendChild(pre);
+        if (parent) parent.insertBefore(sheet, next);
+        return sheet;
+    }
+
+    // ── In-place file preview instead of a whole-file mirror ──────────────
+    //
+    // When an answer returns a complete file, the panel used to print the
+    // entire file into the chat body. For a 600-line `index.rst` that buries
+    // the reasoning under a wall of text the reader has already seen, pushes
+    // the file controls off-screen, and makes a three-file answer unreadable.
+    //
+    // The file is not hidden -- it is collapsed to a row that names it, sizes
+    // it, and opens in place. Nothing moves to another surface, nothing is
+    // fetched again, and the disclosure holds the very same `<pre>` the
+    // markdown renderer produced, so copy, download and artifact-path
+    // behaviour are untouched by construction.
+    //
+    // Short files stay open: collapsing eight lines costs a click and saves
+    // nothing.
+    var _FILE_PREVIEW_COLLAPSE_MIN_LINES = 24;
+
+    function _collapseArtifactPreBlocks(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') return 0;
+        var wraps;
+        try { wraps = root.querySelectorAll('.ai-md-pre-wrap'); }
+        catch (_) { return 0; }
+        var collapsed = 0;
+        Array.prototype.forEach.call(wraps, function (wrap) {
+            if (wrap.getAttribute('data-ai-file-disclosure') === 'true') return;
+            var pre = wrap.querySelector('pre.ai-md-pre');
+            var code = pre && pre.querySelector('code');
+            if (!pre || !code) return;
+            var path = _generatedArtifactSafePath(pre.getAttribute('data-artifact-path') || '');
+            // Only complete, path-bearing files collapse. An anonymous snippet
+            // is usually the point of the answer, not a byproduct of it.
+            if (!path) return;
+            var text = code.textContent || '';
+            var lines = text ? text.split(/\r\n|\r|\n/).length : 0;
+            if (lines < _FILE_PREVIEW_COLLAPSE_MIN_LINES) return;
+
+            var entry = _generatedArtifactLedger[path];
+            var body = document.createElement('div');
+            body.className = 'ai-md-file-disclosure-body';
+            body.id = 'ai-file-preview-' + (++_FILE_DISCLOSURE_SEQ);
+            body.hidden = true;
+
+            var head = document.createElement('button');
+            head.type = 'button';
+            head.className = 'ai-md-file-disclosure-head';
+            head.setAttribute('aria-expanded', 'false');
+            head.setAttribute('aria-controls', body.id);
+
+            var caret = document.createElement('span');
+            caret.className = 'ai-md-file-disclosure-caret';
+            caret.setAttribute('aria-hidden', 'true');
+            caret.textContent = '\u203a';
+
+            var name = document.createElement('span');
+            name.className = 'ai-md-file-disclosure-name';
+            name.textContent = path;
+
+            var meta = document.createElement('span');
+            meta.className = 'ai-md-file-disclosure-meta';
+            meta.textContent = lines + (lines === 1 ? ' line' : ' lines');
+
+            head.appendChild(caret);
+            head.appendChild(name);
+            var stat = _diffStatElement(entry);
+            if (stat) head.appendChild(stat);
+            head.appendChild(meta);
+
+            // The label is a full sentence for assistive technology; the row's
+            // visual parts are individually meaningless out of order.
+            head.setAttribute('aria-label',
+                'Preview ' + path + ', ' + lines + (lines === 1 ? ' line' : ' lines') +
+                (entry ? ', revision r' + _artifactContentRevision(entry) : ''));
+
+            wrap.parentNode.insertBefore(head, wrap);
+            wrap.parentNode.insertBefore(body, wrap);
+
+            // File-editing mode reads like an editor sheet: a line-number
+            // gutter beside the code rather than inside it.
+            //
+            // The numbers live in their OWN element, never interleaved into
+            // the `<code>`. Prefixing each line with its number is the usual
+            // shortcut and it poisons every copy, every download and every
+            // patch made from the block. Here `<code>` still holds exactly the
+            // file's bytes, and the gutter is `aria-hidden` and unselectable,
+            // so selecting the whole sheet yields the file and nothing else.
+            // Same builder as the overlay preview. Two gutters would drift in
+            // exactly the properties that are invisible until they are wrong:
+            // the aria-hidden, the digit width, the line counting.
+            var sheet = _buildLineNumberedSheet(wrap, text, 'ai-md-file-sheet');
+            body.appendChild(sheet);
+            wrap.setAttribute('data-ai-file-disclosure', 'true');
+            wrap.setAttribute('data-ai-file-lines', String(lines));
+
+            head.addEventListener('click', function () {
+                var open = head.getAttribute('aria-expanded') === 'true';
+                head.setAttribute('aria-expanded', open ? 'false' : 'true');
+                body.hidden = open;
+            });
+            collapsed += 1;
+        });
+        return collapsed;
+    }
+    var _FILE_DISCLOSURE_SEQ = 0;
+
     function _appendChangedFileSummary(root, keys, st) {
         if (!root || _cfg().panelGeneratedFilePreview === false) return;
         if (root.querySelector('.ai-assistant-panel-changed-files')) return;
@@ -46807,58 +49803,192 @@
         if (!combined.length) return;
         var section = document.createElement('section');
         section.className = 'ai-assistant-panel-changed-files';
-        section.setAttribute('aria-label', 'Changed files');
-        var head = document.createElement('div');
+        section.setAttribute('aria-label', 'Presented files');
+        // "Changed files" claimed more than had happened: nothing outside this
+        // browser changed. "Presented" says what the panel actually did, and
+        // the hint keeps the draft status attached to the count rather than
+        // relegating it to a tooltip nobody opens.
+        var head = document.createElement('button');
+        head.type = 'button';
         head.className = 'ai-assistant-panel-changed-files-head';
+        head.setAttribute('aria-expanded', 'true');
+        var listId = 'ai-presented-files-' + (++_FILE_DISCLOSURE_SEQ);
+        head.setAttribute('aria-controls', listId);
+        var headCaret = document.createElement('span');
+        headCaret.className = 'ai-assistant-panel-changed-files-caret';
+        headCaret.setAttribute('aria-hidden', 'true');
+        headCaret.textContent = '\u203a';
         var title = document.createElement('strong');
-        title.textContent = 'Changed files';
+        title.textContent = 'Presented ' + combined.length +
+            (combined.length === 1 ? ' file' : ' files');
         var hint = document.createElement('span');
-        hint.textContent = combined.length + ' \u00b7 every link opens the latest revision';
-        head.appendChild(title); head.appendChild(hint);
+        hint.textContent = 'drafts, not applied \u00b7 links open the latest revision';
+        head.appendChild(headCaret); head.appendChild(title); head.appendChild(hint);
         section.appendChild(head);
+
+        // A queue the reader cannot see is a queue they cannot manage. This
+        // says what is attached and offers the one action that is awkward
+        // through per-file menus: dropping all of it.
+        var trayCount = _continuationCount();
+        if (trayCount) {
+            var tray = document.createElement('div');
+            tray.className = 'ai-assistant-panel-changed-files-tray';
+            tray.setAttribute('role', 'status');
+            var trayText = document.createElement('span');
+            trayText.textContent = trayCount +
+                (trayCount === 1 ? ' file travels' : ' files travel') +
+                ' with your next message';
+            // Status only. Clearing lives on the footer control now, and two
+            // buttons for one action is the duplication this section has spent
+            // several checkpoints removing. With a single file there is no
+            // footer control and the row's own menu offers Stop continuing.
+            tray.appendChild(trayText);
+            section.appendChild(tray);
+        }
+        var footerRef = null;
         var list = document.createElement('div');
         list.className = 'ai-assistant-panel-changed-files-list';
+        list.id = listId;
+        head.addEventListener('click', function () {
+            var open = head.getAttribute('aria-expanded') === 'true';
+            head.setAttribute('aria-expanded', open ? 'false' : 'true');
+            list.hidden = open;
+            if (footerRef) footerRef.hidden = open;
+        });
         combined.forEach(function (key) {
             var entry = _generatedArtifactLedger[key];
             var row = document.createElement('div');
             row.className = 'ai-assistant-panel-changed-file';
             var preview = document.createElement('button');
             preview.type = 'button';
-            preview.className = 'ai-assistant-panel-changed-file-preview';
+            // Built from the same classes as a snippet card, not a lookalike.
+            // The two surfaces previously carried parallel class trees styled
+            // to match; keeping them in step then meant editing two stylesheets
+            // in the same way, and they had already diverged -- this one had
+            // grown a trailing "Preview" word, a badge after the metadata, and
+            // a different truncation point for the same filename.
+            preview.className = 'ai-md-artifact-card ai-assistant-panel-changed-file-preview';
+            preview.setAttribute('aria-label', 'Preview ' + entry.path);
+            preview.title = 'Preview ' + entry.path +
+                ' \u2014 download is the button beside it';
             var icon = document.createElement('span');
-            icon.className = 'ai-assistant-panel-changed-file-icon';
+            icon.className = 'ai-md-artifact-icon';
             icon.setAttribute('aria-hidden', 'true');
             icon.innerHTML = ICONS.terms;
             var copy = document.createElement('span');
-            copy.className = 'ai-assistant-panel-changed-file-copy';
+            copy.className = 'ai-md-artifact-info';
             var name = document.createElement('span');
-            name.className = 'ai-assistant-panel-changed-file-name';
+            name.className = 'ai-md-artifact-name';
             name.textContent = entry.path;
+            // The revision/state line the ledger keeps up to date at click
+            // time; it sits where a snippet card shows its type.
+            var typeLine = document.createElement('span');
+            typeLine.className = 'ai-md-artifact-type';
+            // A short type badge does what an extension does at a glance, and
+            // unlike the extension it survives truncation of a long path --
+            // the case that actually needs it. It sits where a snippet card
+            // shows its type, with the live revision/state line beside it.
+            var badge = document.createElement('span');
+            badge.className = 'ai-assistant-panel-changed-file-badge';
+            var dot = entry.path.lastIndexOf('.');
+            var ext = (dot > 0 && dot < entry.path.length - 1)
+                ? entry.path.slice(dot + 1) : '';
+            badge.textContent = (ext || 'file').slice(0, 6).toUpperCase();
+            typeLine.appendChild(badge);
             var meta = document.createElement('span');
             meta.className = 'ai-assistant-panel-changed-file-meta';
-            copy.appendChild(name); copy.appendChild(meta);
-            var open = document.createElement('span');
-            open.className = 'ai-assistant-panel-changed-file-open';
-            open.textContent = 'Preview';
-            preview.appendChild(icon); preview.appendChild(copy); preview.appendChild(open);
+            typeLine.appendChild(meta);
+            copy.appendChild(name);
+            // Beside the filename, so the size of the change reads at the same
+            // glance as what changed.
+            var diffStat = _diffStatElement(entry);
+            if (diffStat) name.appendChild(diffStat);
+            copy.appendChild(typeLine);
+            preview.appendChild(icon); preview.appendChild(copy);
             _generatedArtifactBindLatest(key, preview, meta);
             var download = document.createElement('button');
             download.type = 'button';
             download.className = 'ai-assistant-panel-changed-file-download';
-            download.textContent = 'Download';
+            _decorateIconButton(download, ICONS.exportTxt, 'Download');
             download.setAttribute('data-ai-artifact-download-key', key);
-            download.setAttribute('aria-label', 'Download latest ' + entry.path);
+            download.setAttribute('aria-label', 'Download latest ' + entry.path + ' under its own name');
             download.addEventListener('click', function () { _generatedArtifactDownloadLatest(key); });
-            row.appendChild(preview); row.appendChild(download);
+            var primary = document.createElement('div');
+            primary.className = 'ai-assistant-panel-changed-file-primary';
+            // Same segmented control as a snippet card: preview and download
+            // are two things you do to one artifact, not two peers.
+            primary.appendChild(_buildArtifactSegmentGroup(entry.path, preview, download));
+            primary.appendChild(_buildFileOverflow(key, entry));
+            row.appendChild(primary);
+            // Patch export sits beside the plain download rather than replacing
+            // it: a reader who just wants the file should not have to know what
+            // `git am` is, and a reader who tracks changes should not have to
+            // diff by hand.
             _generatedArtifactRefreshRefs(key);
             list.appendChild(row);
         });
         section.appendChild(list);
-        if (combined.length > 1) {
+        // File events are already the activity timeline's job. A presentation
+        // that exists only in the answer body is invisible to a reader who
+        // consults the timeline to see what the turn actually did.
+        if (st) {
+            _activityAddStep(st, {
+                id: 'presented-files', kind: 'file', state: 'done',
+                label: 'Presented ' + combined.length +
+                    (combined.length === 1 ? ' file' : ' files'),
+                detail: combined.map(function (key) {
+                    var e = _generatedArtifactLedger[key];
+                    return e.path + ' r' + _artifactContentRevision(e);
+                }).join(' \u00b7 ')
+            });
+        }
+        // Patch export is offered whenever anything is tracked. The wording
+        // follows the count: a "series" of one file is just a patch, and
+        // naming it a series makes a reader look for the other files.
+        var many = combined.length > 1;
+        var series = document.createElement('button');
+        series.type = 'button';
+        series.className = 'ai-assistant-panel-changed-files-series';
+        _decorateIconButton(series, ICONS.gitMark,
+            many ? 'Download patch series' : 'Download patch');
+        series.setAttribute('aria-label', many
+            ? 'Download all ' + combined.length + ' tracked files as one git patch series'
+            : 'Download ' + _generatedArtifactLedger[combined[0]].path + ' as a git patch');
+        series.title = many
+            ? 'One mailbox applying every tracked file in order (git am)'
+            : 'Apply with git am';
+        series.addEventListener('click', _generatedArtifactDownloadPatchSeries);
+        var footer = document.createElement('div');
+        footer.className = 'ai-assistant-panel-changed-files-footer';
+        footerRef = footer;
+
+        // Queuing several files one menu at a time is the common case for a
+        // multi-file review, and doing it by hand means discovering the
+        // per-request cap only by hitting it.
+        if (many) {
+            // One control, two directions. Attaching several files is easy;
+            // detaching them was not -- the queue had to be dismantled one
+            // menu at a time, and the reader who wanted none of it had the
+            // most work to do. The control now says what the next click does,
+            // which is also why it cannot be built once and left alone.
+            var contAll = document.createElement('button');
+            contAll.type = 'button';
+            contAll.className = 'ai-assistant-panel-changed-files-continue-all';
+            contAll.setAttribute('data-ai-continue-all-total', String(combined.length));
+            contAll.addEventListener('click', function () {
+                if (_continuationCount()) _generatedArtifactClearContinuations();
+                else _generatedArtifactContinueAll();
+            });
+            _applyContinueAllLabel(contAll);
+            footer.appendChild(contAll);
+        }
+        section.appendChild(footer);
+        if (many) {
             var all = document.createElement('button');
             all.type = 'button';
             all.className = 'ai-assistant-panel-changed-files-download-all';
-            all.textContent = 'Download all latest files';
+            _decorateIconButton(all, ICONS.exportTxt,
+                'Download all ' + combined.length + ' files');
             all.addEventListener('click', function () {
                 var unavailable = 0;
                 var aliases = Object.create(null);
@@ -46885,7 +50015,20 @@
                 if (unavailable) showNotification(unavailable + ' unavailable latest file revision' + (unavailable === 1 ? ' was' : 's were') + ' skipped.', false);
                 _downloadBlob(_buildZipBlob(files), 'application/zip', 'changed-files-' + _isoFileStamp() + '.zip');
             });
-            section.appendChild(all);
+            // Download all is the big segment; Download patch series is the
+            // narrow one beside it -- the same shape as a file row, so the
+            // footer reads as the bulk version of the control above it rather
+            // than as two loose buttons.
+            footer.appendChild(_buildArtifactSegmentGroup(
+                'All ' + combined.length + ' presented files', all, series));
+        } else {
+            // One file: there is nothing to bundle, so the footer is a single
+            // action rather than a pair. It still spans the section and wears
+            // the group's chrome, so the row reads as the same kind of control
+            // it becomes when a second file arrives -- a reader should not
+            // have to relearn the footer when an answer produces two files.
+            series.classList.add('ai-assistant-panel-changed-files-solo');
+            footer.appendChild(series);
         }
         root.appendChild(section);
     }
@@ -47488,9 +50631,14 @@
 
         // Security authority is negotiated, never guessed from the provider
         // label or URL. Bundled proxies advertise this contract from /health.
-        var proxyContract = await _chatContractDiscover(endpoint);
+        var historyPlan = null;
+        var workingFileBindings = null;
+        var proxyCaps = await _chatContractDiscover(endpoint);
         _panelTurnEnsureActive(activity, requestController, requestToken);
-        var useStructuredProxy = (proxyContract === _CHAT_CONTRACT_V1);
+        var proxyContract = proxyCaps ? proxyCaps.contract : '';
+        _lastWorkingFileCaps = (proxyCaps && proxyCaps.workingFiles) || null;
+        var useStructuredProxy = (proxyContract === _CHAT_CONTRACT_V1 ||
+                                  proxyContract === _CHAT_CONTRACT_V2);
         if (requestResources.length && !useStructuredProxy) {
             throw new Error('AI_RESOURCE_PROXY_REQUIRED');
         }
@@ -47570,7 +50718,7 @@
             }
             if (safePage && safePage !== '<page-redacted>') descriptorParts.push(safePage);
             bodyObj = {
-                contract: _CHAT_CONTRACT_V1,
+                contract: proxyContract,
                 model: modelName,
                 user_message: question,
                 context: {
@@ -47583,6 +50731,105 @@
                 stream: false,
                 resources: requestResources.map(_resourceDescriptorForWire)
             };
+            // History rides only on v2, and only within the bounds the server
+            // published. The server fences it as untrusted data and never
+            // promotes it to native role turns; this side's job is simply to
+            // stay inside the declared limits and to say what it sent.
+            if (proxyContract === _CHAT_CONTRACT_V2) {
+                historyPlan = _chatHistoryForRequest(proxyCaps && proxyCaps.history, true);
+                if (historyPlan.turns.length) bodyObj.history = historyPlan.turns;
+                // The context step was written before negotiation finished, so
+                // it is rewritten here with what is actually being sent. The
+                // panel previously said "Prepared request context" and left the
+                // reader to assume the conversation went with it; naming the
+                // turn count -- and what was left out -- is the difference
+                // between a claim and a receipt.
+                var historyBits = [];
+                if (requestResources.length) {
+                    historyBits.push(requestResources.length + ' selected resource' +
+                        (requestResources.length === 1 ? '' : 's'));
+                }
+                if (_redacted.text) historyBits.push('visible documentation context');
+                historyBits.push(historyPlan.turns.length
+                    ? historyPlan.turns.length + ' recent conversation turn' +
+                      (historyPlan.turns.length === 1 ? '' : 's') +
+                      ' (~' + Math.round(historyPlan.chars / 100) / 10 + 'k characters)'
+                    : 'no earlier conversation turns');
+                if (historyPlan.dropped) {
+                    historyBits.push(historyPlan.dropped + ' earlier turn' +
+                        (historyPlan.dropped === 1 ? '' : 's') +
+                        ' omitted to stay within the endpoint limits');
+                }
+                var wfPlan = await _workingFilesForRequest(proxyCaps && proxyCaps.workingFiles);
+                _panelTurnEnsureActive(activity, requestController, requestToken);
+                if (wfPlan.files.length) {
+                    bodyObj.working_files = wfPlan.files.map(function (f) { return f.wire; });
+                    // The same file is staged as a chip so the reader can see
+                    // and remove it. Sending that chip's bytes as a resource
+                    // too would transmit the file twice -- once bound to its
+                    // revision and digest, once unbound -- doubling its token
+                    // cost and giving the model two copies to reconcile.
+                    //
+                    // Suppressed here rather than by not staging, because the
+                    // transport is only known at this point: the chip must
+                    // exist before the endpoint has been negotiated.
+                    var carried = Object.create(null);
+                    wfPlan.files.forEach(function (f) { carried[f.wire.path] = true; });
+                    var beforeCount = bodyObj.resources.length;
+                    bodyObj.resources = bodyObj.resources.filter(function (res) {
+                        var p = res && (res.relative_path || res.relativePath || res.name);
+                        return !(p && carried[p]);
+                    });
+                    // The multipart body is built from requestResources, not
+                    // from bodyObj.resources, so dropping only the descriptor
+                    // would have left the bytes uploading with nothing in the
+                    // request describing them -- a worse state than the
+                    // duplicate it was meant to remove.
+                    requestResources = requestResources.filter(function (row) {
+                        var p = row && (row.relative_path || row.relativePath || row.name);
+                        return !(p && carried[p]);
+                    });
+                    var suppressed = beforeCount - bodyObj.resources.length;
+                    if (suppressed) {
+                        historyBits.push(suppressed + ' duplicate attachment' +
+                            (suppressed === 1 ? '' : 's') +
+                            ' omitted (carried as bound working files instead)');
+                    }
+                    // The binding travels with the turn, not with the ledger:
+                    // it describes what THIS request was built from.
+                    workingFileBindings = wfPlan.files.map(function (f) {
+                        return { key: f.key, path: f.wire.path, revision: f.wire.revision, sha256: f.wire.sha256 };
+                    });
+                    // Carried on the activity state because that object is the
+                    // one thing already threaded from request assembly through
+                    // to artifact registration for this turn.
+                    if (activity) activity.workingFileBindings = workingFileBindings;
+                    _recordTurnContextReceipt({
+                        at: Date.now(),
+                        question: question,
+                        contract: proxyContract,
+                        historyTurns: historyPlan ? historyPlan.turns.length : 0,
+                        historyDropped: historyPlan ? historyPlan.dropped : 0,
+                        transcriptLength: Array.isArray(_transcript) ? _transcript.length : 0,
+                        resources: requestResources.length,
+                        workingFiles: workingFileBindings.map(function (b) {
+                            return { key: b.key, path: b.path, revision: b.revision };
+                        })
+                    });
+                    historyBits.push(wfPlan.files.length + ' working file' +
+                        (wfPlan.files.length === 1 ? '' : 's') + ' (' +
+                        wfPlan.files.map(function (f) { return f.wire.path + ' r' + f.wire.revision; }).join(', ') + ')');
+                }
+                if (wfPlan.skipped) {
+                    historyBits.push(wfPlan.skipped + ' working file' +
+                        (wfPlan.skipped === 1 ? '' : 's') + ' omitted (too large, unavailable, or undigestible)');
+                }
+                _activityAddStep(activity, {
+                    id: 'context', kind: 'status', state: 'done',
+                    label: 'Prepared request context',
+                    detail: historyBits.join(' \u00b7 ')
+                });
+            }
         } else if (isAnthropic) {
             bodyObj = {
                 model:      modelName,
@@ -47894,7 +51141,7 @@
                                 // never flashes as trusted diagnostic output.
                                 if (!validatingStub) {
                                     streamBubble.innerHTML = _mdToHtml(accumulated);
-                                    streamBubble.setAttribute('data-raw', accumulated);
+                                    streamBubble.setAttribute('data-raw', _elideFileBodiesForRaw(accumulated));
                                     _enhanceCodeBlocks(streamBubble);
                                     // As soon as a complete fenced file appears, publish its
                                     // bounded preview into the latest-revision ledger. This is
@@ -47993,7 +51240,7 @@
                 return;
             }
             streamBubble.innerHTML = _mdToHtml(accumulated || '(no response)');
-            streamBubble.setAttribute('data-raw', accumulated || '(no response)');
+            streamBubble.setAttribute('data-raw', _elideFileBodiesForRaw(accumulated) || '(no response)');
         }
 
         _panelTurnEnsureActive(activity, requestController, requestToken);
@@ -48014,7 +51261,14 @@
         // v2: capture model info before _recordMessage so it is stored in
         // the transcript entry for export and share-payload attribution.
         var _streamModelInfo = _getActiveModel(_cfg());
-        _recordMessage('assistant', accumulated || '(no response)', _streamModelInfo);
+        // The activity object is passed HERE, and this is the whole reason the
+        // timeline survives a reload. R173T15 added the persistence and its
+        // gate asserted that `entry.activity = activitySummary` existed in the
+        // source -- but nothing asserted that a caller ever supplied
+        // `turnMeta.activity`, and none did, so the feature stored nothing.
+        // The gate now drives _recordMessage for real rather than reading it.
+        _recordMessage('assistant', accumulated || '(no response)', _streamModelInfo,
+            null, { activity: activity });
         // Read the timestamp just stored — same single-threaded guarantee as
         // _appendPanelMessage: the last _transcript entry is this streamed reply.
         var streamTs = _transcript[_transcript.length - 1].ts;
