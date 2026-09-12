@@ -135,7 +135,8 @@ ok(prime.includes("' attached files. Return each complete updated file.'"),'the 
 const overflow = extract('_buildOverflowMenu');
 ok(overflow.includes("var resolveItems = (typeof items === 'function')"),'a menu may be built from a function so its items can depend on state');
 ok(overflow.includes('resolveItems().forEach(function (item) {'),'items are resolved when the menu opens, not when the row is built');
-ok(src.includes("_buildOverflowMenu('More options for ' + entry.path, function () { return ["),'the file menu resolves its items per open');
+ok(extract('_buildFileOverflow').includes('return _fileOverflowItems(key);'),'the file menu resolves its canonical items per open');
+ok(extract('_fileOverflowItems').includes('_workingFileContinuations[key]'),'the canonical list still resolves Continue/Stop from live state');
 
 // Stop must undo everything Continue did. Deleting only the registry key left
 // the bytes staged, so the dropped file still travelled and re-adding staged a

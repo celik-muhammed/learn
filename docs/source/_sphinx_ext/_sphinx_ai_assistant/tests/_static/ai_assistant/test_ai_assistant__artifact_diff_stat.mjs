@@ -32,7 +32,7 @@ const big = Array.from({length:3000},(_,i)=>'line '+i).join('\n');
 const big2 = big.replace(/line 1500/,'CHANGED');
 const r = diff(big,big2);
 ok(eq(r,1,1) && r.exact===true,'3000-line file with one edit stays exact via prefix/suffix trim');
-const t0=Date.now(); diff(big, Array.from({length:3000},(_,i)=>'x '+(i*7%3000)).join('\n')); 
+const t0=Date.now(); diff(big, Array.from({length:3000},(_,i)=>'x '+(i*7%3000)).join('\n'));
 ok(Date.now()-t0 < 5000,'worst-case 3000x3000 completes inside the budget');
 // Presentation contract: the paired stylesheet must define both tones for
 // light and dark, and must survive forced-colours mode.
@@ -52,8 +52,9 @@ ok(dsrc.includes('function _diffOps(before, after)') && dsrc.includes('_diffStat
 // Patch export moved from a card button into the ⋮ menu; the capability is
 // unchanged and is asserted where it now lives.
 ok(dsrc.includes("{ label: 'Download patch'")&&dsrc.includes('_generatedArtifactDownloadPatch(key);'),'patch export is reachable from every file row');
-ok(css.includes('.ai-assistant-panel-changed-file-patch'),'the patch control is styled, not an unstyled default button');
-ok(/grid-template-columns:\s*minmax\(0, 1fr\) auto auto/.test(css),'the row grid accounts for the third control');
+ok(/\.ai-assistant-panel-changed-file-menu-item\s*\{/.test(css),'patch export inherits the styled overflow-menu item contract');
+ok(/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/.test(css),'the Presented row is one artifact group plus one overflow trigger');
+ok(!/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*auto auto/.test(css),'no obsolete direct patch/download column survives');
 // ── Artifact accent ────────────────────────────────────────────────────────
 // Four controls, one idea -- "take this file". They were drifting: the snippet
 // download label carried the theme accent, the presented-file and bulk

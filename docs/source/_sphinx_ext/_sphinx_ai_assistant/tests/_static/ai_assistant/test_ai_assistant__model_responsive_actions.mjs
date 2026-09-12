@@ -10,8 +10,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const jsPath = process.argv[2];
+const cssPath = process.argv[3] || path.join(path.dirname(jsPath), 'ai-assistant.css');
 const src = fs.readFileSync(jsPath, 'utf8');
-const css = fs.readFileSync(path.join(path.dirname(jsPath), 'ai-assistant.css'), 'utf8');
+const css = fs.readFileSync(cssPath, 'utf8');
 
 function extract(name) {
   const i = src.indexOf('function ' + name + '(');
@@ -52,6 +53,15 @@ t('Revert is appended before Customize',
   manager.indexOf('header.appendChild(revertBtn)') < manager.indexOf('header.appendChild(editorToggle)'), true);
 
 t('row builds one shared action wrapper', /ai-assistant-panel-model-actions/.test(row), true);
+t('model actions and disclosure share one local positioning host',
+  /actionHost = document\.createElement\('div'\)/.test(row) &&
+  /actionHost\.className = 'ai-assistant-panel-model-action-host'/.test(row) &&
+  /actionHost\.appendChild\(actionsWrap\)/.test(row) &&
+  /actionHost\.appendChild\(menuBtn\)/.test(row), true);
+t('action positioning host is the row child, not the popup itself',
+  /row\.appendChild\(actionHost\)/.test(row) &&
+  /row\.appendChild\(actionsWrap\)/.test(row) === false &&
+  /row\.appendChild\(menuBtn\)/.test(row) === false, true);
 t('row builds vertical ellipsis menu button',
   /ai-assistant-panel-model-menu-btn/.test(row) && /\\u22ee/.test(row), true);
 t('menu button exposes expanded state', /aria-expanded/.test(row), true);
@@ -106,6 +116,19 @@ t('mobile breakpoint shows ellipsis trigger',
   /@media \(max-width:\s*499\.98px\)[\s\S]*?\.ai-assistant-panel-model-menu-btn\s*\{[\s\S]*?display:\s*inline-flex;/s.test(css), true);
 t('mobile actions are collapsed by default',
   /@media \(max-width:\s*499\.98px\)[\s\S]*?\.ai-assistant-panel-model-actions\s*\{[\s\S]*?display:\s*none;/s.test(css), true);
+t('mobile popover is anchored to the local trigger host',
+  css.includes('.ai-assistant-panel-model-action-host {\n    position: relative;') &&
+  /@media \(max-width:\s*499\.98px\)[\s\S]*?\.ai-assistant-panel-model-actions\s*\{[\s\S]*?top:\s*calc\(100% \+ 0\.24rem\);[\s\S]*?right:\s*0;/s.test(css), true);
+t('mobile popover no longer uses whole-row offset geometry',
+  /top:\s*calc\(100% - 0\.28rem\)/.test(css), false);
+t('mobile menu can flip above the trigger near the scroll boundary',
+  /data-actions-placement=\"top\"[\s\S]*?bottom:\s*calc\(100% \+ 0\.24rem\)/s.test(css) &&
+  /below < needed && above > below/.test(row) &&
+  /setAttribute\('data-actions-placement', 'top'\)/.test(row), true);
+t('placement measurement is constrained by the model sheet scroll host',
+  /closest\('\.ai-assistant-panel-sheet-scroll'\)/.test(row) &&
+  /scrollHost\.getBoundingClientRect/.test(row) &&
+  /Math\.min\(boundaryBottom, scrollRect\.bottom\)/.test(row), true);
 t('mobile open state reveals same action wrapper',
   /data-actions-open="true"[\s\S]*?\.ai-assistant-panel-model-actions\s*\{\s*display:\s*flex;/s.test(css), true);
 t('mobile popover restores text labels',

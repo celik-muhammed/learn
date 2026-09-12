@@ -36,6 +36,6 @@ def setup(app):
     dict
         Extension metadata declaring parallel read/write safety.
     """
-    from .directive import setup as _setup
+    from .directive import setup as _setup  # ruff: ignore[import-outside-top-level]
 
     return _setup(app)

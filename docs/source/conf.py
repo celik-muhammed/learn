@@ -64,8 +64,8 @@ extensions = [
     # "sphinxext.rediraffe",
     # "myst_parser",
     # "ablog",
-    "_sphinx_ext._pydata_component_list",
-    "_sphinx_ext._sphinx_gallery_grid",
+    "_sphinx_ext._pydata_component_list",  # pydata_sphinx_theme
+    "_sphinx_ext._sphinx_gallery_grid",  # pydata_sphinx_theme
     "_sphinx_ext._sphinxcontrib_youtube",  # "sphinxcontrib.youtube",
     "_sphinx_ext._sphinx_youtube_gallery",
     "_sphinx_ext._sphinx_ai_assistant",

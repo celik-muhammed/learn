@@ -82,11 +82,13 @@ ok(!/_dismissSpeakBanner[\s\S]{0,400}?\.remove\(\)/.test(src),'nothing removes t
 // beside the banner was panel background -- opaque, nothing behind it.
 const rowBase = (css.match(/^\.ai-assistant-panel-speak-row \{[^}]*\}/m) || [''])[0];
 ok((css.match(/^\.ai-assistant-panel-speak-row \{/gm) || []).length === 1,'the row is defined once, not by two rules read together');
-ok(/height:\s*0/.test(rowBase) && /min-height:\s*0/.test(rowBase),'the row costs no height in either state');
-ok(/overflow:\s*visible/.test(rowBase),'its lifted contents are not clipped by the zero-height box');
-// Both lift rules, counted: the base one and the collapsed override carry the
-// same declaration, so matching either passed while the other was neutralised.
-ok((css.match(/transform:\s*translateY\(-100%\)/g) || []).length === 2,'the controls are lifted above the row in both states');
+ok(/min-height:\s*2rem/.test(rowBase) && /height:\s*auto/.test(rowBase),'the row keeps a positive paint box in both states');
+ok(/margin:\s*-2rem\s+0\.75rem\s+0/.test(rowBase),'an equal negative block margin reclaims its flow space');
+ok(/overflow:\s*visible/.test(rowBase),'its floating controls are not clipped');
+ok(/isolation:\s*isolate/.test(rowBase),'the floating paint is isolated from transcript compositing');
+ok((css.match(/\.ai-assistant-panel-speak-row > \* \{ transform:\s*none; \}/g) || []).length === 1,'base children stay in ordinary paint coordinates');
+ok(/\[data-collapsed="true"\] > \* \{[\s\S]*?transform:\s*none/.test(css),'collapsed children also stay out of transform-based lifting');
+ok(!/\.ai-assistant-panel-speak-row[^\n{]*[\s\S]{0,180}?translateY\(-100%\)/.test(css),'the speak row no longer depends on a zero-height translate layer');
 ok(!/position:\s*absolute/.test(rowBase),'it is not absolutely positioned against an ancestor it does not have');
 ok(/\.ai-assistant-panel:has\(\.ai-assistant-panel-speak-row\) \.ai-assistant-panel-body \{[^}]*padding-bottom:\s*2\.75rem/.test(css),'the transcript keeps end padding so the pill never sits on the final line');
 ok((css.match(/:has\(\.ai-assistant-panel-speak-row/g) || []).length === 1,'one reservation rule, covering both states');
@@ -99,7 +101,9 @@ ok((css.match(/:has\(\.ai-assistant-panel-speak-row/g) || []).length === 1,'one 
 // Bounded to the rule body: an unbounded lazy match runs past the closing brace
 // into a later rule setting the same token, and would pass with the toggle's own
 // declaration removed.
-ok(/^\.ai-assistant-panel-speak-toggle \{[^}]*background-color:\s*var\(/m.test(css),'the toggle carries the banner ground at every width');
+ok(/^\.ai-assistant-panel-speak-toggle \{[^}]*background-color:\s*var\(--ai-speak-toggle-surface\)/m.test(css),'the toggle carries its semantic surface at every width');
+const speakToggleBase = (css.match(/^\.ai-assistant-panel-speak-toggle \{[^}]*\}/m) || [''])[0];
+ok(!/background\s*:\s*transparent/.test(speakToggleBase),'no background shorthand erases the toggle ground later in the same rule');
 ok(/\[data-collapsed="false"\] \.ai-assistant-panel-speak-toggle \{[^}]*align-self:\s*stretch/.test(css),'and matches its height, so the pair sits on one baseline');
 // The row itself stays transparent: only the two controls are drawn.
 ok(!/^\.ai-assistant-panel-speak-row \{[^}]*background/m.test(css),'the row draws nothing, so the space around the controls stays transparent');

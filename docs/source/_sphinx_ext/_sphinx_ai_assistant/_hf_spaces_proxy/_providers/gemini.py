@@ -331,13 +331,13 @@ def _response_text(payload: object) -> str:
             content = step.get("content")
             if not isinstance(content, list):
                 continue
-            for row in content:
-                if (
-                    isinstance(row, dict)
-                    and row.get("type") == "text"
-                    and isinstance(row.get("text"), str)
-                ):
-                    pieces.append(row["text"])
+            pieces.extend(
+                row["text"]
+                for row in content
+                if isinstance(row, dict)
+                and row.get("type") == "text"
+                and isinstance(row.get("text"), str)
+            )
     text = "".join(pieces)
     if not text:
         raise ResourceExecutionError("Gemini Interactions returned no assistant text")
@@ -821,7 +821,7 @@ class GeminiResourceExecutor:
             for handle in reversed(native_handles):
                 try:  # ruff: ignore[suppressible-exception]
                     await asyncio.shield(self.release(handle))
-                except Exception:  # ruff: ignore[blind-except]
+                except Exception:  # ruff: ignore[blind-except, try-except-in-loop]
                     pass
             if store_name:
                 try:  # ruff: ignore[suppressible-exception]

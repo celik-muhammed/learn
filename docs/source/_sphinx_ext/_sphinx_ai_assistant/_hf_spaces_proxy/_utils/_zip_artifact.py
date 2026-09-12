@@ -153,7 +153,7 @@ class ParsedZipEditRequest:
         for upload in rows:
             try:  # ruff: ignore[suppressible-exception]
                 await upload.close()
-            except Exception:  # ruff: ignore[blind-except]
+            except Exception:  # ruff: ignore[blind-except, try-except-in-loop]
                 pass
 
 
@@ -613,7 +613,7 @@ async def parse_zip_edit_request(  # ruff: ignore[too-many-branches]
         for upload in uploads_seen:
             try:  # ruff: ignore[suppressible-exception]
                 await upload.close()
-            except Exception:  # ruff: ignore[blind-except]
+            except Exception:  # ruff: ignore[blind-except, try-except-in-loop]
                 pass
         raise
 

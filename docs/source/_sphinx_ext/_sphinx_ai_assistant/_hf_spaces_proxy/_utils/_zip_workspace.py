@@ -772,7 +772,7 @@ def _close_replacements(rows: Mapping[str, _Replacement]) -> None:
     for replacement in rows.values():
         try:  # ruff: ignore[suppressible-exception]
             replacement.close()
-        except Exception:  # ruff: ignore[blind-except]
+        except Exception:  # ruff: ignore[blind-except, try-except-in-loop]
             pass
 
 

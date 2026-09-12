@@ -1,4 +1,5 @@
-"""Domain-agnostic collection infrastructure, lazily exported.
+"""
+Domain-agnostic collection infrastructure, lazily exported.
 
 Filtering, sorting, grouping, browser metadata/assets, and section rendering are
 shared by ``gallery-grid`` and typed adapters such as ``youtube-gallery``.
@@ -6,6 +7,7 @@ The package initializer intentionally imports nothing eagerly: data-only helpers
 (``_yaml`` and the YouTube catalog model/sync path) must remain usable without
 Sphinx/docutils installed.
 """
+
 from __future__ import annotations
 
 from importlib import import_module

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+
 from sphinx.util import logging
 
 logger = logging.getLogger(__name__)
@@ -73,4 +74,4 @@ def mark_used(directive: Any) -> None:
     Currently a no-op hook. It exists so that per-page asset inclusion can
     be added later without changing any call site.
     """
-    return None
+    return

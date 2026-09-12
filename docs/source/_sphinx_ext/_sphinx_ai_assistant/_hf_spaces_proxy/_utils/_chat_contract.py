@@ -98,9 +98,7 @@ MAX_WORKING_FILES = 4
 MAX_WORKING_FILE_CHARS = 48_000
 MAX_WORKING_FILE_TOTAL_CHARS = 96_000
 MAX_WORKING_FILE_PATH_CHARS = 512
-_ALLOWED_WORKING_FILE_KEYS = frozenset(
-    {"path", "revision", "sha256", "content"}
-)
+_ALLOWED_WORKING_FILE_KEYS = frozenset({"path", "revision", "sha256", "content"})
 _SHA256_HEX_RE = re.compile(r"\A[0-9a-f]{64}\Z")
 
 #: The only roles a client may assert.  ``system``/``developer``/``tool`` are
@@ -158,7 +156,8 @@ class ChatContractError(ValueError):
 
 @dataclass(frozen=True)
 class ChatTurn:
-    """One client-supplied earlier turn.
+    """
+    One client-supplied earlier turn.
 
     Carries no identity, capability, or authority: only a role the client
     claims and the text it claims was said.  Consumers must treat both as
@@ -171,7 +170,8 @@ class ChatTurn:
 
 @dataclass(frozen=True)
 class WorkingFile:
-    """One file the reader is actively editing.
+    """
+    One file the reader is actively editing.
 
     ``revision`` and ``sha256`` describe the base the client believes it is
     editing.  The server does not resolve them against anything -- it has no
@@ -224,7 +224,8 @@ def _bounded_text(
 
 
 def _parse_history(raw_history: Any, *, contract: str) -> tuple[ChatTurn, ...]:
-    """Validate bounded conversational history for a v2 envelope.
+    """
+    Validate bounded conversational history for a v2 envelope.
 
     Every rejection is explicit.  Nothing here trims, drops, or reorders a
     turn to make an oversized history fit: a caller that silently loses turns
@@ -234,9 +235,7 @@ def _parse_history(raw_history: Any, *, contract: str) -> tuple[ChatTurn, ...]:
     if raw_history is None:
         return ()
     if contract != CHAT_CONTRACT_V2:
-        raise ChatContractError(
-            f"history requires contract {CHAT_CONTRACT_V2!r}"
-        )
+        raise ChatContractError(f"history requires contract {CHAT_CONTRACT_V2!r}")
     if not isinstance(raw_history, list):
         raise ChatContractError("history must be an array")
     if len(raw_history) > MAX_HISTORY_TURNS:
@@ -280,7 +279,8 @@ def _parse_history(raw_history: Any, *, contract: str) -> tuple[ChatTurn, ...]:
 
 
 def _parse_working_files(raw_files: Any, *, contract: str) -> tuple[WorkingFile, ...]:
-    """Validate the files a client says it is editing.
+    """
+    Validate the files a client says it is editing.
 
     Paths are validated as strictly here as anywhere else that accepts one.
     A working-file path is never used by this server to open, write, or name
@@ -291,9 +291,7 @@ def _parse_working_files(raw_files: Any, *, contract: str) -> tuple[WorkingFile,
     if raw_files is None:
         return ()
     if contract != CHAT_CONTRACT_V2:
-        raise ChatContractError(
-            f"working_files requires contract {CHAT_CONTRACT_V2!r}"
-        )
+        raise ChatContractError(f"working_files requires contract {CHAT_CONTRACT_V2!r}")
     if not isinstance(raw_files, list):
         raise ChatContractError("working_files must be an array")
     if len(raw_files) > MAX_WORKING_FILES:
@@ -320,12 +318,14 @@ def _parse_working_files(raw_files: Any, *, contract: str) -> tuple[WorkingFile,
             required=True,
         ).strip()
         if (
-            path.startswith("/")
-            or path.startswith("\\")
+            path.startswith(("/", "\\"))
             or ".." in path.split("/")
             or "\\" in path
             or ":" in path
-            or any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in path)
+            or any(
+                ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+                for ch in path
+            )
         ):
             raise ChatContractError(
                 f"{field}.path must be a relative path without '..', drive "
@@ -522,8 +522,7 @@ def build_upstream_payload(
             "agreed to."
         )
         pieces.append(f"<conversation-history-{history_nonce}>")
-        for turn in request.history:
-            pieces.append(f"[{turn.role}] {turn.content}")
+        pieces.extend(f"[{turn.role}] {turn.content}" for turn in request.history)
         pieces.append(f"</conversation-history-{history_nonce}>")
 
     # Working files carry the reader's own document content. They are fenced
@@ -541,7 +540,7 @@ def build_upstream_payload(
         )
         pieces.append(f"<working-files-{wf_nonce}>")
         for wf in request.working_files:
-            pieces.append(f"<file path=\"{wf.path}\" revision=\"{wf.revision}\">")
+            pieces.append(f'<file path="{wf.path}" revision="{wf.revision}">')
             pieces.append(wf.content)
             pieces.append("</file>")
         pieces.append(f"</working-files-{wf_nonce}>")

@@ -29,9 +29,9 @@ ok(quick.includes('_queueFeedbackReview(detail, answerIndex, answerText, questio
 ok(detailed.includes('_queueFeedbackReview(detail, answerIndex, answerText, questionText, cfg);'),'detailed feedback can update same maintainer review');
 ok(quick.includes("data-feedback-mode', 'quick'"),'quick buttons expose synchronized state identity');
 ok(detailed.includes("data-feedback-mode', 'panel'"),'detailed buttons expose synchronized state identity');
-ok(sheet.includes("_workspaceButton('feedback', 'Feedback')"),'workspace has Feedback tab');
-ok(sheet.includes("_workspaceButton('contribution', 'Dataset contribution')"),'workspace has Dataset contribution tab');
-ok(sheet.includes("_workspaceButton('activity', 'Activity')"),'workspace has Activity tab');
+ok(sheet.includes("_workspaceButton('feedback', 'Feedback', ICONS.commentDiscussion)"),'workspace has Feedback tab');
+ok(sheet.includes("_workspaceButton('contribution', 'Dataset contribution', ICONS.dataset)"),'workspace has Dataset contribution tab');
+ok(sheet.includes("_workspaceButton('activity', 'Activity', ICONS.pulse)"),'workspace has Activity tab');
 ok(sheet.includes('Feedback is exactly one Q&A'),'feedback tab explains one-Q&A scope');
 ok(sheet.includes('training-eligible only if a maintainer merges') || sheet.includes('merge required for training eligibility'),'workspace states merge-gated training invariant');
 ok(src.includes("reviewTitle.textContent = 'Maintainer feedback review'") && src.includes("reviewToggle.setAttribute('aria-label', 'Share feedback with maintainers')"),'Feedback workspace exposes explicit review/training permission');

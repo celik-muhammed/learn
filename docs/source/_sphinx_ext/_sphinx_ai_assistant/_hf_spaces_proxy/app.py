@@ -339,8 +339,8 @@ try:
         hash_edit_token,
         render_share,
         render_share_viewer_shell,
-        share_artifact_filename,
         sanitize_share_page_url,
+        share_artifact_filename,
         valid_share_id,
         validate_share_format,
         verify_edit_token,
@@ -353,8 +353,8 @@ except Exception:  # noqa: BLE001
         hash_edit_token,
         render_share,
         render_share_viewer_shell,
-        share_artifact_filename,
         sanitize_share_page_url,
+        share_artifact_filename,
         valid_share_id,
         validate_share_format,
         verify_edit_token,
@@ -4086,7 +4086,7 @@ async def _close_resource_uploads(uploads: tuple[ResourceUpload, ...]) -> None:
     for row in uploads:
         try:  # ruff: ignore[suppressible-exception]
             await row.close()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001  # ruff: ignore[try-except-in-loop]
             pass
 
 
@@ -5330,15 +5330,31 @@ def _contribution_model_attribution(raw: Any) -> dict[str, Any] | None:
         return None
     provider = raw.get("provider")
     model = raw.get("model")
-    if not isinstance(provider, str) or not provider.strip() or len(provider) > 128:
+    if (
+        not isinstance(provider, str)  # lint
+        or not provider.strip()  # lint
+        or len(provider) > 128  # ruff: ignore[magic-value-comparison]
+    ):
         return None
-    if not isinstance(model, str) or not model.strip() or len(model) > 512:
+    if (
+        not isinstance(model, str)  # lint
+        or not model.strip()  # lint
+        or len(model) > 512  # ruff: ignore[magic-value-comparison]
+    ):
         return None
-    if any(ord(ch) < 32 or ord(ch) == 127 for ch in provider + model):
+    if any(
+        ord(ch) < 32  # ruff: ignore[magic-value-comparison]
+        or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in provider + model
+    ):
         return None
     raw_id = raw.get("id")
     model_id = raw_id[:256] if isinstance(raw_id, str) and raw_id else None
-    if model_id is not None and any(ord(ch) < 32 or ord(ch) == 127 for ch in model_id):
+    if model_id is not None and any(
+        ord(ch) < 32  # ruff: ignore[magic-value-comparison]
+        or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in model_id
+    ):
         model_id = None
     return {
         "id": model_id,
@@ -6684,7 +6700,9 @@ async def share_download_fixed(request: Request) -> Response:
             "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         )
     logger.info(json.dumps({"event": "share.download", "format": entry["format"]}))
-    return Response(content=content, status_code=200, media_type=mime_type, headers=headers)
+    return Response(
+        content=content, status_code=200, media_type=mime_type, headers=headers
+    )
 
 
 @app.post("/v1/share/status")
@@ -6859,13 +6877,15 @@ async def share_get(share_id: str) -> Response:
     _require_legacy_share_entry(entry)
 
     try:
-        content, mime_type, ext = render_share(entry["snapshot"], entry["format"])
+        content, mime_type, _ext = render_share(entry["snapshot"], entry["format"])
     except ShareValidationError as exc:
         logger.error(json.dumps({"event": "share.corrupt_entry"}))
         raise HTTPException(status_code=500, detail="Stored share is invalid.") from exc
 
     headers = {
-        "Content-Disposition": f'inline; filename="{share_artifact_filename(entry["format"])}"',
+        "Content-Disposition": (
+            f'inline; filename="{share_artifact_filename(entry["format"])}"'
+        ),
         "Cache-Control": "private, no-store",
         "Pragma": "no-cache",
         "X-Content-Type-Options": "nosniff",

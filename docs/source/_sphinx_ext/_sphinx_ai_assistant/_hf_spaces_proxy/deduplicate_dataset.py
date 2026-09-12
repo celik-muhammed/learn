@@ -159,18 +159,26 @@ except (ImportError, ValueError):
 try:
     from ._utils._dataset_schema import (
         normalize_model_attribution as _normalize_model_attribution,
+    )
+    from ._utils._dataset_schema import (
         normalize_record as _normalize_record,
     )
-    from ._utils._share_contract import sanitize_share_page_url as _sanitize_dataset_page
+    from ._utils._share_contract import (
+        sanitize_share_page_url as _sanitize_dataset_page,
+    )
 
     _SCHEMA_AVAILABLE = True
 except (ImportError, ValueError):
     try:
         from _utils._dataset_schema import (
             normalize_model_attribution as _normalize_model_attribution,
+        )
+        from _utils._dataset_schema import (
             normalize_record as _normalize_record,
         )
-        from _utils._share_contract import sanitize_share_page_url as _sanitize_dataset_page
+        from _utils._share_contract import (
+            sanitize_share_page_url as _sanitize_dataset_page,
+        )
 
         _SCHEMA_AVAILABLE = True
     except ImportError:
@@ -297,7 +305,9 @@ def _parse_jsonl_bytes(data: bytes, *, display_path: str) -> list[dict]:
     return records
 
 
-def _has_bound_derived_manifest(path: Path) -> bool:
+def _has_bound_derived_manifest(  # ruff: ignore[too-many-return-statements]
+    path: Path,
+) -> bool:
     """Return whether a sidecar cryptographically identifies *path* as derived.
 
     This recognizes renamed/custom-output merged artifacts without trusting an
@@ -311,11 +321,20 @@ def _has_bound_derived_manifest(path: Path) -> bool:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if not isinstance(manifest, dict):
             return False
-        if manifest.get("derived") is not True or manifest.get("authoritative") is not False:
+        if (
+            manifest.get("derived") is not True
+            or manifest.get("authoritative") is not False
+        ):
             return False
-        if manifest.get("lifecycleRole") != "cloud-merged" or manifest.get("representation") != "jsonl":
+        if (
+            manifest.get("lifecycleRole") != "cloud-merged"
+            or manifest.get("representation") != "jsonl"
+        ):
             return False
-        if manifest.get("artifactFamily") not in {"ai-feedback-review", "ai-contribution"}:
+        if manifest.get("artifactFamily") not in {
+            "ai-feedback-review",
+            "ai-contribution",
+        }:
             return False
         if manifest.get("filename") != path.name:
             return False
@@ -334,7 +353,9 @@ def _is_derived_cloud_merged_path(path: Path) -> bool:
         r"ai-feedback-review-cloud-merged-jsonl-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}\.jsonl",
         r"ai-contribution-cloud-merged-jsonl-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{2}\.jsonl",
     )
-    return any(re.fullmatch(pattern, name) for pattern in patterns) or _has_bound_derived_manifest(path)
+    return any(
+        re.fullmatch(pattern, name) for pattern in patterns
+    ) or _has_bound_derived_manifest(path)
 
 
 def load_all_records(local_dir: Path) -> list[dict]:
@@ -812,7 +833,9 @@ def _jsonl_bytes(records: list[dict]) -> bytes:
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
     """Atomically replace one derived artifact without exposing partial bytes."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent)
+    )
     tmp = Path(tmp_name)
     try:
         with os.fdopen(fd, "wb") as fh:
@@ -821,7 +844,7 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
             os.fsync(fh.fileno())
         os.replace(tmp, path)
     except Exception:
-        try:
+        try:  # ruff: ignore[suppressible-exception]
             tmp.unlink()
         except OSError:
             pass
@@ -925,7 +948,9 @@ def write_feedback_review_cloud_merged(
     }
 
 
-def _privacy_minimize_contribution_row_for_export(record: dict[str, Any]) -> dict[str, Any]:
+def _privacy_minimize_contribution_row_for_export(
+    record: dict[str, Any],
+) -> dict[str, Any]:
     """Return a derived-view copy with current contribution privacy boundaries.
 
     Historical provider rows may predate model-attribution and page sanitization.
@@ -1579,7 +1604,9 @@ def main(  # ruff: ignore[too-many-branches, too-many-return-statements]
     raw_argv = list(argv) if argv is not None else list(sys.argv[1:])
     args = parser.parse_args(raw_argv)
     output_explicit = any(
-        token == "--output" or token.startswith("--output=") for token in raw_argv
+        token == "--output"  # ruff: ignore[hardcoded-password-string]
+        or token.startswith("--output=")
+        for token in raw_argv
     )
     _configure_logging()
 

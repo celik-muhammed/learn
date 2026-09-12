@@ -163,7 +163,9 @@ def _make_section(directive: Any, label: str, source: str) -> nodes.section:
     return section
 
 
-def _as_rubrics(directive: Any, sections: Sequence[tuple[str, str]]) -> list[nodes.Node]:
+def _as_rubrics(
+    directive: Any, sections: Sequence[tuple[str, str]]
+) -> list[nodes.Node]:
     """
     Render sections as rubric-and-body pairs.
 

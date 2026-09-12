@@ -78,7 +78,7 @@
   Hands-On <learn/hands-on/index.rst>
   Kitchen Sink <learn/kitchen-sink/index.rst>
   External <learn/resource/index.rst>
-  YouTube <learn/resource/youtube/index.rst>
+  YouTube <learn/youtube/index.rst>
 
   Tags <_tags/tagsindex.rst>
   Code of Conduct <https://scikit-plots.github.io/dev/project/code_of_conduct.html>

@@ -29,6 +29,8 @@ _sphinx_gallery_grid
 _sphinx_collection
     Shared filtering, grouping, browser metadata and live-control engine used
     by collection-style directives.
+_sphinx_youtube_core
+    Dependency-free YouTube URL grammar and player option primitives.
 _sphinx_youtube_gallery
     Typed YouTube video/channel adapter that renders through ``gallery-grid``.
 _pydata_component_list
@@ -76,6 +78,7 @@ __all__: list[str] = []
 _CORE_PRIVATE_SUBMODULES: frozenset[str] = frozenset(
     {
         "_sphinx_youtube_gallery",
+        "_sphinx_youtube_core",
         "_sphinx_collection",
         "_sphinxcontrib_youtube",
         "_sphinx_gallery_grid",

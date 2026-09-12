@@ -2954,25 +2954,8 @@
             // ⋮ for everything else. The snippet card previously carried a
             // second full-width "Save as file…" button, which read as a peer
             // of Download and made a two-snippet answer four buttons wide.
-            var snippetMenu = (function (codeText, langTag, suggestedName) {
-                return _buildOverflowMenu('More options for ' + suggestedName, [
-                    { icon: ICONS.terms, label: 'Save as a tracked file\u2026',
-                      hint: 'Gives it revisions, diffs and patch export',
-                      run: function () {
-                          _promoteSnippetToFile(root, codeText, langTag, suggestedName);
-                      } },
-                    { icon: ICONS.exportTxt, label: 'Download as\u2026',
-                      hint: 'Download under a name you choose',
-                      run: function () {
-                          var raw = window.prompt(
-                              'Download this snippet as\\n\\nThe name is used for the ' +
-                              'download only; nothing is tracked.', suggestedName);
-                          if (raw === null) return;
-                          var chosen = _artifactNameSlugPreservingExtension(raw) || suggestedName;
-                          _downloadBlob(codeText, 'text/plain', chosen);
-                      } }
-                ], 'ai-md-artifact-overflow');
-            }(codeEl ? codeEl.textContent : '', lang, filename));
+            var snippetMenu = _buildSnippetOverflow(
+                root, card, codeEl ? codeEl.textContent : '', lang, filename, typeLabel);
 
             var iconWrap = document.createElement('span');
             iconWrap.className = 'ai-md-artifact-icon';
@@ -19684,8 +19667,27 @@
             chevron.innerHTML = ICONS.chevronDown;   // ICONS constant — safe.
             summary.appendChild(chevron);
             var titleSpan = document.createElement('span');
+            titleSpan.className = 'ai-md-section-title';
             titleSpan.textContent = h.textContent;
             summary.appendChild(titleSpan);
+
+            // A disclosure should explain its action without making screen
+            // readers repeat state that native <details>/<summary> already
+            // exposes.  Keep the hint visual-only and let CSS swap the words
+            // from the authoritative [open] state -- no second JS state
+            // machine can drift from the element itself.
+            var actionHint = document.createElement('span');
+            actionHint.className = 'ai-md-section-action-hint';
+            actionHint.setAttribute('aria-hidden', 'true');
+            var hideHint = document.createElement('span');
+            hideHint.className = 'ai-md-section-action ai-md-section-action--hide';
+            hideHint.textContent = 'Hide section';
+            actionHint.appendChild(hideHint);
+            var showHint = document.createElement('span');
+            showHint.className = 'ai-md-section-action ai-md-section-action--show';
+            showHint.textContent = 'Show section';
+            actionHint.appendChild(showHint);
+            summary.appendChild(actionHint);
             details.appendChild(summary);
 
             // Move every sibling up to (not including) the next top-level
@@ -30697,11 +30699,19 @@
             // <500 px turns the same controls into the vertical-ellipsis
             // popover. Keeping one DOM/handler path prevents mobile and desktop
             // model-management semantics from drifting.
+            // Keep the mobile disclosure trigger and its popover in one
+            // positioning context.  Anchoring the popover to the full model
+            // row made it drift far below the ellipsis on tall rows because
+            // the row also contains badges, model ids, descriptions and bars.
+            var actionHost = document.createElement('div');
+            actionHost.className = 'ai-assistant-panel-model-action-host';
+            row.appendChild(actionHost);
+
             var actionsWrap = document.createElement('div');
             actionsWrap.className = 'ai-assistant-panel-model-actions';
             actionsWrap.setAttribute('aria-label',
                 'Actions for ' + (m.label || m.id));
-            row.appendChild(actionsWrap);
+            actionHost.appendChild(actionsWrap);
 
             function _setActionContent(btn, glyph, labelText) {
                 // Short, non-sensitive label used by the >=500 px floating
@@ -30728,7 +30738,50 @@
             menuBtn.setAttribute('aria-expanded', 'false');
             menuBtn.title = 'Model actions';
             menuBtn.textContent = '\u22ee'; // U+22EE VERTICAL ELLIPSIS
-            row.appendChild(menuBtn);
+            actionHost.appendChild(menuBtn);
+
+            function _syncActionMenuPlacement() {
+                // Prefer opening below the trigger.  When the visible scroll
+                // boundary cannot fit the menu there, flip it above.  Measure
+                // after [data-actions-open] reveals the popover so its actual
+                // height (Edit/Delete or Edited/Delete/Reset) is respected.
+                actionHost.removeAttribute('data-actions-placement');
+                if (row.getAttribute('data-actions-open') !== 'true' ||
+                        typeof actionsWrap.getBoundingClientRect !== 'function' ||
+                        typeof actionHost.getBoundingClientRect !== 'function') {
+                    return;
+                }
+
+                var hostRect = actionHost.getBoundingClientRect();
+                var menuRect = actionsWrap.getBoundingClientRect();
+                var viewportHeight = (typeof window !== 'undefined' &&
+                    window.innerHeight) ||
+                    (document.documentElement && document.documentElement.clientHeight) ||
+                    0;
+                var boundaryTop = 0;
+                var boundaryBottom = viewportHeight;
+                var scrollHost = row.closest
+                    ? row.closest('.ai-assistant-panel-sheet-scroll')
+                    : null;
+                if (scrollHost &&
+                        typeof scrollHost.getBoundingClientRect === 'function') {
+                    var scrollRect = scrollHost.getBoundingClientRect();
+                    boundaryTop = Math.max(boundaryTop, scrollRect.top);
+                    if (boundaryBottom) {
+                        boundaryBottom = Math.min(boundaryBottom, scrollRect.bottom);
+                    } else {
+                        boundaryBottom = scrollRect.bottom;
+                    }
+                }
+
+                if (!boundaryBottom) return;
+                var needed = menuRect.height + 8;
+                var below = boundaryBottom - hostRect.bottom;
+                var above = hostRect.top - boundaryTop;
+                if (below < needed && above > below) {
+                    actionHost.setAttribute('data-actions-placement', 'top');
+                }
+            }
 
             function _setActionMenuOpen(open) {
                 var isOpen = !!open;
@@ -30744,10 +30797,18 @@
                             '.ai-assistant-panel-model-menu-btn'
                         );
                         if (otherMenu) otherMenu.setAttribute('aria-expanded', 'false');
+                        var otherHost = opened[oi].querySelector(
+                            '.ai-assistant-panel-model-action-host'
+                        );
+                        if (otherHost) {
+                            otherHost.removeAttribute('data-actions-placement');
+                        }
                     }
                     row.setAttribute('data-actions-open', 'true');
+                    _syncActionMenuPlacement();
                 } else {
                     row.removeAttribute('data-actions-open');
+                    actionHost.removeAttribute('data-actions-placement');
                 }
                 menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             }
@@ -33878,28 +33939,67 @@
         var workspacePanes = Object.create(null);
         var activeWorkspaceTab = 'contribution';
 
-        function _workspaceButton(key, label) {
+        function _workspaceButton(key, label, iconSvg) {
             var btn = document.createElement('button');
             btn.type = 'button';
+            btn.id = 'ai-assistant-panel-feedback-workspace-tab-' + key;
             btn.className = 'ai-assistant-conv-share-format-btn';
             btn.setAttribute('role', 'tab');
+            btn.setAttribute('aria-controls', 'ai-assistant-panel-feedback-workspace-pane-' + key);
             btn.dataset.workspaceTab = key;
-            btn.textContent = label;
+
+            // Match the proven Conversation export format-tab composition:
+            // one decorative glyph plus one text label.  The shared icon class
+            // keeps all tab glyphs on the same 14px baseline and currentColor
+            // means selected/hover/dark/forced-colour states stay inherited.
+            var icon = document.createElement('span');
+            icon.className = 'ai-assistant-conv-share-format-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML = iconSvg;
+            var text = document.createElement('span');
+            text.textContent = label;
+            btn.appendChild(icon);
+            btn.appendChild(text);
+
             btn.addEventListener('click', function () { _setWorkspaceTab(key); });
             workspaceButtons[key] = btn;
             workspaceTabs.appendChild(btn);
             return btn;
         }
-        _workspaceButton('feedback', 'Feedback');
-        _workspaceButton('contribution', 'Dataset contribution');
-        _workspaceButton('activity', 'Activity');
+        _workspaceButton('feedback', 'Feedback', ICONS.commentDiscussion);
+        _workspaceButton('contribution', 'Dataset contribution', ICONS.dataset);
+        _workspaceButton('activity', 'Activity', ICONS.pulse);
+
+        // Horizontal tabs use the expected roving-arrow interaction.  Click,
+        // programmatic selection, and keyboard selection all converge on
+        // `_setWorkspaceTab`, keeping aria-selected/tabindex/pane visibility in
+        // one authority instead of parallel state paths.
+        workspaceTabs.addEventListener('keydown', function (event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            var order = ['feedback', 'contribution', 'activity'];
+            var currentKey = event.target && event.target.dataset
+                ? event.target.dataset.workspaceTab : '';
+            var currentIndex = order.indexOf(currentKey);
+            if (currentIndex < 0) return;
+            var nextIndex = currentIndex;
+            if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + order.length) % order.length;
+            else if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % order.length;
+            else if (event.key === 'Home') nextIndex = 0;
+            else if (event.key === 'End') nextIndex = order.length - 1;
+            event.preventDefault();
+            var nextKey = order[nextIndex];
+            _setWorkspaceTab(nextKey);
+            workspaceButtons[nextKey].focus();
+        });
         sheet.appendChild(workspaceTabs);
 
         function _workspacePane(key) {
             var pane = document.createElement('div');
             pane.className = 'ai-assistant-panel-feedback-workspace-pane';
+            pane.id = 'ai-assistant-panel-feedback-workspace-pane-' + key;
             pane.dataset.workspacePane = key;
             pane.setAttribute('role', 'tabpanel');
+            pane.setAttribute('aria-labelledby', 'ai-assistant-panel-feedback-workspace-tab-' + key);
             workspacePanes[key] = pane;
             sheet.appendChild(pane);
             return pane;
@@ -36952,28 +37052,31 @@
                 meta.textContent = (artifact.format || '').toUpperCase() +
                     (provenanceName ? ' · ' + provenanceName : '') + ' · ' + (artifact.lifecycle || '');
                 text.appendChild(strong); text.appendChild(meta); row.appendChild(text);
+                var actions = document.createElement('div');
+                actions.className = 'ai-assistant-conv-share-artifact-actions';
+                row.appendChild(actions);
                 var terminalGlobal = artifact.kind === 'global' && ['revoked','expired'].indexOf(artifact.state) >= 0;
                 if (artifact.url && (artifact.kind === 'global' || artifact.kind === 'self_contained' || artifact.kind === 'local') && !terminalGlobal) {
                     var copyLink = document.createElement('button'); copyLink.type = 'button'; copyLink.className = 'ai-assistant-conv-share-action-btn';
                     copyLink.textContent = 'Copy link'; copyLink.disabled = !!artifact.busy;
-                    copyLink.addEventListener('click', function () { copyToClipboard(artifact.url, false); }); row.appendChild(copyLink);
+                    copyLink.addEventListener('click', function () { copyToClipboard(artifact.url, false); }); actions.appendChild(copyLink);
                 }
                 if (artifact.url && artifact.kind !== 'download' && !terminalGlobal) {
                     var open = document.createElement('button'); open.type = 'button'; open.className = 'ai-assistant-conv-share-action-btn';
                     open.textContent = 'Open'; open.disabled = !!artifact.busy;
-                    open.addEventListener('click', function () { _openArtifact(artifact); }); row.appendChild(open);
+                    open.addEventListener('click', function () { _openArtifact(artifact); }); actions.appendChild(open);
                 }
                 if (artifact.kind === 'global' && artifact.url && !terminalGlobal) {
                     var check = document.createElement('button'); check.type = 'button'; check.className = 'ai-assistant-conv-share-action-btn';
                     check.textContent = artifact.busy ? 'Checking…' : 'Check status'; check.disabled = !!artifact.busy;
-                    check.addEventListener('click', function () { _checkGlobalArtifactStatus(artifact); }); row.appendChild(check);
+                    check.addEventListener('click', function () { _checkGlobalArtifactStatus(artifact); }); actions.appendChild(check);
                 }
                 var remove = document.createElement('button'); remove.type = 'button'; remove.className = 'ai-assistant-conv-share-action-btn';
                 remove.disabled = !!artifact.busy;
                 remove.textContent = artifact.kind === 'global'
                     ? (artifact.editToken && !terminalGlobal ? 'Revoke' : 'Forget')
                     : artifact.kind === 'local' ? 'Remove' : artifact.kind === 'download' ? 'Forget' : 'Remove';
-                remove.addEventListener('click', function () { _removeArtifact(artifact); }); row.appendChild(remove);
+                remove.addEventListener('click', function () { _removeArtifact(artifact); }); actions.appendChild(remove);
                 // A reason-unknown 404 may retain a live edit capability. Revoke
                 // can therefore keep failing with 404; provide an explicit local
                 // Forget escape hatch without mislabeling it as remote deletion.
@@ -36982,7 +37085,7 @@
                     forgetUnavailable.type = 'button'; forgetUnavailable.className = 'ai-assistant-conv-share-action-btn';
                     forgetUnavailable.textContent = 'Forget'; forgetUnavailable.disabled = !!artifact.busy;
                     forgetUnavailable.addEventListener('click', function () { _forgetGlobalArtifactRecord(artifact); });
-                    row.appendChild(forgetUnavailable);
+                    actions.appendChild(forgetUnavailable);
                 }
                 artifactsList.appendChild(row);
             });
@@ -48739,9 +48842,9 @@
         return btn;
     }
 
-    /** The tracked-file menu: everything the card no longer shows as a button. */
-    function _buildFileOverflow(key, entry) {
-        return _buildOverflowMenu('More options for ' + entry.path, function () { return [
+    /** Shared tracked-file action list, used by Presented files and promoted snippets. */
+    function _fileOverflowItems(key) {
+        return [
             { label: 'Open in a sheet', hint: 'Full view with line numbers', icon: ICONS.terms,
               run: function () { _generatedArtifactOpenSheet(key); } },
             { label: 'Save as\u2026', hint: 'Download under a name you choose', icon: ICONS.exportTxt,
@@ -48753,7 +48856,79 @@
                     run: function () { _generatedArtifactStopContinuing(key); } }
                 : { label: 'Continue editing', hint: 'Attach to your next message', icon: ICONS.chevronDown,
                     run: function () { _generatedArtifactContinueEditing(key); } }
-        ]; });
+        ];
+    }
+
+    /**
+     * Build the answer-snippet overflow with the same workflow grammar as a
+     * tracked file, without pretending an anonymous snippet already has a
+     * repository path or patch base.
+     *
+     * Before promotion: inspect -> save -> track -> continue. Continue first
+     * asks for the path it requires, then stages that tracked revision. After
+     * promotion the same trigger resolves `_fileOverflowItems`, so the menu
+     * itself graduates with the artifact instead of teaching a second model.
+     */
+    function _buildSnippetOverflow(root, card, codeText, langTag, suggestedName, typeLabel) {
+        var promotedKey = null;
+
+        function promotedEntry() {
+            var entry = promotedKey && _generatedArtifactLedger[promotedKey];
+            return _generatedArtifactIsAvailable(entry) ? entry : null;
+        }
+
+        function trackSnippet() {
+            var entry = _promoteSnippetToFile(root, codeText, langTag, suggestedName);
+            if (entry) promotedKey = entry.key;
+            return entry;
+        }
+
+        function snippetPreviewItem() {
+            return {
+                kind: 'text',
+                name: suggestedName,
+                previewText: codeText,
+                size: _utf8ByteLength(codeText || ''),
+                lineCount: codeText ? codeText.split(/\r?\n/).length : 0,
+                status: typeLabel + ' \u00b7 answer snippet \u00b7 not a tracked file',
+                badge: 'SNIPPET',
+                sendEligible: false,
+                turnScoped: true,
+                sheet: true
+            };
+        }
+
+        return _buildOverflowMenu('More options for ' + suggestedName, function () {
+            var entry = promotedEntry();
+            if (entry) return _fileOverflowItems(entry.key);
+            return [
+                { label: 'Open in a sheet', hint: 'Full view with line numbers', icon: ICONS.terms,
+                  run: function () { _openAttachmentPreview(snippetPreviewItem(), card); } },
+                { label: 'Save as\u2026', hint: 'Download under a name you choose', icon: ICONS.exportTxt,
+                  run: function () {
+                      var raw = window.prompt(
+                          'Download this snippet as\n\nThe name is used for the ' +
+                          'download only; nothing is tracked.', suggestedName);
+                      if (raw === null) return;
+                      var chosen = _artifactNameSlugPreservingExtension(raw) || suggestedName;
+                      _downloadBlob(codeText, 'text/plain', chosen);
+                  } },
+                { label: 'Track as file\u2026', hint: 'Add revisions, diffs and patch export', icon: ICONS.gitMark,
+                  run: function () { trackSnippet(); } },
+                { label: 'Continue editing', hint: 'Track it, then attach to your next message', icon: ICONS.chevronDown,
+                  run: function () {
+                      var tracked = trackSnippet();
+                      if (tracked) _generatedArtifactContinueEditing(tracked.key);
+                  } }
+            ];
+        }, 'ai-md-artifact-overflow');
+    }
+
+    /** The tracked-file menu: everything the card no longer shows as a button. */
+    function _buildFileOverflow(key, entry) {
+        return _buildOverflowMenu('More options for ' + entry.path, function () {
+            return _fileOverflowItems(key);
+        });
     }
 
     /**
@@ -48877,7 +49052,7 @@
         var existing = _generatedArtifactLedger[path];
         if (existing && existing.content === code) {
             showNotification(path + ' already tracks exactly this content at revision r' + existing.revision + '.', false);
-            return;
+            return existing;
         }
         // Deliberately routed through the ordinary registration path: a
         // promoted snippet that collides with an existing path becomes the
@@ -48901,6 +49076,7 @@
         // the existing section's refs already resolve latest state for it.
         _appendChangedFileSummary(root, [entry.key]);
         _generatedArtifactRefreshRefs(entry.key);
+        return entry;
     }
 
     /**
@@ -49908,10 +50084,11 @@
             _generatedArtifactBindLatest(key, preview, meta);
             var download = document.createElement('button');
             download.type = 'button';
-            download.className = 'ai-assistant-panel-changed-file-download';
+            download.className = 'ai-md-artifact-download-label ai-assistant-panel-changed-file-download';
             _decorateIconButton(download, ICONS.exportTxt, 'Download');
             download.setAttribute('data-ai-artifact-download-key', key);
             download.setAttribute('aria-label', 'Download latest ' + entry.path + ' under its own name');
+            download.title = 'Download latest ' + entry.path + ' under its own name';
             download.addEventListener('click', function () { _generatedArtifactDownloadLatest(key); });
             var primary = document.createElement('div');
             primary.className = 'ai-assistant-panel-changed-file-primary';

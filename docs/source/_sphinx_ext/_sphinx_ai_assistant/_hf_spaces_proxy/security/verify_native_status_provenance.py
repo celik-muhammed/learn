@@ -324,7 +324,7 @@ def _leaf_inventory(
                     cert, ca["cert"].public_key(), "NATIVE_LEAF_CA"
                 )
                 valid.append(ca)
-            except Exception:  # ruff: ignore[blind-except]
+            except Exception:  # ruff: ignore[blind-except, try-except-in-loop]
                 pass
         if len(valid) != 1:
             _fail("NATIVE_LEAF_ISSUER_AMBIGUOUS")
@@ -679,15 +679,15 @@ def _aggregate(
     for leaf in leaves:
         observations = []
         for source in sources:
-            for decision in source["decisions"]:
-                if decision["certSha256"] == leaf["sha256"]:
-                    observations.append(
-                        {
-                            "kind": source["type"],
-                            "sourceId": source["sourceId"],
-                            **decision,
-                        }
-                    )
+            observations.extend(
+                {
+                    "kind": source["type"],
+                    "sourceId": source["sourceId"],
+                    **decision,
+                }
+                for decision in source["decisions"]
+                if decision["certSha256"] == leaf["sha256"]
+            )
         kinds = {x["kind"] for x in observations}
         if bool(POLICY["require_all_active_leaf_certificates"]) and (
             len(kinds) < int(POLICY["min_source_kinds_per_leaf"])
@@ -1034,27 +1034,26 @@ def _build_sources(
         total += path.stat().st_size
         if total > int(POLICY["max_total_raw_evidence_bytes"]):
             _fail("NATIVE_EVIDENCE_TOTAL_SIZE_INVALID")
-    sources = []
-    for path in crl_paths:
-        sources.append(
-            _verify_crl(
-                _raw(path, "NATIVE_CRL_FILE"),
-                leaves=leaves,
-                ca_records=ca_records,
-                now=now,
-                historical=historical,
-            )
+    sources = [
+        _verify_crl(
+            _raw(path, "NATIVE_CRL_FILE"),
+            leaves=leaves,
+            ca_records=ca_records,
+            now=now,
+            historical=historical,
         )
-    for path in ocsp_paths:
-        sources.append(
-            _verify_ocsp(
-                _raw(path, "NATIVE_OCSP_FILE"),
-                leaves=leaves,
-                ca_records=ca_records,
-                now=now,
-                historical=historical,
-            )
+        for path in crl_paths
+    ]
+    sources.extend(
+        _verify_ocsp(
+            _raw(path, "NATIVE_OCSP_FILE"),
+            leaves=leaves,
+            ca_records=ca_records,
+            now=now,
+            historical=historical,
         )
+        for path in ocsp_paths
+    )
     sources.sort(key=lambda x: (x["type"], x["sourceId"], x["sha256"]))
     if len({(x["type"], x["sourceId"], x["sha256"]) for x in sources}) != len(sources):
         _fail("NATIVE_EVIDENCE_DUPLICATE")

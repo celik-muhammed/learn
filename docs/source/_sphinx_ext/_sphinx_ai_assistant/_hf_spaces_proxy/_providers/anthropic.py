@@ -150,13 +150,13 @@ def _message_text(payload: object) -> str:
     pieces: list[str] = []
     content = payload.get("content")
     if isinstance(content, list):
-        for block in content:
-            if (
-                isinstance(block, dict)
-                and block.get("type") == "text"
-                and isinstance(block.get("text"), str)
-            ):
-                pieces.append(block["text"])
+        pieces.extend(
+            block["text"]
+            for block in content
+            if isinstance(block, dict)
+            and block.get("type") == "text"
+            and isinstance(block.get("text"), str)
+        )
     text = "".join(pieces)
     if not text:
         raise ResourceExecutionError("Anthropic Messages returned no assistant text")

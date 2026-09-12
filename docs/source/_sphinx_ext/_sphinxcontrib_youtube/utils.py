@@ -61,15 +61,15 @@ DEFAULT_DOWNLOAD_MAX_BYTES = 8 * 1024 * 1024
 # ``.../embed/https://www.youtube.com/watch?v=ID`` -- a dead iframe, emitted with
 # no warning and a successful build.
 #
-# The URL grammar lives in one place (``_sphinx_youtube_gallery.reference``)
+# The URL grammar lives in one place (``_sphinx_youtube_core.reference``)
 # rather than being duplicated here, so the standalone player, typed gallery,
 # and sync tool cannot disagree about what a given URL means.
 
-from .._sphinx_youtube_gallery.reference import (
+from .._sphinx_youtube_core.reference import (
     ReferenceError as _ReferenceError,
     parse_video_reference as _parse_video_reference,
 )
-from .._sphinx_youtube_gallery._video_options import LEAF_VIDEO_SPEC
+from .._sphinx_youtube_core.video_options import LEAF_VIDEO_SPEC
 
 
 def parse_youtube_id(value):

@@ -242,6 +242,6 @@ async def parse_resource_chat_request(
         for upload in uploads_seen:
             try:  # ruff: ignore[suppressible-exception]
                 await upload.close()
-            except Exception:  # ruff: ignore[blind-except]
+            except Exception:  # ruff: ignore[blind-except, try-except-in-loop]
                 pass
         raise

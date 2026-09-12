@@ -433,11 +433,17 @@ def normalize_model_attribution(raw: dict[str, Any] | None) -> dict[str, Any] | 
         return None
     provider = provider.strip()[:128]
     model_name = model_name.strip()[:512]
-    if any(ord(ch) < 32 or ord(ch) == 127 for ch in provider + model_name):
+    if any(
+        ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in provider + model_name
+    ):
         return None
     raw_id = raw.get("id")
     model_id = raw_id[:_MAX_ID_LEN] if isinstance(raw_id, str) and raw_id else None
-    if model_id is not None and any(ord(ch) < 32 or ord(ch) == 127 for ch in model_id):
+    if model_id is not None and any(
+        ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in model_id
+    ):
         model_id = None
     return {
         "id": model_id,
@@ -822,7 +828,9 @@ def normalize_conversation_messages(value: Any) -> list[dict[str, Any]]:
         if role == "assistant":
             raw_model = raw.get("model")
             item["model"] = (
-                normalize_model_attribution(raw_model) if isinstance(raw_model, dict) else None
+                normalize_model_attribution(raw_model)
+                if isinstance(raw_model, dict)
+                else None
             )
             raw_feedback = raw.get("feedback")
             if isinstance(raw_feedback, dict):

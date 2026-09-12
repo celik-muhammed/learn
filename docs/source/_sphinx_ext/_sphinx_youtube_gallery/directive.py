@@ -51,14 +51,6 @@ from sphinx.application import Sphinx
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 from yaml import safe_dump
-from .._sphinx_collection._yaml import (
-    BoundedYAMLError,
-    load_bounded_yaml,
-    read_bounded_utf8,
-)
-from .._sphinx_collection._browser import collection_id, field_names
-from .._sphinx_collection._presentation import GRID_SPEC, CARD_SPEC
-from ._video_options import VIDEO_SPEC, player_options
 
 from .._sphinx_collection import (
     CONTAINER_CLASS,
@@ -66,6 +58,14 @@ from .._sphinx_collection import (
     render_sections,
     sections_allowed,
 )
+from .._sphinx_collection._browser import collection_id, field_names
+from .._sphinx_collection._presentation import CARD_SPEC, GRID_SPEC
+from .._sphinx_collection._yaml import (
+    BoundedYAMLError,
+    load_bounded_yaml,
+    read_bounded_utf8,
+)
+from .._sphinx_youtube_core.video_options import VIDEO_SPEC, player_options
 from .model import (
     CatalogError,
     CatalogRecord,
@@ -116,7 +116,8 @@ THUMBNAIL_URL = "https://i.ytimg.com/vi/{id}/hqdefault.jpg"
 
 
 def _literal_metadata(value: str) -> str:
-    """Render catalog text literally in RST and MyST, never as directives.
+    """
+    Render catalog text literally in RST and MyST, never as directives.
 
     Collapse source whitespace to one line and escape ASCII punctuation.
     The generic gallery's explicitly authored content remains markup.
@@ -337,7 +338,9 @@ class YouTubeGalleryDirective(SphinxDirective):
         "sort-fields": field_names,
         "search-fields": field_names,
         "show-duration": directives.flag,
-        "show-description": directives.flag,  # legacy no-op: card bodies match gallery-grid
+        "show-description": (  # legacy no-op: card bodies match gallery-grid
+            directives.flag
+        ),
         "class-card": directives.unchanged,
         "class-container": directives.unchanged,
         "section-style": lambda argument: directives.choice(
@@ -369,13 +372,15 @@ class YouTubeGalleryDirective(SphinxDirective):
         ------
         CatalogError
             If no source is configured, the file is missing, the YAML is
-            unparseable, or a record fails to normalize.
+            unparsable, or a record fails to normalize.
         """
         if self.content:
             payload = self._parse_yaml(
                 "\n".join(self.content), "youtube-gallery directive content"
             )
-            return normalize_gallery_catalog(payload, "youtube-gallery directive content")
+            return normalize_gallery_catalog(
+                payload, "youtube-gallery directive content"
+            )
 
         reference = None
         if self.arguments:
@@ -384,7 +389,7 @@ class YouTubeGalleryDirective(SphinxDirective):
             reference = self.options["catalog"].strip()
 
         if reference:
-            from .._sphinx_gallery_grid.directive import (
+            from .._sphinx_gallery_grid.directive import (  # ruff: ignore[import-outside-top-level]
                 _confined_path,
             )
 
@@ -462,7 +467,7 @@ class YouTubeGalleryDirective(SphinxDirective):
         CatalogError
             If any option value is invalid.
         """
-        from .model import parse_timestamp
+        from .model import parse_timestamp  # ruff: ignore[import-outside-top-level]
 
         def _bound(name: str) -> _dt.datetime | None:
             """Parse a date option, prefixing errors with the option name."""
@@ -486,7 +491,10 @@ class YouTubeGalleryDirective(SphinxDirective):
             raw = self.options.get(name, "").strip()
             if not raw or "/" not in raw:
                 return raw
-            from .reference import ReferenceError, parse_reference
+            from .._sphinx_youtube_core.reference import (  # ruff: ignore[import-outside-top-level]
+                ReferenceError,
+                parse_reference,
+            )
 
             try:
                 reference = parse_reference(raw)
@@ -543,7 +551,9 @@ class YouTubeGalleryDirective(SphinxDirective):
         cost is visible in the build log rather than only in a browser
         profile.
         """
-        budget = getattr(self.env.config, "youtube_catalog_max_embeds", DEFAULT_MAX_EMBEDS)
+        budget = getattr(
+            self.env.config, "youtube_catalog_max_embeds", DEFAULT_MAX_EMBEDS
+        )
         requested = self.options.get("mode", "auto")
         if requested == "auto":
             return "embed" if count <= budget else "thumbnail"
@@ -633,6 +643,7 @@ class YouTubeGalleryDirective(SphinxDirective):
             # page's own markup language, so the player is written in that
             # language rather than as pre-rendered HTML.
             video_options = player_options(self.options, record.title)
+
             def _leaf_option_line(key: str, value: Any, prefix: str = "") -> str:
                 # privacy_mode is a true flag. Emit canonical valueless source
                 # rather than relying on parsers to treat trailing whitespace
@@ -655,8 +666,10 @@ class YouTubeGalleryDirective(SphinxDirective):
                 )
                 # Title/option text may contain fence characters; choose a safe fence.
                 runs = re.findall(r"~+", option_text)
-                fence = "~" * max(3, max((len(run)+1 for run in runs), default=3))
-                item["content"] = f"{fence}{{youtube}} {record.id}\n{option_text}{fence}\n"
+                fence = "~" * max(3, max((len(run) + 1 for run in runs), default=3))
+                item["content"] = (
+                    f"{fence}{{youtube}} {record.id}\n{option_text}{fence}\n"
+                )
         else:
             item["link"] = record.url
             item["link-alt"] = f"Watch {' '.join(record.title.split())} on YouTube"
@@ -669,7 +682,7 @@ class YouTubeGalleryDirective(SphinxDirective):
             item["img-alt"] = f"Video thumbnail: {' '.join(record.title.split())}"
         return item
 
-    def _render_grid(
+    def _render_grid(  # ruff: ignore[too-many-branches]
         self,
         records: list[CatalogRecord],
         mode: str,
@@ -699,6 +712,7 @@ class YouTubeGalleryDirective(SphinxDirective):
         query : Query
             Supplies grouping and pagination options that ``gallery-grid``
             applies to the already-filtered records.
+
         Returns
         -------
         str
@@ -770,7 +784,8 @@ class YouTubeGalleryDirective(SphinxDirective):
         return f":::::{{gallery-grid}}\n{option_lines}\n\n{body}\n:::::\n"
 
     def _parse_gallery_grid(self, source: str) -> list[nodes.Node]:
-        """Parse delegated gallery source without losing section context.
+        """
+        Parse delegated gallery source without losing section context.
 
         ``gallery-grid`` decides whether grouped output may use real sections
         by inspecting its parser parent.  A generic temporary container would
@@ -793,7 +808,8 @@ class YouTubeGalleryDirective(SphinxDirective):
 
     @staticmethod
     def _mark_gallery_root(rendered: list[nodes.Node]) -> None:
-        """Tag gallery-grid's own collection root for compatibility.
+        """
+        Tag gallery-grid's own collection root for compatibility.
 
         Older pages may target ``.youtube-gallery`` in custom CSS.  Preserve
         that class on the *same* ``sk-collection`` node returned by
@@ -857,11 +873,16 @@ class YouTubeGalleryDirective(SphinxDirective):
         bool
             ``True`` for a reStructuredText page.
         """
-        from .._sphinx_gallery_grid.directive import RESTRUCTUREDTEXT, _source_format
+        from .._sphinx_gallery_grid.directive import (  # ruff: ignore[import-outside-top-level]
+            RESTRUCTUREDTEXT,
+            _source_format,
+        )
 
         return _source_format(self.env) == RESTRUCTUREDTEXT
 
-    def run(self) -> list[nodes.Node]:
+    def run(  # ruff: ignore[too-many-branches]
+        self,
+    ) -> list[nodes.Node]:
         """
         Execute the directive.
 
@@ -873,8 +894,15 @@ class YouTubeGalleryDirective(SphinxDirective):
             suppressed. Empty queries emit a paragraph and a build warning.
         """
         try:
-            if "columns" in self.options and "grid-columns" in self.options and self.options["columns"].split() != self.options["grid-columns"].split():
-                raise CatalogError(":columns: and :grid-columns: disagree; use one value")
+            if (
+                "columns" in self.options
+                and "grid-columns" in self.options
+                and self.options["columns"].split()
+                != self.options["grid-columns"].split()
+            ):
+                raise CatalogError(
+                    ":columns: and :grid-columns: disagree; use one value"
+                )
             collection_kind, records = self._load_records()
             query = self._build_query()
             requested_view = self.options.get("view", "auto")
@@ -997,7 +1025,9 @@ class YouTubeGalleryDirective(SphinxDirective):
             if not selected:
                 return [nodes.paragraph(text="No items matched.")]
             sections = group_records(selected, query)
-            parts = [(label, self._render_list(group, rst)) for label, group in sections]
+            parts = [
+                (label, self._render_list(group, rst)) for label, group in sections
+            ]
             rendered = render_sections(
                 self, parts, self.options.get("section-style", "auto"), logger
             )
@@ -1028,6 +1058,7 @@ class YouTubeGalleryDirective(SphinxDirective):
 #: loads the rest. The two directives stay independently usable; it is only
 #: this one that depends on them.
 from importlib.util import resolve_name
+
 from .._extension_setup import check_namespace
 
 REQUIRED_EXTENSIONS = (

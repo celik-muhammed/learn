@@ -2131,12 +2131,13 @@ def _validate_panel_model(  # ruff: ignore[too-many-branches]
       used as a ``sessionStorage`` key and a JSON field, so we forbid
       whitespace and HTML-injection characters at config time.
     """
-    errors: list[str] = []
     prefix = f"Panel model {name!r}: " if name else "Panel model: "
 
-    for key in _PANEL_MODEL_REQUIRED_KEYS:
-        if key not in model:
-            errors.append(f"{prefix}missing required key {key!r}")
+    errors: list[str] = [
+        f"{prefix}missing required key {key!r}"
+        for key in _PANEL_MODEL_REQUIRED_KEYS
+        if key not in model
+    ]
 
     provider = str(model.get("provider", ""))
     if provider and provider not in _PANEL_MODEL_PROVIDERS:
@@ -3210,11 +3211,12 @@ def _validate_mcp_tool(tool: dict[str, Any], name: str = "") -> list[str]:
     ... )
     []
     """
-    errors: list[str] = []
     prefix = f"MCP tool {name!r}: " if name else "MCP tool: "
-    for key in ("enabled", "type", "label", "description"):
-        if key not in tool:
-            errors.append(f"{prefix}missing required key {key!r}")
+    errors: list[str] = [
+        f"{prefix}missing required key {key!r}"
+        for key in ("enabled", "type", "label", "description")
+        if key not in tool
+    ]
     server_url = str(tool.get("server_url", "")).strip()
     if server_url and not _URL_SCHEME_RE.match(server_url):
         errors.append(f"{prefix}server_url {server_url!r} must use http:// or https://")
@@ -3288,12 +3290,13 @@ def _validate_provider(provider: dict[str, Any], name: str = "") -> list[str]:
     >>> _validate_provider({"enabled": True, "label": "X", ...})  # doctest: +SKIP
     []
     """
-    errors: list[str] = []
     prefix = f"Provider {name!r}: " if name else "Provider: "
 
-    for key in _PROVIDER_REQUIRED_KEYS:
-        if key not in provider:
-            errors.append(f"{prefix}missing required key {key!r}")
+    errors: list[str] = [
+        f"{prefix}missing required key {key!r}"
+        for key in _PROVIDER_REQUIRED_KEYS
+        if key not in provider
+    ]
 
     ptype = str(provider.get("type", ""))
     if ptype and ptype not in _PROVIDER_TYPES:
@@ -4746,8 +4749,7 @@ def plot_corpus_knowledge(  # noqa: PLR0912
                     continue
                 internal_links.append(link_rel)
 
-            for target in internal_links:
-                edges.append({"from": rel, "to": target})
+            edges.extend({"from": rel, "to": target} for target in internal_links)
 
         pages[rel] = {
             "title": title,

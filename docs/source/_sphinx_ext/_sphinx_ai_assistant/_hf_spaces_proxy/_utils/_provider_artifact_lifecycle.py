@@ -745,7 +745,7 @@ class RedisProviderArtifactLifecycleRegistry:
                             now + PROVIDER_ARTIFACT_FAILURE_TTL_SECONDS,
                         ],
                     )
-                except ProviderArtifactError:
+                except ProviderArtifactError:  # ruff: ignore[try-except-in-loop]
                     # Shutdown cannot safely broaden into a global cleanup. A
                     # crashed/unreachable store leaves the record to its TTL.
                     pass

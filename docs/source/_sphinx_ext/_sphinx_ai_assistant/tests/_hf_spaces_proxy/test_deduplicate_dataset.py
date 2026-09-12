@@ -599,4 +599,3 @@ def test_contribution_cloud_merged_bytes_do_not_depend_on_input_order(tmp_path):
     dd.write_contribution_cloud_merged([b, a], one, source_description="test")
     dd.write_contribution_cloud_merged([a, b], two, source_description="test")
     assert one.read_bytes() == two.read_bytes()
-

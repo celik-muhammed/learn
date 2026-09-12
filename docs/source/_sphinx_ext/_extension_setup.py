@@ -1,4 +1,5 @@
 """Application-local validation for the two supported installation layouts."""
+
 from sphinx.errors import ExtensionError
 
 
@@ -35,7 +36,8 @@ def check_namespace(app, root):
         roots.add(previous)
     if len(roots) != 1:
         raise ExtensionError(
-            "Mixed scikit-plots extension namespaces: " + ", ".join(sorted(roots))
+            "Mixed scikit-plots extension namespaces: "
+            + ", ".join(sorted(roots))
             + ". Use one namespace consistently in extensions and setup_extension()."
         )
     app._scikitplot_sphinx_extension_root = root

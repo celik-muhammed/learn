@@ -34,14 +34,6 @@ from docutils.statemachine import StringList
 from sphinx.application import Sphinx
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
-from .._sphinx_collection._yaml import (
-    BoundedYAMLError,
-    MAX_COLLECTION_ITEMS,
-    load_bounded_yaml,
-    read_bounded_utf8,
-)
-from .._sphinx_collection._browser import collection_id, field_names, record_for_browser, metadata_node
-from .._sphinx_collection._presentation import GRID_SPEC, CARD_SPEC, forwarded
 
 # -- shared collection engine -------------------------------------------------
 # Selection, grouping, browser metadata and assets are first-party siblings of
@@ -60,6 +52,20 @@ from .._sphinx_collection import (
     has_field,
     render_sections,
 )
+from .._sphinx_collection._browser import (
+    collection_id,
+    field_names,
+    metadata_node,
+    record_for_browser,
+)
+from .._sphinx_collection._presentation import CARD_SPEC, GRID_SPEC, forwarded
+from .._sphinx_collection._yaml import (
+    MAX_COLLECTION_ITEMS,
+    BoundedYAMLError,
+    load_bounded_yaml,
+    read_bounded_utf8,
+)
+
 # -----------------------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
@@ -161,7 +167,7 @@ def _strip_quotes(value: Any) -> Any:
     """
     if (
         isinstance(value, str)
-        and len(value) >= 2
+        and len(value) >= 2  # ruff: ignore[magic-value-comparison]
         and value[0] == value[-1]
         and value[0] in "'\""
     ):
@@ -170,7 +176,7 @@ def _strip_quotes(value: Any) -> Any:
 
 
 def _indent(text: str, prefix: str = RST_INDENT) -> str:
-    """
+    r"""
     Indent every non-blank line of ``text`` by ``prefix``.
 
     Blank lines are left untouched (no trailing whitespace is introduced)
@@ -192,10 +198,12 @@ def _indent(text: str, prefix: str = RST_INDENT) -> str:
 
     Examples
     --------
-    >>> _indent("a\\n\\nb")
-    '   a\\n\\n   b'
+    >>> _indent("a\n\nb")
+    '   a\n\n   b'
     """
-    return "\n".join(prefix + line if line.strip() else line for line in text.splitlines())
+    return "\n".join(
+        prefix + line if line.strip() else line for line in text.splitlines()
+    )
 
 
 def _max_run(text: str, char: str) -> int:
@@ -308,7 +316,7 @@ def _coerce_items(payload: Any, origin: str) -> list[dict[str, Any]]:
     if payload is None:
         return []
     if not isinstance(payload, list):
-        raise ValueError(
+        raise ValueError(  # ruff: ignore[type-check-without-type-error]
             f"{origin}: expected a YAML list of items, got "
             f"{type(payload).__name__}. Each gallery item must be a "
             f"list entry, e.g. '- title: My card'."
@@ -320,7 +328,7 @@ def _coerce_items(payload: Any, origin: str) -> list[dict[str, Any]]:
         )
     for index, item in enumerate(payload):
         if not isinstance(item, dict):
-            raise ValueError(
+            raise ValueError(  # ruff: ignore[type-check-without-type-error]
                 f"{origin}: item {index} is a {type(item).__name__}, "
                 f"expected a mapping of option names to values, "
                 f"e.g. '- title: My card'."
@@ -345,11 +353,28 @@ def _coerce_items(payload: Any, origin: str) -> list[dict[str, Any]]:
 # version instead of drifting against this hard-coded fallback.
 _FALLBACK_CARD_OPTIONS = frozenset(
     {
-        "class-body", "class-card", "class-footer", "class-header",
-        "class-img-bottom", "class-img-top", "class-item", "class-title",
-        "columns", "img-alt", "img-background", "img-bottom", "img-top",
-        "link", "link-alt", "link-type", "margin", "padding", "shadow",
-        "text-align", "width", "name",
+        "class-body",
+        "class-card",
+        "class-footer",
+        "class-header",
+        "class-img-bottom",
+        "class-img-top",
+        "class-item",
+        "class-title",
+        "columns",
+        "img-alt",
+        "img-background",
+        "img-bottom",
+        "img-top",
+        "link",
+        "link-alt",
+        "link-type",
+        "margin",
+        "padding",
+        "shadow",
+        "text-align",
+        "width",
+        "name",
     }
 )
 
@@ -370,22 +395,27 @@ def _card_option_names() -> frozenset[str]:
         rather than breaking the build.
     """
     try:
-        from sphinx_design.grids import GridItemCardDirective
+        from sphinx_design.grids import (  # ruff: ignore[import-outside-top-level]
+            GridItemCardDirective,
+        )
 
         return frozenset(GridItemCardDirective.option_spec) | {"name"}
-    except Exception:  # pragma: no cover - depends on sphinx_design internals
+    # depends on sphinx_design internals
+    except Exception:  # pragma: no cover  # ruff: ignore[blind-except]
         return _FALLBACK_CARD_OPTIONS
 
 
 #: Item keys this directive consumes itself, before options are built.
 _METADATA_ONLY_KEY = "_sk_collection_metadata_only"
 _BROWSER_TITLE_KEY = "_sk_collection_browser_title"
-_RESERVED_ITEM_KEYS = frozenset({"title", "header", "image", "content", _METADATA_ONLY_KEY})
+_RESERVED_ITEM_KEYS = frozenset(
+    {"title", "header", "image", "content", _METADATA_ONLY_KEY}
+)
 # -- end scikit-plots local patch ----------------------------------------------
 
 
 # -- scikit-plots local patch: confine data files to the source tree ---------
-def _confined_path(directive, reference: str) -> "Path":
+def _confined_path(directive, reference: str) -> Path:
     """
     Resolve a data-file reference and confine it to the source tree.
 
@@ -433,13 +463,13 @@ def _confined_path(directive, reference: str) -> "Path":
         f"inside the project."
     )
 
+
 # -- end scikit-plots local patch --------------------------------------------
 
 
-
-
 def _source_format(env: Any) -> str:
-    """Return the generated-markup language implied by Sphinx ``source_suffix``.
+    """
+    Return the generated-markup language implied by Sphinx ``source_suffix``.
 
     Mapping form is authoritative (including unusual mappings for ``.rst``).
     Legacy string/list forms mean Sphinx's default reStructuredText parser for
@@ -529,9 +559,7 @@ class GalleryGridDirective(SphinxDirective):
         """
         return _source_format(self.env)
 
-    def _build_options_block(
-        self, options: dict[str, Any], *, rst: bool
-    ) -> str:
+    def _build_options_block(self, options: dict[str, Any], *, rst: bool) -> str:
         """
         Render a directive's field options (e.g. ``:link: ...``) as text.
 
@@ -650,7 +678,9 @@ class GalleryGridDirective(SphinxDirective):
             fence=fence, options=options, content=body, title=title
         )
 
-    def run(self) -> list[nodes.Node]:
+    def run(  # ruff: ignore[too-many-branches, too-many-return-statements]
+        self,
+    ) -> list[nodes.Node]:
         """Create the gallery grid."""
         self._browser_records = {}
         if self.arguments:
@@ -673,9 +703,7 @@ class GalleryGridDirective(SphinxDirective):
                     f"gallery-grid: no grid data found at {path_data}.",
                     location=self.get_location(),
                 )
-                return [
-                    nodes.paragraph(text=f"No grid data found at {path_data}.")
-                ]
+                return [nodes.paragraph(text=f"No grid data found at {path_data}.")]
             # Register the data file as a build dependency so that editing it
             # invalidates this document. Without this, Sphinx has no idea the
             # page derives from the YAML: an edit leaves
@@ -760,8 +788,7 @@ class GalleryGridDirective(SphinxDirective):
             # deliberately empty gallery, so it is surfaced -- as a warning,
             # leaving the page renderable.
             logger.warning(
-                f"gallery-grid: no items matched the filter "
-                f"({len(items)} in source).",
+                f"gallery-grid: no items matched the filter ({len(items)} in source).",
                 location=self.get_location(),
             )
 
@@ -932,7 +959,9 @@ def setup(app: Sphinx) -> dict[str, Any]:  # ruff: ignore[undocumented-param]
     -------
     the 2 parallel parameters set to ``True``.
     """
-    from .._extension_setup import check_namespace
+    from .._extension_setup import (  # ruff: ignore[import-outside-top-level]
+        check_namespace,
+    )
 
     check_namespace(app, __package__.rsplit(".", 1)[0])
     app.setup_extension("sphinx_design")
@@ -941,7 +970,10 @@ def setup(app: Sphinx) -> dict[str, Any]:  # ruff: ignore[undocumented-param]
     # scikit-plots local patch: browser enhancements (lazy images, optional
     # reader-side filtering). Connected to `builder-inited` so `app.outdir`
     # exists by the time the assets are written.
-    app.connect("builder-inited", lambda a: _register_assets(a))
+    app.connect(
+        "builder-inited",
+        lambda a: _register_assets(a),  # ruff: ignore[unnecessary-lambda]
+    )
 
     return {
         "parallel_read_safe": True,

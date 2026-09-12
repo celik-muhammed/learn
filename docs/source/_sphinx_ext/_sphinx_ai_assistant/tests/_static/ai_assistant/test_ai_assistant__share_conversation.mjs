@@ -226,13 +226,13 @@ t('a single column never exceeds a narrow container', /minmax\(min\(6rem,\s*100%
 t('tabs fill their track and centre their label', /\.ai-assistant-conv-share-format-switcher > \* \{[^}]*text-align:\s*center/.test(lay_css), true);
 t('the narrow override no longer forces scrolling back on', !/\.ai-assistant-conv-share-format-switcher \{ overflow-x:auto; flex-wrap:nowrap; \}/.test(lay_css), true);
 
-// The artifact row's action buttons do not shrink, so they pushed the row past
-// its container rather than moving to a second line.
+// Managed artifact metadata and actions are separate layout groups. This avoids
+// shrinking the description to zero merely to keep direct-child buttons inline.
 const artRule = (lay_css.match(/\.ai-assistant-conv-share-artifact \{[^}]*\}/) || [''])[0];
-t('the artifact row wraps instead of overflowing', /flex-wrap:wrap/.test(artRule), true);
-t('and can shrink inside its own flex parent', /min-width:0/.test(artRule) && /max-width:100%/.test(artRule), true);
-t('its text claims the first line so buttons wrap as a group', /\.ai-assistant-conv-share-artifact-text \{ flex:1 1 12rem; \}/.test(lay_css), true);
-t('action buttons keep their size', /\.ai-assistant-conv-share-artifact \.ai-assistant-conv-share-action-btn \{ flex:0 0 auto; \}/.test(lay_css), true);
+t('the artifact card can shrink inside its own parent', /min-width:0/.test(artRule) && /max-width:100%/.test(artRule), true);
+t('its text keeps one meaningful flex basis', /\.ai-assistant-conv-share-artifact-text \{[^}]*flex:1 1 12rem/.test(lay_css), true);
+t('artifact actions are an explicit group', /ai-assistant-conv-share-artifact-actions/.test(outer), true);
+t('narrow artifact cards stack from actual container width', /@container conv-share-artifacts \(max-width: 30rem\)[\s\S]*?flex-direction:column/.test(lay_css), true);
 
 // A title after a bordered full-height preview read as the preview's caption.
 t('a section title after the format preview is separated from it', /\.ai-assistant-conv-share-format-host \+ \.ai-assistant-conv-share-section-title[\s\S]{0,140}?margin-top:\s*1rem/.test(lay_css), true);

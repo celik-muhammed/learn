@@ -433,7 +433,7 @@ def _command_adapter(
             if process.poll() is None:
                 process.kill()
             process.wait()
-            try:
+            try:  # ruff: ignore[suppressible-exception]
                 stdin.close()
             except OSError:
                 pass
