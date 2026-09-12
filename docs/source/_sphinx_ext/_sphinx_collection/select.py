@@ -49,16 +49,16 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 __all__ = [
+    "OPERATORS",
     "FilterError",
     "FilterTerm",
     "Selection",
     "apply_selection",
     "get_field",
-    "has_field",
     "group_records",
+    "has_field",
     "parse_filter",
     "parse_sort",
-    "OPERATORS",
 ]
 
 
@@ -91,7 +91,8 @@ _FIELD_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*$
 
 
 def has_field(record: Mapping[str, Any], path: str) -> bool:
-    """Return whether a dotted field path exists, even when its value is null.
+    """
+    Return whether a dotted field path exists, even when its value is null.
 
     This differs from :func:`get_field`, where both a missing path and a
     present ``None`` value return ``None``. Configuration validation needs the
@@ -167,8 +168,10 @@ def _as_date(value: Any) -> _dt.datetime | None:
         unambiguous date.
     """
     if isinstance(value, _dt.datetime):
-        return value.replace(tzinfo=None) if value.tzinfo is None else (
-            value.astimezone(_dt.timezone.utc).replace(tzinfo=None)
+        return (
+            value.replace(tzinfo=None)
+            if value.tzinfo is None
+            else (value.astimezone(_dt.timezone.utc).replace(tzinfo=None))
         )
     if isinstance(value, _dt.date):
         return _dt.datetime(value.year, value.month, value.day)
@@ -238,9 +241,9 @@ def _comparable(values: Sequence[Any]) -> Callable[[Any], Any]:
     byte-identical.
     """
     if values and all(_as_number(value) is not None for value in values):
-        return lambda value: _as_number(value)
+        return lambda value: _as_number(value)  # ruff: ignore[unnecessary-lambda]
     if values and all(_as_date(value) is not None for value in values):
-        return lambda value: _as_date(value)
+        return lambda value: _as_date(value)  # ruff: ignore[unnecessary-lambda]
     return lambda value: str(value).casefold()
 
 
@@ -301,7 +304,8 @@ def _op_contains(value: Any, operand: str) -> bool:
 def _op_prefix(value: Any, operand: str) -> bool:
     """Test whether any atom starts with ``operand``."""
     return any(
-        str(atom).casefold().startswith(operand.casefold()) for atom in _values_of(value)
+        str(atom).casefold().startswith(operand.casefold())
+        for atom in _values_of(value)
     )
 
 
@@ -505,8 +509,10 @@ def parse_filter(text: str) -> list[FilterTerm]:
 
     Examples
     --------
-    >>> [(t.field, t.operator, t.operand) for t in
-    ...  parse_filter("category=tutorial, stars>100")]
+    >>> [
+    ...     (t.field, t.operator, t.operand)
+    ...     for t in parse_filter("category=tutorial, stars>100")
+    ... ]
     [('category', '=', 'tutorial'), ('stars', '>', '100')]
     >>> term = parse_filter("!deprecated")[0]
     >>> term.field, term.negated
@@ -525,7 +531,8 @@ def parse_filter(text: str) -> list[FilterTerm]:
         if match:
             field_name, token, operand = match.groups()
             operand = operand.strip()
-            quoted = len(operand) >= 2 and operand[0] in "\"'" and operand[-1] == operand[0]
+            _len = len(operand) >= 2  # ruff: ignore[magic-value-comparison]
+            quoted = _len and operand[0] in "\"'" and operand[-1] == operand[0]
             if quoted:
                 operand = operand[1:-1]
             elif not operand or operand[0] in "=<>~^$:!":
@@ -538,7 +545,9 @@ def parse_filter(text: str) -> list[FilterTerm]:
         negated = raw.startswith("!")
         field_name = raw[1:].strip() if negated else raw
         if not _FIELD_RE.fullmatch(field_name):
-            raise FilterError(f"cannot parse filter term {raw!r}; expected field OP value")
+            raise FilterError(
+                f"cannot parse filter term {raw!r}; expected field OP value"
+            )
         terms.append(FilterTerm(field_name, negated=negated))
     return terms
 
@@ -640,7 +649,7 @@ class Selection:
         group_by: str = "",
         limit: int | None = None,
         offset: int = 0,
-    ) -> "Selection":
+    ) -> Selection:
         """
         Build a selection from directive-option strings.
 
@@ -732,16 +741,15 @@ def apply_selection(
     ...     {"title": "alpha", "stars": 200, "kind": "tutorial"},
     ...     {"title": "Gamma", "kind": "tutorial"},
     ... ]
-    >>> chosen, total = apply_selection(
-    ...     data, Selection.from_text(sort_text="title"))
+    >>> chosen, total = apply_selection(data, Selection.from_text(sort_text="title"))
     >>> [r["title"] for r in chosen]
     ['alpha', 'Beta', 'Gamma']
     >>> chosen, total = apply_selection(
-    ...     data, Selection.from_text(filter_text="kind=tutorial, stars>100"))
+    ...     data, Selection.from_text(filter_text="kind=tutorial, stars>100")
+    ... )
     >>> [r["title"] for r in chosen], total
     (['alpha'], 1)
-    >>> chosen, _ = apply_selection(
-    ...     data, Selection.from_text(sort_text="-stars"))
+    >>> chosen, _ = apply_selection(data, Selection.from_text(sort_text="-stars"))
     >>> [r["title"] for r in chosen]
     ['alpha', 'Beta', 'Gamma']
     """
@@ -795,12 +803,16 @@ def group_records(
     ...     {"n": 2},
     ...     {"n": 3, "kind": "demo"},
     ... ]
-    >>> [(label, len(rs)) for label, rs in
-    ...  group_records(data, Selection.from_text(group_by="kind"))]
+    >>> [
+    ...     (label, len(rs))
+    ...     for label, rs in group_records(data, Selection.from_text(group_by="kind"))
+    ... ]
     [('demo', 2), ('Ungrouped', 1)]
     >>> tagged = [{"n": 1, "tags": ["a", "b"]}, {"n": 2, "tags": ["b"]}]
-    >>> [(label, len(rs)) for label, rs in
-    ...  group_records(tagged, Selection.from_text(group_by="tags"))]
+    >>> [
+    ...     (label, len(rs))
+    ...     for label, rs in group_records(tagged, Selection.from_text(group_by="tags"))
+    ... ]
     [('a', 1), ('b', 2)]
     """
     if not selection.group_by:
@@ -809,8 +821,9 @@ def group_records(
     sections: dict[str, list[Mapping[str, Any]]] = {}
     for record in records:
         value = get_field(record, selection.group_by)
-        labels = [str(atom).strip() if atom is not None else ""
-                  for atom in _values_of(value)]
+        labels = [
+            str(atom).strip() if atom is not None else "" for atom in _values_of(value)
+        ]
         # A repeated tag must not duplicate its card. Zero/False are valid groups.
         labels = list(dict.fromkeys(label or UNGROUPED_LABEL for label in labels))
         for label in labels or [UNGROUPED_LABEL]:

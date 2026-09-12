@@ -272,7 +272,7 @@ def _command_adapter(command, prefix):
             for stream in (p.stdin, p.stdout, p.stderr):
                 try:  # ruff: ignore[suppressible-exception]
                     stream.close()
-                except OSError:
+                except OSError:  # ruff: ignore[try-except-in-loop]
                     pass
 
     return call

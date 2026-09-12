@@ -26,12 +26,13 @@ const btn = (css.match(/\.ai-assistant-panel-feedback-workspace-tabs > \.ai-assi
 ok(/flex:\s*0 1 auto/.test(btn),'a tab sizes to its label rather than to a share of the row');
 ok(/min-width:\s*0/.test(btn),'and can still shrink when the panel is narrow');
 
-// One edge, from the shared token, so the indicator cannot drift from the
-// accent used everywhere else in the panel.
-ok(/\[aria-selected="true"\][\s\S]{0,120}?box-shadow:\s*inset 0 -2px 0 0 var\(--ai-artifact-accent\)/.test(css),'the active indicator is one edge drawn from the accent token');
-ok(/forced-colors: active[\s\S]{0,260}?aria-selected="true"[\s\S]{0,120}?Highlight/.test(css),'and survives forced-colours mode');
-// Driven from aria, not a class, so the indicator and the announced state
-// cannot disagree.
+// T86 supersedes T79's extra active-edge treatment. The workspace keeps only
+// its different layout; all visual states now come from the same canonical
+// button rule as Conversation export-format tabs.
+ok(!/\.ai-assistant-panel-feedback-workspace-tabs > \.ai-assistant-conv-share-format-btn\[aria-selected="true"\]\s*\{/.test(css),'the workspace does not fork selected-state colourization');
+ok(!/(?:font|color|background|border|box-shadow|opacity)\s*:/.test(btn),'the workspace button override remains layout-only');
+// Driven from aria, not a class, so the shared selected state and announced
+// state cannot disagree.
 ok(!/workspace-tabs[^{]*\.is-active/.test(css),'selection is read from aria-selected, not a parallel class');
 
 console.log(`${n} passed, ${f} failed`); if (f) process.exit(1);

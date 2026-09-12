@@ -1,4 +1,5 @@
 """Local, progressive search, faceting and sorting for rendered gallery cards."""
+
 CONTAINER_CLASS = "sk-collection"
 SEARCHABLE_CLASS = "sk-collection-searchable"
 
@@ -861,4 +862,4 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
   function start(){document.querySelectorAll('.sk-collection').forEach(function(root){try{run(root);}catch(error){console.warn('Gallery controls unavailable',error);}});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
-"""
+"""  # ruff: ignore[ambiguous-unicode-character-string]

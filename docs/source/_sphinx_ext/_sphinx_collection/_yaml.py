@@ -1,4 +1,5 @@
-"""Bounded YAML loading for author-controlled collection data.
+"""
+Bounded YAML loading for author-controlled collection data.
 
 ``yaml.safe_load`` prevents object construction, but it does not impose resource
 limits.  Documentation sources can therefore still contain deeply nested data,
@@ -63,14 +64,18 @@ def load_bounded_yaml(text: str, origin: str) -> Any:
                     raise BoundedYAMLError(
                         f"{origin}: YAML uses more than {MAX_YAML_ALIASES} aliases"
                     )
-            if isinstance(event, (yaml.events.SequenceStartEvent, yaml.events.MappingStartEvent)):
+            if isinstance(
+                event, (yaml.events.SequenceStartEvent, yaml.events.MappingStartEvent)
+            ):
                 depth += 1
                 max_depth = max(max_depth, depth)
                 if max_depth > MAX_YAML_DEPTH:
                     raise BoundedYAMLError(
                         f"{origin}: YAML nesting exceeds {MAX_YAML_DEPTH} levels"
                     )
-            elif isinstance(event, (yaml.events.SequenceEndEvent, yaml.events.MappingEndEvent)):
+            elif isinstance(
+                event, (yaml.events.SequenceEndEvent, yaml.events.MappingEndEvent)
+            ):
                 depth -= 1
         payload = yaml.safe_load(text)
     except BoundedYAMLError:
@@ -97,7 +102,9 @@ def load_bounded_yaml(text: str, origin: str) -> Any:
         if isinstance(value, (dict, list, tuple, set)):
             identity = id(value)
             if identity in active:
-                raise BoundedYAMLError(f"{origin}: recursive YAML aliases are not supported")
+                raise BoundedYAMLError(
+                    f"{origin}: recursive YAML aliases are not supported"
+                )
             if identity in seen:
                 return
             seen.add(identity)
@@ -121,8 +128,13 @@ def load_bounded_yaml(text: str, origin: str) -> Any:
 
 
 __all__ = [
-    "BoundedYAMLError", "load_bounded_yaml", "read_bounded_utf8",
-    "MAX_YAML_BYTES", "MAX_YAML_ALIASES", "MAX_YAML_DEPTH",
-    "MAX_YAML_NODES", "MAX_YAML_SCALAR_CHARS",
     "MAX_COLLECTION_ITEMS",
+    "MAX_YAML_ALIASES",
+    "MAX_YAML_BYTES",
+    "MAX_YAML_DEPTH",
+    "MAX_YAML_NODES",
+    "MAX_YAML_SCALAR_CHARS",
+    "BoundedYAMLError",
+    "load_bounded_yaml",
+    "read_bounded_utf8",
 ]

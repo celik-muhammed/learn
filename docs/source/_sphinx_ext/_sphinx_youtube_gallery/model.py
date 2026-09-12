@@ -37,20 +37,21 @@ import math
 import re
 from dataclasses import dataclass, field
 from typing import Any
+
 from .._sphinx_collection._yaml import MAX_COLLECTION_ITEMS
 
 __all__ = [
     "CatalogError",
-    "VideoRecord",
-    "ChannelRecord",
     "CatalogRecord",
-    "normalize_record",
-    "normalize_channel_record",
-    "normalize_catalog",
-    "normalize_gallery_catalog",
+    "ChannelRecord",
+    "VideoRecord",
     "derive_channel_records",
-    "parse_timestamp",
+    "normalize_catalog",
+    "normalize_channel_record",
+    "normalize_gallery_catalog",
+    "normalize_record",
     "parse_duration",
+    "parse_timestamp",
 ]
 
 
@@ -110,7 +111,10 @@ def parse_video_id(value: Any) -> str:
     >>> parse_video_id("https://www.youtube.com/shorts/hbT7vzCvEc8")
     'hbT7vzCvEc8'
     """
-    from .reference import ReferenceError, parse_video_reference
+    from .._sphinx_youtube_core.reference import (  # ruff: ignore[import-outside-top-level]
+        ReferenceError,
+        parse_video_reference,
+    )
 
     try:
         return parse_video_reference(value).video_id
@@ -237,7 +241,8 @@ def parse_duration(value: Any) -> int | None:
         )
     if ":" in text:
         chunks = text.split(":")
-        if len(chunks) > 3 or not all(c.isdigit() for c in chunks):
+        _len = len(chunks) > 3  # ruff: ignore[magic-value-comparison]
+        if _len or not all(c.isdigit() for c in chunks):
             raise CatalogError(f"{value!r} is not a valid clock duration")
         total = 0
         for chunk in chunks:
@@ -283,8 +288,7 @@ def _as_str_list(value: Any, field_name: str) -> list[str]:
     for entry in value:
         if not isinstance(entry, str):
             raise CatalogError(
-                f"{field_name} entries must be strings, "
-                f"got {type(entry).__name__}"
+                f"{field_name} entries must be strings, got {type(entry).__name__}"
             )
         stripped = entry.strip()
         if stripped:
@@ -299,21 +303,58 @@ def _as_str_list(value: Any, field_name: str) -> list[str]:
 # Presentation/identity names are reserved so metadata can never silently turn
 # into a Sphinx Design card option or overwrite YouTube identity.
 _CUSTOM_FIELD_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
-_CUSTOM_FIELD_RESERVED = frozenset({
-    "id", "url", "title", "description", "channel", "channel_id", "handle",
-    "playlist", "playlist_id", "position", "published", "duration", "tags",
-    "year", "kind", "video_count", "fields", "content", "header", "image",
-    "link", "link-alt", "link-type", "img-top", "img-bottom", "img-alt",
-    "img-background", "class-body", "class-card", "class-footer",
-    "class-header", "class-img-bottom", "class-img-top", "class-item",
-    "class-title", "columns", "margin", "padding", "shadow", "text-align",
-    "width", "name",
-})
+_CUSTOM_FIELD_RESERVED = frozenset(
+    {
+        "id",
+        "url",
+        "title",
+        "description",
+        "channel",
+        "channel_id",
+        "handle",
+        "playlist",
+        "playlist_id",
+        "position",
+        "published",
+        "duration",
+        "tags",
+        "year",
+        "kind",
+        "video_count",
+        "fields",
+        "content",
+        "header",
+        "image",
+        "link",
+        "link-alt",
+        "link-type",
+        "img-top",
+        "img-bottom",
+        "img-alt",
+        "img-background",
+        "class-body",
+        "class-card",
+        "class-footer",
+        "class-header",
+        "class-img-bottom",
+        "class-img-top",
+        "class-item",
+        "class-title",
+        "columns",
+        "margin",
+        "padding",
+        "shadow",
+        "text-align",
+        "width",
+        "name",
+    }
+)
 _MAX_CUSTOM_FIELD_DEPTH = 6
 
 
 def _custom_fields(value: Any, index: int) -> dict[str, Any]:
-    """Validate explicit, presentation-neutral gallery metadata.
+    """
+    Validate explicit, presentation-neutral gallery metadata.
 
     Nested mappings are supported so the shared collection engine's dotted
     paths (for example ``audience.level``) keep working. Values remain ordinary
@@ -541,7 +582,10 @@ _CHANNEL_KNOWN_KEYS = frozenset(
 )
 
 
-def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
+def normalize_channel_record(  # ruff: ignore[too-many-branches]
+    raw: Any,
+    index: int = 0,
+) -> ChannelRecord:
     """
     Normalize one channel-catalog entry to a title-only link card.
 
@@ -584,8 +628,7 @@ def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
             return ""
         if not isinstance(value, str):
             raise CatalogError(
-                f"record {index}: {key} must be a string, "
-                f"got {type(value).__name__}"
+                f"record {index}: {key} must be a string, got {type(value).__name__}"
             )
         return value.strip()
 
@@ -593,11 +636,17 @@ def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
     explicit_handle = _text("handle")
     explicit_channel_id = _text("channel_id")
     if explicit_handle:
-        from .reference import ReferenceError, validate_handle
+        from .._sphinx_youtube_core.reference import (  # ruff: ignore[import-outside-top-level]
+            ReferenceError,
+            validate_handle,
+        )
+
         try:
             explicit_handle = validate_handle(explicit_handle)
         except ReferenceError as exc:
-            raise CatalogError(f"record {index}: invalid channel handle: {exc}") from exc
+            raise CatalogError(
+                f"record {index}: invalid channel handle: {exc}"
+            ) from exc
     if not reference_value:
         reference_value = (
             f"@{explicit_handle}" if explicit_handle else explicit_channel_id
@@ -608,7 +657,7 @@ def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
             f"('id', 'url', 'handle', or 'channel_id')"
         )
 
-    from .reference import (
+    from .._sphinx_youtube_core.reference import (  # ruff: ignore[import-outside-top-level]
         CHANNEL,
         ReferenceError,
         parse_reference,
@@ -622,8 +671,7 @@ def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
         raise CatalogError(f"record {index}: {exc}") from exc
     if reference.kind != CHANNEL:
         raise CatalogError(
-            f"record {index}: expected a YouTube channel, "
-            f"got {reference.describe()}"
+            f"record {index}: expected a YouTube channel, got {reference.describe()}"
         )
 
     handle = explicit_handle or reference.handle
@@ -632,16 +680,30 @@ def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
         try:
             handle = validate_handle(handle)
         except ReferenceError as exc:
-            raise CatalogError(f"record {index}: invalid channel handle: {exc}") from exc
+            raise CatalogError(
+                f"record {index}: invalid channel handle: {exc}"
+            ) from exc
     if channel_id:
         try:
             channel_id = validate_channel_id(channel_id)
         except ReferenceError as exc:
             raise CatalogError(f"record {index}: invalid channel_id: {exc}") from exc
-    if explicit_handle and reference.handle and handle.casefold() != reference.handle.casefold():
-        raise CatalogError(f"record {index}: handle and channel URL name different channels")
-    if explicit_channel_id and reference.channel_id and channel_id != reference.channel_id:
-        raise CatalogError(f"record {index}: channel_id and channel URL name different channels")
+    if (
+        explicit_handle
+        and reference.handle
+        and handle.casefold() != reference.handle.casefold()
+    ):
+        raise CatalogError(
+            f"record {index}: handle and channel URL name different channels"
+        )
+    if (
+        explicit_channel_id
+        and reference.channel_id
+        and channel_id != reference.channel_id
+    ):
+        raise CatalogError(
+            f"record {index}: channel_id and channel URL name different channels"
+        )
 
     channel_name = reference.channel_name
     if channel_id:
@@ -689,9 +751,11 @@ def normalize_channel_record(raw: Any, index: int = 0) -> ChannelRecord:
     )
 
 
-
-def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
-    """Project a video selection into unique, stable channel cards.
+def derive_channel_records(  # ruff: ignore[too-many-branches]
+    records: list[VideoRecord],
+) -> list[ChannelRecord]:
+    """
+    Project a video selection into unique, stable channel cards.
 
     The projection is deliberately offline: it uses only channel identity already
     present in the reviewed catalog. ``channel_id`` is preferred, then the
@@ -709,7 +773,11 @@ def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
     video catalog useful for both video browsing and channel exploration without
     duplicating source data or adding build-time network access.
     """
-    from .reference import CHANNEL, ReferenceError, parse_reference
+    from .._sphinx_youtube_core.reference import (  # ruff: ignore[import-outside-top-level]
+        CHANNEL,
+        ReferenceError,
+        parse_reference,
+    )
 
     def authored_handle(record: VideoRecord) -> str:
         if record.handle:
@@ -720,7 +788,9 @@ def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
         try:
             if "youtube.com/" in value:
                 ref = parse_reference(value)
-                return ref.handle.lstrip("@") if ref.kind == CHANNEL and ref.handle else ""
+                return (
+                    ref.handle.lstrip("@") if ref.kind == CHANNEL and ref.handle else ""
+                )
         except ReferenceError:
             pass
         return ""
@@ -742,9 +812,15 @@ def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
         # missing/equal, later catalog order wins deterministically; this lets a
         # maintained historical catalog model a channel-handle rename without
         # splitting the stable UC identity.
-        candidate_key = (record.published or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc), index)
+        candidate_key = (
+            record.published or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+            index,
+        )
         current_key = (
-            (current[0] or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc), current[1])
+            (
+                current[0] or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+                current[1],
+            )
             if current
             else None
         )
@@ -756,7 +832,9 @@ def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
         if len(channel_ids) == 1
     }
 
-    def display_label(record: VideoRecord) -> str:
+    def display_label(  # ruff: ignore[too-many-return-statements]
+        record: VideoRecord,
+    ) -> str:
         """Return a human-facing channel label, never a raw channel URL/id."""
         value = record.channel.strip()
         if not value or value.startswith("UC"):
@@ -796,7 +874,10 @@ def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
         )
         current = preferred_label.get(effective_channel_id)
         current_key = (
-            (current[0] or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc), current[1])
+            (
+                current[0] or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+                current[1],
+            )
             if current
             else None
         )
@@ -899,8 +980,9 @@ def derive_channel_records(records: list[VideoRecord]) -> list[ChannelRecord]:
     return result
 
 
-def normalize_gallery_catalog(
-    payload: Any, origin: str = "catalog"
+def normalize_gallery_catalog(  # ruff: ignore[too-many-branches]
+    payload: Any,
+    origin: str = "catalog",
 ) -> tuple[str, list[CatalogRecord]]:
     """
     Normalize one homogeneous ``youtube-gallery`` catalog.
@@ -950,7 +1032,7 @@ def normalize_gallery_catalog(
         for index, raw in enumerate(entries):
             try:
                 normalized.append(normalize_channel_record(raw, index))
-            except CatalogError as exc:
+            except CatalogError as exc:  # ruff: ignore[try-except-in-loop]
                 raise CatalogError(f"{origin}: {exc}") from exc
 
         # Native channel catalogs are explicit declarations, so contradictory
@@ -962,7 +1044,9 @@ def normalize_gallery_catalog(
         for record in normalized:
             if not (record.handle and record.channel_id):
                 continue
-            handle_ids.setdefault(record.handle.casefold(), set()).add(record.channel_id)
+            handle_ids.setdefault(record.handle.casefold(), set()).add(
+                record.channel_id
+            )
             channel_handles.setdefault(record.channel_id, set()).add(record.handle)
         for handle_key, channel_ids in handle_ids.items():
             if len(channel_ids) > 1:
@@ -973,7 +1057,9 @@ def normalize_gallery_catalog(
                 )
         for channel_id, handles in channel_handles.items():
             if len({value.casefold() for value in handles}) > 1:
-                rendered = ", ".join(f"@{value}" for value in sorted(handles, key=str.casefold))
+                rendered = ", ".join(
+                    f"@{value}" for value in sorted(handles, key=str.casefold)
+                )
                 raise CatalogError(
                     f"{origin}: channel_id {channel_id} is paired with multiple handles "
                     f"({rendered}); keep one current handle in a native channel catalog"
@@ -991,7 +1077,7 @@ def normalize_gallery_catalog(
             for channel_id, handles in channel_handles.items()
         }
 
-        from dataclasses import replace
+        from dataclasses import replace  # ruff: ignore[import-outside-top-level]
 
         records: list[CatalogRecord] = []
         seen: set[str] = set()
@@ -1018,7 +1104,7 @@ def normalize_gallery_catalog(
             channel = record.channel
             if handle and channel in {record.id, record.channel_id}:
                 channel = title
-            record = replace(
+            record = replace(  # ruff: ignore[redefined-loop-name]
                 record,
                 id=identity,
                 channel_id=channel_id,
@@ -1037,7 +1123,7 @@ def normalize_gallery_catalog(
 
 
 #: Catalog keys that map onto a :class:`VideoRecord` field. Any other key in
-#: a record is rejected rather than ignored: a typo such as ``titel`` would
+#: a record is rejected rather than ignored: a typo such as ``title`` would
 #: otherwise silently produce a card titled with the bare video id.
 _KNOWN_KEYS = frozenset(
     {
@@ -1059,7 +1145,10 @@ _KNOWN_KEYS = frozenset(
 )
 
 
-def normalize_record(raw: Any, index: int = 0) -> VideoRecord:
+def normalize_record(  # ruff: ignore[too-many-branches]
+    raw: Any,
+    index: int = 0,
+) -> VideoRecord:
     """
     Normalize one raw catalog entry into a :class:`VideoRecord`.
 
@@ -1139,8 +1228,7 @@ def normalize_record(raw: Any, index: int = 0) -> VideoRecord:
             return ""
         if not isinstance(value, str):
             raise CatalogError(
-                f"record {index}: {key} must be a string, "
-                f"got {type(value).__name__}"
+                f"record {index}: {key} must be a string, got {type(value).__name__}"
             )
         return value.strip()
 
@@ -1154,19 +1242,20 @@ def normalize_record(raw: Any, index: int = 0) -> VideoRecord:
     handle = _text("handle")
     channel_id = _text("channel_id")
     playlist_id = _text("playlist_id")
-    from .reference import (
-        CHANNEL,
+    from .._sphinx_youtube_core.reference import (  # ruff: ignore[import-outside-top-level]
         ReferenceError,
-        parse_reference,
         validate_channel_id,
         validate_handle,
         validate_playlist_id,
     )
+
     if handle:
         try:
             handle = validate_handle(handle)
         except ReferenceError as exc:
-            raise CatalogError(f"record {index}: invalid channel handle: {exc}") from exc
+            raise CatalogError(
+                f"record {index}: invalid channel handle: {exc}"
+            ) from exc
     if channel_id:
         try:
             channel_id = validate_channel_id(channel_id)

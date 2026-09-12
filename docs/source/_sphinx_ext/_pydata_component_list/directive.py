@@ -1,4 +1,5 @@
-"""PyData Sphinx Theme ``component-list`` directive.
+"""
+PyData Sphinx Theme ``component-list`` directive.
 
 The inventory is intentionally separate from the generic gallery engine: it
 reads PyData Sphinx Theme's installed component templates and links each item to
@@ -37,7 +38,11 @@ class ComponentListDirective(SphinxDirective):
                 / "components"
             )
             components = sorted(
-                (entry for entry in component_dir.iterdir() if entry.name.endswith(".html")),
+                (
+                    entry
+                    for entry in component_dir.iterdir()
+                    if entry.name.endswith(".html")
+                ),
                 key=lambda entry: entry.name,
             )
         except (ModuleNotFoundError, FileNotFoundError, OSError) as exc:
@@ -75,7 +80,9 @@ class ComponentListDirective(SphinxDirective):
                     )
                 ]
             comments = pattern.findall(text)
-            description = comments[0].strip() if comments else "No description available."
+            description = (
+                comments[0].strip() if comments else "No description available."
+            )
             name = component.name.removesuffix(".html")
             url = f"{upstream}/{component.name}"
             items.append(
@@ -95,7 +102,9 @@ class ComponentListDirective(SphinxDirective):
 
 def setup(app: Sphinx) -> dict[str, Any]:
     """Register ``component-list`` with namespace validation."""
-    from .._extension_setup import check_namespace
+    from .._extension_setup import (  # ruff: ignore[import-outside-top-level]
+        check_namespace,
+    )
 
     check_namespace(app, __package__.rsplit(".", 1)[0])
     app.add_directive("component-list", ComponentListDirective)

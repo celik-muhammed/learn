@@ -397,8 +397,8 @@ t('the summary takes an explicit title colour', /summary\.ai-md-section-summary 
 t('the light theme mixes toward black', /:root \{[^}]*--ai-section-title-color:[^;]*#000 14%\)/.test(sec_css), true);
 t('the dark theme mixes toward white, not darker still', /\[data-bs-theme="dark"\][\s\S]{0,120}?--ai-section-title-color:[^;]*#fff 14%\)/.test(sec_css), true);
 t('both derive from the theme text colour rather than a literal', (sec_css.match(/--ai-section-title-color: color-mix\(in srgb, var\(--pst-color-text-base/g) || []).length === 2, true);
-t('the chevron stays quieter than its title', /\.ai-md-section-chevron \{ color: var\(--pst-color-text-muted/.test(sec_css), true);
-t('forced-colours falls back to a system colour, not a discarded mix', /forced-colors: active[\s\S]{0,260}?ai-md-section-summary[\s\S]{0,80}?CanvasText/.test(sec_css), true);
+t('the chevron has an explicit theme-aware foreground token', /--ai-section-chevron-color:\s*var\(--pst-color-text-base/.test(sec_css), true);
+t('forced-colours uses system control colours, not a discarded mix', /forced-colors: active[\s\S]{0,500}?ai-md-section-summary[\s\S]{0,180}?color:\s*ButtonText[\s\S]{0,120}?background:\s*ButtonFace/.test(sec_css), true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

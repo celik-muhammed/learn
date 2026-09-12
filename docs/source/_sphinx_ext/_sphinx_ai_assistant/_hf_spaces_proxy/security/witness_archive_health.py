@@ -615,9 +615,9 @@ def _command_adapter(
             if t2.is_alive():
                 t2.join()
             for stream in (proc.stdin, proc.stdout, proc.stderr):
-                try:
+                try:  # ruff: ignore[suppressible-exception]
                     stream.close()
-                except OSError:
+                except OSError:  # ruff: ignore[try-except-in-loop]
                     pass
 
     return call

@@ -1,12 +1,12 @@
-"""
+r"""
 Offline acquisition tool for the YouTube learning catalog.
 
 This module is the *only* place that talks to YouTube, and it is never
 imported by the Sphinx build. Run it deliberately -- by hand or on a
 schedule -- to refresh a catalog file, review the diff, and commit it::
 
-    python -m scikitplot._externals._sphinx_ext._sphinx_youtube_gallery.sync \\
-        --playlist PLxxxxxxxxxxxxxxxxxx \\
+    python -m scikitplot._externals._sphinx_ext._sphinx_youtube_gallery.sync \
+        --playlist PLxxxxxxxxxxxxxxxxxx \
         --output docs/_data/youtube.yaml
 
 For the standalone package layout, start the command with
@@ -35,20 +35,19 @@ listings and CI logs.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
 from .._sphinx_collection._yaml import (
-    BoundedYAMLError,
     MAX_COLLECTION_ITEMS,
+    BoundedYAMLError,
     load_bounded_yaml,
     read_bounded_utf8,
 )
-from .model import CatalogError, VideoRecord, normalize_catalog
-from .reference import (
+from .._sphinx_youtube_core.reference import (
     CHANNEL,
     CLIP,
     FEED,
@@ -63,17 +62,20 @@ from .reference import (
     validate_channel_id,
     validate_playlist_id,
 )
+from .model import CatalogError, VideoRecord, normalize_catalog
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
-    "fetch_video",
-    "fetch_playlist",
     "fetch_channel",
     "fetch_channel_playlists",
-    "resolve_source",
+    "fetch_playlist",
+    "fetch_video",
+    "main",
     "merge_catalog_enrichment",
     "render_catalog",
+    "resolve_source",
     "write_catalog",
-    "main",
 ]
 
 #: YouTube Data API v3 base URL.
@@ -109,7 +111,7 @@ def _require_requests():
         dependency of the documentation build, only of this optional tool.
     """
     try:
-        import requests
+        import requests  # ruff: ignore[import-outside-top-level]
     except ImportError as exc:  # pragma: no cover - environment dependent
         raise CatalogError(
             "the sync tool needs 'requests' (pip install 'requests>=2.28'); "
@@ -158,8 +160,7 @@ def _api_pages(endpoint: str, params: dict[str, Any], api_key: str) -> Iterator[
             # the fully prepared URL there, which would leak the API key from
             # the query string into CI logs.
             raise CatalogError(
-                f"YouTube API request to {endpoint} failed "
-                f"({type(exc).__name__})"
+                f"YouTube API request to {endpoint} failed ({type(exc).__name__})"
             ) from exc
 
         try:
@@ -189,8 +190,7 @@ def _api_pages(endpoint: str, params: dict[str, Any], api_key: str) -> Iterator[
         next_token = page.get("nextPageToken")
         if next_token is not None and not isinstance(next_token, str):
             raise CatalogError(
-                f"YouTube API response from {endpoint} has a non-string "
-                "nextPageToken"
+                f"YouTube API response from {endpoint} has a non-string nextPageToken"
             )
 
         yield page
@@ -231,13 +231,14 @@ def _rss_items(feed_param: str, value: str) -> list[dict[str, Any]]:
     CatalogError
         On any transport, HTTP or XML parsing error.
     """
-    import xml.etree.ElementTree as ET
+    # import xml.etree.ElementTree as ET  # ruff: ignore[import-outside-top-level]
+    from defusedxml import (  # ruff: ignore[camelcase-imported-as-acronym, import-outside-top-level]
+        ElementTree as ET,
+    )
 
     requests = _require_requests()
     try:
-        response = requests.get(
-            RSS_BASE, params={feed_param: value}, timeout=TIMEOUT
-        )
+        response = requests.get(RSS_BASE, params={feed_param: value}, timeout=TIMEOUT)
         response.raise_for_status()
         root = ET.fromstring(response.content)
     except Exception as exc:
@@ -267,9 +268,7 @@ def _rss_items(feed_param: str, value: str) -> list[dict[str, Any]]:
                 "title": entry.findtext("atom:title", default="", namespaces=ns),
                 "description": description,
                 "channel": channel,
-                "channel_id": entry.findtext(
-                    "yt:channelId", default="", namespaces=ns
-                ),
+                "channel_id": entry.findtext("yt:channelId", default="", namespaces=ns),
                 "published": entry.findtext(
                     "atom:published", default="", namespaces=ns
                 ),
@@ -280,7 +279,8 @@ def _rss_items(feed_param: str, value: str) -> list[dict[str, Any]]:
 
 
 def fetch_video(video_id: str, api_key: str = "") -> list[dict[str, Any]]:
-    """Fetch metadata for one exact video when the Data API is available.
+    """
+    Fetch metadata for one exact video when the Data API is available.
 
     Without a key there is no stable public per-video metadata endpoint used by
     this extension, so the exact id is returned as a minimal record.  During a
@@ -295,15 +295,17 @@ def fetch_video(video_id: str, api_key: str = "") -> list[dict[str, Any]]:
     ):
         for item in page.get("items", []):
             snippet = item.get("snippet", {})
-            return [{
-                "id": item.get("id", video_id),
-                "title": snippet.get("title", ""),
-                "description": snippet.get("description", ""),
-                "channel": snippet.get("channelTitle", ""),
-                "channel_id": snippet.get("channelId", ""),
-                "published": snippet.get("publishedAt", ""),
-                "duration": item.get("contentDetails", {}).get("duration"),
-            }]
+            return [
+                {
+                    "id": item.get("id", video_id),
+                    "title": snippet.get("title", ""),
+                    "description": snippet.get("description", ""),
+                    "channel": snippet.get("channelTitle", ""),
+                    "channel_id": snippet.get("channelId", ""),
+                    "published": snippet.get("publishedAt", ""),
+                    "duration": item.get("contentDetails", {}).get("duration"),
+                }
+            ]
     raise CatalogError(f"video {video_id!r} was not found on YouTube")
 
 
@@ -335,8 +337,11 @@ def _video_durations(video_ids: Sequence[str], api_key: str) -> dict[str, str]:
     return result
 
 
-def fetch_playlist(
-    playlist_id: str, api_key: str = "", *, playlist_title: str | None = None
+def fetch_playlist(  # ruff: ignore[undocumented-param]
+    playlist_id: str,
+    api_key: str = "",
+    *,
+    playlist_title: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Fetch every video in a playlist as raw catalog records.
@@ -379,16 +384,18 @@ def fetch_playlist(
                     "id": resource.get("videoId", ""),
                     "title": snippet.get("title", ""),
                     "description": snippet.get("description", ""),
-                    "channel": snippet.get("videoOwnerChannelTitle", "")
-                    or snippet.get("channelTitle", ""),
+                    "channel": (
+                        snippet.get("videoOwnerChannelTitle", "")
+                        or snippet.get("channelTitle", "")
+                    ),
                     "channel_id": snippet.get("videoOwnerChannelId", ""),
                     "playlist": playlist_title,
                     "playlist_id": playlist_id,
                     "position": snippet.get("position"),
-                    "published": item.get("contentDetails", {}).get(
-                        "videoPublishedAt"
-                    )
-                    or snippet.get("publishedAt"),
+                    "published": (
+                        item.get("contentDetails", {}).get("videoPublishedAt")
+                        or snippet.get("publishedAt")
+                    ),
                 }
             )
             if len(records) > MAX_COLLECTION_ITEMS:
@@ -482,18 +489,30 @@ _TAB_STRATEGY = {
 
 #: Tabs that resolve to a superset of what the reader asked for.
 _INEXACT_TABS = {
-    "shorts": "Shorts are not distinguishable from other uploads in the "
-              "Data API; all uploads are returned",
-    "streams": "live streams are not distinguishable from other uploads in "
-               "the Data API; all uploads are returned",
-    "live": "live streams are not distinguishable from other uploads in the "
-            "Data API; all uploads are returned",
-    "podcasts": "the Data API does not label podcast playlists; all public "
-                "playlists are returned",
-    "courses": "the Data API does not label course playlists; all public "
-               "playlists are returned",
-    "releases": "the Data API does not label release playlists; all public "
-                "playlists are returned",
+    "shorts": (
+        "Shorts are not distinguishable from other uploads in the "
+        "Data API; all uploads are returned"
+    ),
+    "streams": (
+        "live streams are not distinguishable from other uploads in "
+        "the Data API; all uploads are returned"
+    ),
+    "live": (
+        "live streams are not distinguishable from other uploads in the "
+        "Data API; all uploads are returned"
+    ),
+    "podcasts": (
+        "the Data API does not label podcast playlists; all public "
+        "playlists are returned"
+    ),
+    "courses": (
+        "the Data API does not label course playlists; all public "
+        "playlists are returned"
+    ),
+    "releases": (
+        "the Data API does not label release playlists; all public "
+        "playlists are returned"
+    ),
 }
 
 
@@ -610,9 +629,7 @@ def fetch_channel_playlists(channel_id: str, api_key: str) -> list[dict[str, Any
     records: list[dict[str, Any]] = []
     seen_video_ids: set[str] = set()
     for playlist_id, title in playlists:
-        for record in fetch_playlist(
-            playlist_id, api_key, playlist_title=title
-        ):
+        for record in fetch_playlist(playlist_id, api_key, playlist_title=title):
             video_id = str(record.get("id", "")).strip()
             if not video_id or video_id in seen_video_ids:
                 continue
@@ -708,7 +725,7 @@ def resolve_source(source: str, api_key: str = "") -> list[dict[str, Any]]:
             )
         caveat = _INEXACT_TABS.get(reference.tab)
         if caveat:
-            print(f"note: {source} -- {caveat}", file=sys.stderr)
+            logger.warning("%s -- %s", source, caveat)
         channel_id = resolve_channel_id(reference, api_key)
         if strategy == "playlists":
             return fetch_channel_playlists(channel_id, api_key)
@@ -749,7 +766,8 @@ def merge_catalog_enrichment(
     preserve_unmatched: bool = False,
     preserve_missing_provider: bool = False,
 ) -> list[VideoRecord]:
-    """Preserve author-owned enrichment while refreshing provider metadata.
+    """
+    Preserve author-owned enrichment while refreshing provider metadata.
 
     YouTube owns volatile facts such as title, description, publication time,
     playlist position and channel id.  The documentation author owns the
@@ -766,7 +784,7 @@ def merge_catalog_enrichment(
     provider fields when the partial source cannot observe them (for example
     duration in RSS). It never overrides a non-empty refreshed value.
     """
-    from dataclasses import replace
+    from dataclasses import replace  # ruff: ignore[import-outside-top-level]
 
     by_id = {record.id: record for record in existing}
     merged: list[VideoRecord] = []
@@ -790,9 +808,17 @@ def merge_catalog_enrichment(
                 "channel_id": record.channel_id or previous.channel_id,
                 "playlist": record.playlist or previous.playlist,
                 "playlist_id": record.playlist_id or previous.playlist_id,
-                "position": record.position if record.position is not None else previous.position,
+                "position": (
+                    record.position
+                    if record.position is not None
+                    else previous.position
+                ),
                 "published": record.published or previous.published,
-                "duration": record.duration if record.duration is not None else previous.duration,
+                "duration": (
+                    record.duration
+                    if record.duration is not None
+                    else previous.duration
+                ),
             }
         merged.append(
             replace(
@@ -843,7 +869,7 @@ def _catalog_payload(records: Sequence[VideoRecord]) -> dict[str, Any]:
 
 def render_catalog(records: Sequence[VideoRecord]) -> str:
     """Serialize a normalized video catalog deterministically as YAML."""
-    from yaml import safe_dump
+    from yaml import safe_dump  # ruff: ignore[import-outside-top-level]
 
     return safe_dump(
         _catalog_payload(records),
@@ -854,7 +880,8 @@ def render_catalog(records: Sequence[VideoRecord]) -> str:
 
 
 def write_catalog(records: Sequence[VideoRecord], path: Path) -> bool:
-    """Serialize records idempotently and replace the destination atomically.
+    """
+    Serialize records idempotently and replace the destination atomically.
 
     Returns ``True`` only when the exact normalized YAML changed.  The
     temporary file is created beside the destination so ``os.replace`` remains
@@ -884,14 +911,16 @@ def write_catalog(records: Sequence[VideoRecord], path: Path) -> bool:
         os.replace(tmp_name, path)
     finally:
         if tmp_name:
-            try:
+            try:  # ruff: ignore[suppressible-exception]
                 Path(tmp_name).unlink(missing_ok=True)
             except OSError:
                 pass
     return True
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(  # ruff: ignore[too-many-branches, too-many-return-statements]
+    argv: Sequence[str] | None = None,
+) -> int:
     """
     Command-line entry point.
 
@@ -916,7 +945,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--source", action="append", default=[], metavar="URL",
+        "--source",
+        action="append",
+        default=[],
+        metavar="URL",
         help=(
             "any YouTube URL or id: a video, playlist, channel, handle "
             "(@name) or channel tab. Repeatable. This is the recommended "
@@ -924,22 +956,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--playlist", action="append", default=[], metavar="PL...",
+        "--playlist",
+        action="append",
+        default=[],
+        metavar="PL...",
         help="playlist id to fetch; repeatable",
     )
     parser.add_argument(
-        "--channel", action="append", default=[], metavar="UC...",
+        "--channel",
+        action="append",
+        default=[],
+        metavar="UC...",
         help="channel id to fetch; repeatable",
     )
     parser.add_argument(
-        "--output", required=True, type=Path, help="catalog file to write",
+        "--output",
+        required=True,
+        type=Path,
+        help="catalog file to write",
     )
     parser.add_argument(
-        "--check", action="store_true",
+        "--check",
+        action="store_true",
         help="fail if the catalog would change; for CI drift detection",
     )
     parser.add_argument(
-        "--prune", action="store_true",
+        "--prune",
+        action="store_true",
         help=(
             "remove stored videos not returned by this refresh; requires "
             "YOUTUBE_API_KEY because public RSS is only a partial recent feed"
@@ -952,17 +995,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     api_key = os.environ.get("YOUTUBE_API_KEY", "")
     if args.prune and not api_key:
-        print(
+        logger.error(
             "error: --prune requires YOUTUBE_API_KEY; public RSS is a partial "
-            "recent feed and cannot prove that older videos were removed",
-            file=sys.stderr,
+            "recent feed and cannot prove that older videos were removed"
         )
         return 1
     if not api_key:
-        print(
+        logger.warning(
             "note: YOUTUBE_API_KEY is unset; channels/playlists use public RSS "
-            "(recent items only), while exact videos remain ID-only",
-            file=sys.stderr,
+            "(recent items only), while exact videos remain ID-only"
         )
 
     raw: list[dict[str, Any]] = []
@@ -971,19 +1012,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             raw.extend(resolve_source(source, api_key))
         for playlist_id in args.playlist:
             try:
-                playlist_id = validate_playlist_id(playlist_id)
+                playlist_id = validate_playlist_id(  # ruff: ignore[redefined-loop-name]
+                    playlist_id,
+                )
             except ReferenceError as exc:
                 raise CatalogError(f"--playlist: {exc}") from exc
             raw.extend(fetch_playlist(playlist_id, api_key))
         for channel_id in args.channel:
             try:
-                channel_id = validate_channel_id(channel_id)
+                channel_id = validate_channel_id(  # ruff: ignore[redefined-loop-name]
+                    channel_id,
+                )
             except ReferenceError as exc:
                 raise CatalogError(f"--channel: {exc}") from exc
             raw.extend(fetch_channel(channel_id, api_key))
         records = normalize_catalog(raw, "youtube sync")
     except CatalogError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        logger.error("error: %s", exc)
         return 1
 
     existing: list[VideoRecord] = []
@@ -994,7 +1039,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 load_bounded_yaml(text, str(args.output)), str(args.output)
             )
     except (BoundedYAMLError, CatalogError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        logger.error("error: %s", exc)
         return 1
 
     # Public RSS feeds are intentionally partial (recent items only). Absence
@@ -1011,32 +1056,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.check:
         expected = render_catalog(records)
         try:
-            actual = args.output.read_text(encoding="utf-8") if args.output.exists() else ""
+            actual = (
+                args.output.read_text(encoding="utf-8") if args.output.exists() else ""
+            )
         except (OSError, UnicodeError) as exc:
-            print(f"error: could not read {args.output}: {exc}", file=sys.stderr)
+            logger.error("error: could not read %s: %s", args.output, exc)
             return 1
         if actual != expected:
-            print(
+            logger.error(
                 f"error: {args.output} is out of date "
                 f"({len(existing)} stored, {len(records)} refreshed); "
-                "normalized catalog content would change",
-                file=sys.stderr,
+                "normalized catalog content would change"
             )
             return 1
-        print(f"{args.output} is up to date ({len(records)} videos)")
+        logger.info("%s is up to date (%d videos)", args.output, len(records))
         return 0
 
     try:
         changed = write_catalog(records, args.output)
     except (OSError, UnicodeError) as exc:
-        print(f"error: could not write {args.output}: {exc}", file=sys.stderr)
+        logger.error("error: could not write %s: %s", args.output, exc)
         return 1
     verb = "updated" if changed else "unchanged"
-    print(f"{args.output} {verb} ({len(records)} videos)")
+    logger.info("%s %s (%d videos)", args.output, verb, len(records))
     return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     # Behave like a normal Unix CLI when stdout is piped to a consumer that
     # exits early (for example ``... | head``): terminate on SIGPIPE instead
     # of printing a Python BrokenPipeError traceback. Windows simply lacks

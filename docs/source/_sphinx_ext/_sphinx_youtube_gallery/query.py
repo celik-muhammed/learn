@@ -35,14 +35,22 @@ from .._sphinx_collection.select import (
     apply_selection,
 )
 from .._sphinx_collection.select import group_records as _group_records
-from .model import CatalogError, CatalogRecord, VideoRecord
+from .model import CatalogError, CatalogRecord
 
-__all__ = ["Query", "SORT_KEYS", "GROUP_KEYS", "apply_query", "group_records"]
+__all__ = ["GROUP_KEYS", "SORT_KEYS", "Query", "apply_query", "group_records"]
 
 #: Built-in sort keys. A syntactically safe field path is also accepted so
 #: explicit ``fields:`` metadata has the same selection vocabulary as
 #: ``gallery-grid``. ``position`` is the author's intended teaching sequence.
-SORT_KEYS = ("title", "published", "duration", "position", "channel", "playlist", "none")
+SORT_KEYS = (
+    "title",
+    "published",
+    "duration",
+    "position",
+    "channel",
+    "playlist",
+    "none",
+)
 
 #: Built-in grouping keys. A syntactically safe custom field path is also
 #: accepted so an explicit catalog ``fields:`` mapping can use the same
@@ -50,9 +58,7 @@ SORT_KEYS = ("title", "published", "duration", "position", "channel", "playlist"
 #: catalog is available, keeping typos build-visible rather than silently
 #: producing a single ``Ungrouped`` section.
 GROUP_KEYS = ("playlist", "channel", "year", "none")
-_GROUP_FIELD_RE = re.compile(
-    r"^[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*$"
-)
+_GROUP_FIELD_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*$")
 
 # Full Python regular expressions can exhibit catastrophic backtracking.  The
 # directive accepts a deliberately small, useful subset whose work is bounded:
@@ -64,9 +70,10 @@ MAX_REGEX_REPEAT = 100
 MAX_REGEX_TEXT = 131_072
 
 
-def _compile_safe_regex(pattern: str):
+def _compile_safe_regex(  # ruff: ignore[too-many-branches]
+    pattern: str,
+):
     """Compile the bounded ``:match-regex:`` subset or raise CatalogError."""
-    import re
 
     if len(pattern) > MAX_REGEX_LENGTH:
         raise CatalogError(
@@ -109,8 +116,10 @@ def _compile_safe_regex(pattern: str):
                 raise CatalogError(f"invalid bounded repeat {{{spec}}} in match-regex")
             lower = int(match.group(1))
             upper_text = match.group(2)
-            upper = lower if upper_text is None else (
-                int(upper_text) if upper_text else MAX_REGEX_REPEAT + 1
+            upper = (
+                lower
+                if upper_text is None
+                else (int(upper_text) if upper_text else MAX_REGEX_REPEAT + 1)
             )
             if lower > upper or upper > MAX_REGEX_REPEAT:
                 raise CatalogError(
@@ -244,7 +253,7 @@ class Query:
         CatalogError
             If a sort or group key is unknown, both text matchers are given,
             a bound is negative, or the interval is empty. Reported by name
-            with the valid alternatives, so a typo such as ``:sort: titel``
+            with the valid alternatives, so a typo such as ``:sort: title``
             is an error rather than a silent fallback to catalog order.
         """
         key = self.sort_by.lstrip("-") or "none"
@@ -254,7 +263,9 @@ class Query:
                 f"{sorted(SORT_KEYS)} or a field path such as 'category' "
                 "(prefix with '-' for descending)"
             )
-        if self.group_by not in GROUP_KEYS and not _GROUP_FIELD_RE.fullmatch(self.group_by):
+        if self.group_by not in GROUP_KEYS and not _GROUP_FIELD_RE.fullmatch(
+            self.group_by
+        ):
             raise CatalogError(
                 f"invalid group key {self.group_by!r}; use one of "
                 f"{sorted(GROUP_KEYS)} or a field path such as 'category'"
@@ -297,8 +308,7 @@ class Query:
             terms.append(_AnyOfTerm(("channel", "channel_id", "handle"), self.channel))
         if self.playlist:
             terms.append(_AnyOfTerm(("playlist", "playlist_id"), self.playlist))
-        for tag in self.tags:
-            terms.append(FilterTerm("tags", "=", tag))
+        terms.extend(FilterTerm("tags", "=", tag) for tag in self.tags)
         if self.match:
             terms.append(_TextTerm(self.match))
         if self.match_regex:
@@ -349,9 +359,7 @@ class _AnyOfTerm(FilterTerm):
         parsed to ``youtube`` still matches a catalog value ``@youtube``.
         """
         wanted = self._identity(self.operand)
-        return wanted in {
-            self._identity(record.get(field)) for field in self._fields
-        }
+        return wanted in {self._identity(record.get(field)) for field in self._fields}
 
 
 class _TextTerm(FilterTerm):
@@ -406,9 +414,7 @@ class _RegexTerm(FilterTerm):
 class _IntervalTerm(FilterTerm):
     """Half-open publication interval ``[since, until)``."""
 
-    def __init__(
-        self, since: _dt.datetime | None, until: _dt.datetime | None
-    ) -> None:
+    def __init__(self, since: _dt.datetime | None, until: _dt.datetime | None) -> None:
         super().__init__(field="published", operator="", operand="")
         object.__setattr__(self, "_since", since)
         object.__setattr__(self, "_until", until)
@@ -434,7 +440,7 @@ class _IntervalTerm(FilterTerm):
             return False
         if self._since and published < self._since:
             return False
-        if self._until and published >= self._until:
+        if self._until and published >= self._until:  # ruff: ignore[needless-bool]
             return False
         return True
 
@@ -449,9 +455,14 @@ def _path_exists(record: Mapping[str, Any], path: str) -> bool:
     return True
 
 
-def _validate_selection_fields(records: Sequence[Mapping[str, Any]], query: Query) -> None:
+def _validate_selection_fields(
+    records: Sequence[Mapping[str, Any]], query: Query
+) -> None:
     """Reject typoed/custom sort or group paths once records are available."""
-    for option, raw in (("sort", query.sort_by.lstrip("-")), ("group-by", query.group_by)):
+    for option, raw in (
+        ("sort", query.sort_by.lstrip("-")),
+        ("group-by", query.group_by),
+    ):
         key = raw or "none"
         if key == "none" or not records:
             continue
@@ -486,10 +497,12 @@ def apply_query(
     Examples
     --------
     >>> from .model import normalize_catalog
-    >>> catalog = normalize_catalog([
-    ...     {"id": "aaaaaaaaaaa", "title": "Beta", "playlist": "P1"},
-    ...     {"id": "bbbbbbbbbbb", "title": "alpha", "playlist": "P2"},
-    ... ])
+    >>> catalog = normalize_catalog(
+    ...     [
+    ...         {"id": "aaaaaaaaaaa", "title": "Beta", "playlist": "P1"},
+    ...         {"id": "bbbbbbbbbbb", "title": "alpha", "playlist": "P2"},
+    ...     ]
+    ... )
     >>> selected, total = apply_query(catalog, Query(sort_by="title"))
     >>> [r.title for r in selected], total
     (['alpha', 'Beta'], 2)
@@ -529,13 +542,17 @@ def group_records(
     Examples
     --------
     >>> from .model import normalize_catalog
-    >>> catalog = normalize_catalog([
-    ...     {"id": "aaaaaaaaaaa", "playlist": "Intro"},
-    ...     {"id": "bbbbbbbbbbb"},
-    ...     {"id": "ccccccccccc", "playlist": "Intro"},
-    ... ])
-    >>> [(label, len(rs)) for label, rs in
-    ...  group_records(catalog, Query(group_by="playlist"))]
+    >>> catalog = normalize_catalog(
+    ...     [
+    ...         {"id": "aaaaaaaaaaa", "playlist": "Intro"},
+    ...         {"id": "bbbbbbbbbbb"},
+    ...         {"id": "ccccccccccc", "playlist": "Intro"},
+    ...     ]
+    ... )
+    >>> [
+    ...     (label, len(rs))
+    ...     for label, rs in group_records(catalog, Query(group_by="playlist"))
+    ... ]
     [('Intro', 2), ('Ungrouped', 1)]
     >>> [label for label, _ in group_records(catalog, Query())]
     ['']

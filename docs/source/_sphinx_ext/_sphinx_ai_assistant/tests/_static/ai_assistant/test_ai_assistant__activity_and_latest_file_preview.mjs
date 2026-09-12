@@ -110,6 +110,8 @@ ok(sync.indexOf('_numberRemainingCodeBlocks') === -1,'numbering never runs on th
 ok(src.indexOf('_numberRemainingCodeBlocks(root);') > src.indexOf('_collapseArtifactPreBlocks(root);'),'numbering runs after the collapse, so collapsed files are not double-wrapped');
 ok(/\.ai-md-snippet-sheet[^{]*\{[^}]*border-radius/.test(cssSrc),'a snippet sheet keeps the code block radius rather than the file sheet squared edge');
 ok(/\.ai-md-snippet-sheet \.ai-md-file-gutter[\s\S]{0,120}?line-height:\s*inherit/.test(cssSrc),'its gutter shares the code line box');
+ok(/\.ai-md-snippet-sheet \{[^}]*max-height:\s*none[^}]*overflow:\s*visible[^}]*overscroll-behavior:\s*auto/.test(cssSrc),'inline answer snippets yield vertical wheel and touch scrolling to the conversation');
+ok(/\.ai-md-snippet-sheet \.ai-md-pre \{[^}]*overscroll-behavior-y:\s*auto[^}]*touch-action:\s*pan-x pan-y pinch-zoom/.test(cssSrc),'snippet code owns horizontal pan without trapping vertical touch gestures');
 
 // ── One scroller per sheet, and no wrapping where numbers are shown ──────
 //
@@ -192,18 +194,24 @@ ok(!/gitMark:[^\n]*#f03c2e|gitMark:[^\n]*#100f0d|gitMark:[^\n]*fill="#fff"/.test
 // the viewport: the panel is resizable, maximizable and embeddable, so the two
 // widths are different numbers.
 ok(/container-name:\s*ai-artifact-surface/.test(cssSrc),'the artifact surfaces are query containers');
-ok(/@container ai-artifact-surface \(max-width: 22rem\)/.test(cssSrc),'labels collapse on a narrow panel, not a narrow window');
-const iconOnly = (cssSrc.match(/@container ai-artifact-surface \(max-width: 22rem\) \{[\s\S]*?\n\}/) || [''])[0];
-['ai-md-artifact-download-label','ai-assistant-panel-changed-file-download',
- 'ai-assistant-panel-changed-files-download-all','ai-assistant-panel-changed-files-series']
-  .forEach(function (cls) { ok(iconOnly.includes(cls), cls + ' collapses to its glyph'); });
+ok(/@container ai-artifact-surface \(max-width: 26rem\)/.test(cssSrc),'per-file labels collapse before a full-width mobile row becomes crowded');
+ok(/@container ai-artifact-surface \(max-width: 22rem\)/.test(cssSrc),'bulk footer labels stay readable until the tighter threshold');
+const perFileIconOnly = (cssSrc.match(/@container ai-artifact-surface \(max-width: 26rem\) \{[\s\S]*?\n\}/) || [''])[0];
+const bulkIconOnly = (cssSrc.match(/@container ai-artifact-surface \(max-width: 22rem\) \{[\s\S]*?\n\}/) || [''])[0];
+['ai-md-artifact-download-label','ai-assistant-panel-changed-file-download']
+  .forEach(function (cls) { ok(perFileIconOnly.includes(cls), cls + ' collapses early to protect the filename'); });
+['ai-assistant-panel-changed-files-download-all','ai-assistant-panel-changed-files-series']
+  .forEach(function (cls) { ok(bulkIconOnly.includes(cls), cls + ' keeps text until the tighter bulk threshold'); });
+ok(!perFileIconOnly.includes('ai-assistant-panel-changed-files-download-all') &&
+   !perFileIconOnly.includes('ai-assistant-panel-changed-files-series'),
+   'per-file compaction does not prematurely hide descriptive bulk-action labels');
 // Comments stripped first. The rule's own comment explains why display:none
-// is not used, and matching that sentence reported correct CSS as broken --
-// the third time this run a comment has defeated an assertion written against
-// raw source.
-const iconOnlyCode = iconOnly.replace(/\/\*[\s\S]*?\*\//g, '');
-ok(/clip-path:\s*inset\(50%\)/.test(iconOnlyCode)&&!/display:\s*none/.test(iconOnlyCode),'the label is clipped, not removed, so the hit area and title survive');
-ok(/min-width:\s*2\.25rem/.test(iconOnly),'an icon-only button keeps a usable target size');
+// is not used, and matching that sentence reported correct CSS as broken.
+const perFileIconOnlyCode = perFileIconOnly.replace(/\/\*[\s\S]*?\*\//g, '');
+const bulkIconOnlyCode = bulkIconOnly.replace(/\/\*[\s\S]*?\*\//g, '');
+ok(/clip-path:\s*inset\(50%\)/.test(perFileIconOnlyCode)&&!/display:\s*none/.test(perFileIconOnlyCode),'per-file label is clipped, not removed, so the hit area and title survive');
+ok(/clip-path:\s*inset\(50%\)/.test(bulkIconOnlyCode)&&!/display:\s*none/.test(bulkIconOnlyCode),'bulk labels use the same accessible clipping contract');
+ok(/min-width:\s*2\.25rem/.test(perFileIconOnly),'an icon-only per-file button keeps a usable target size');
 // Safe only because the accessible name never depended on the visible label.
 ok(src.includes("dlBtn.setAttribute('aria-label', 'Download ' + filename)"),'the snippet download names its file regardless of width');
 ok(src.includes("download.setAttribute('aria-label', 'Download latest ' + entry.path"),'the file download names its file regardless of width');
@@ -224,10 +232,12 @@ ok(/\.ai-md-artifact-btn-icon svg \{[^}]*width:\s*\.85em/.test(cssSrc),'the glyp
 // preview and download joined, then the overflow menu beside them.
 ok(changed.includes('primary.appendChild(_buildArtifactSegmentGroup(entry.path, preview, download));')&&changed.includes('primary.appendChild(_buildFileOverflow(key, entry));'),'a presented file is one segmented control plus its overflow menu');
 ok(src.includes('function _buildArtifactSegmentGroup(ariaLabel, primary, secondary)'),'both artifact surfaces share one segmented-control builder');
-ok(/\.ai-md-artifact-group\s*>\s*\.ai-assistant-panel-changed-file-preview[\s\S]{0,200}?border:\s*0/.test(cssSrc),'a presented-file segment sheds its own chrome inside the group');
+ok(/\.ai-md-artifact-group\s*>\s*\.ai-md-artifact-card[\s\S]{0,220}?border:\s*0/.test(cssSrc),'all preview segments shed their own chrome through the shared group rule');
 ok(/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/.test(cssSrc),'the group takes the room the overflow menu leaves');
 ok(!changed.includes("className = 'ai-assistant-panel-changed-file-saveas'"),'save-as is no longer a fifth button on the card');
-ok(/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto/.test(cssSrc),'the preview claims the room the two actions leave');
+ok((cssSrc.match(/\.ai-assistant-panel-changed-file-primary\s*\{/g)||[]).length===1,'Presented files have one primary-row layout authority');
+ok(!/\.ai-assistant-panel-changed-file-primary\s*\{[^}]*grid-template-columns:[^;}]*auto auto/.test(cssSrc),'obsolete three-column Presented-file grids are gone');
+ok(changed.includes("download.className = 'ai-md-artifact-download-label ai-assistant-panel-changed-file-download';"),'Presented-file Download reuses the same base visual class as normal artifacts');
 ok(/@media \(max-width: 420px\)[\s\S]*?\.ai-assistant-panel-changed-file-primary\s*\{[^}]*minmax\(0, 1fr\)/.test(cssSrc),'a narrow panel wraps the actions instead of clipping the filename');
 
 // Save-as is a download alias, never a rename: the ledger key is the file's
@@ -258,9 +268,11 @@ ok(/forced-colors: active[\s\S]{0,200}?menu-icon[\s\S]{0,60}?ButtonText/.test(cs
 ok(/'Download patch'[^}]*icon: ICONS\.gitMark/.test(src),'the patch export carries the git mark');
 ok(/'Save as\\u2026'[^}]*icon: ICONS\.exportTxt/.test(src),'save-as carries the download arrow');
 ok(/'Open in a sheet'[^}]*icon: ICONS\.terms/.test(src),'opening a sheet carries the document glyph');
+const fileItems = extract('_fileOverflowItems');
 const fileMenu = extract('_buildFileOverflow');
-ok(fileMenu.includes('_generatedArtifactDownloadPatch(key)')&&fileMenu.includes('_generatedArtifactContinueEditing(key)'),'patch and continue live in the overflow menu, still one click away');
-ok(fileMenu.includes('_generatedArtifactSaveAs(key)')&&fileMenu.includes('_generatedArtifactOpenSheet(key)'),'save-as and open-in-a-sheet are menu items');
+ok(fileItems.includes('_generatedArtifactDownloadPatch(key)')&&fileItems.includes('_generatedArtifactContinueEditing(key)'),'patch and continue live in the canonical tracked-file action list, still one click away');
+ok(fileItems.includes('_generatedArtifactSaveAs(key)')&&fileItems.includes('_generatedArtifactOpenSheet(key)'),'save-as and open-in-a-sheet are canonical tracked-file actions');
+ok(fileMenu.includes('return _fileOverflowItems(key);'),'the Presented-file wrapper delegates to the canonical action list');
 ok(menu.includes("menu.setAttribute('role', 'menu')")&&menu.includes("row.setAttribute('role', 'menuitem')"),'the menu is announced as a menu');
 ok(menu.includes("btn.setAttribute('aria-haspopup', 'menu')")&&menu.includes("btn.setAttribute('aria-expanded', 'true')"),'the trigger reports its popup and its state');
 ok(menu.includes("if (e.key !== 'Escape') return;")&&menu.includes('btn.focus();'),'Escape closes the menu and returns focus to the trigger');
@@ -308,7 +320,7 @@ ok(changed.includes('if (footerRef) footerRef.hidden = open;'),'collapsing the s
 ok(changed.includes("id: 'presented-files', kind: 'file', state: 'done'"),'the presentation is reported in the activity timeline as a file event');
 ok(changed.includes("' r' + _artifactContentRevision(e)"),'the timeline names each file at its content revision');
 ok(/\.ai-assistant-panel-changed-files-download-all\s*\{[^}]*flex:\s*1 1 100%/.test(cssSrc),'download-all spans the strip so it reads as covering every card');
-ok(/\.ai-assistant-panel-changed-file-secondary:empty\s*\{\s*display:\s*none/.test(cssSrc),'an empty secondary line collapses instead of leaving a gap');
+ok(!/\.ai-assistant-panel-changed-file-secondary\b/.test(cssSrc)&&!changed.includes('ai-assistant-panel-changed-file-secondary'),'the obsolete secondary action row is removed rather than hidden');
 ok(changed.includes('_attachmentPathAlias(entry.path)')&&changed.includes('aliasCollision')&&changed.includes('portable filesystem'),'bulk download fails closed on portable path collisions');
 ok(sessionBudget.includes('_generatedArtifactMakeRetentionUnavailable')&&sessionBudget.includes('Released older file preview'),'session pressure evicts oldest retained previews instead of silently exceeding memory');
 ok(retentionUnavailable.includes("entry.state = 'unavailable'")&&retentionUnavailable.includes('entry.content = null')&&!retentionUnavailable.includes('entry.revision + 1'),'local retention eviction invalidates bytes without inventing a file revision');

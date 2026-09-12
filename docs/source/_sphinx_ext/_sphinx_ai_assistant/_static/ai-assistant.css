@@ -164,10 +164,18 @@
     /* when left sided, Avoid vertical cutting on the right side due to width. */
     /* transform: translate(-70px, 0); */
 
-    background-color: var(
+    /*
+     * The top-level toolbar dropdown owns its surface token.  Do not borrow
+     * `--ai-speak-toggle-surface`: that token is scoped to the in-panel speak
+     * control and therefore is undefined here.  An undefined custom property
+     * makes background-color invalid at computed-value time and the initial
+     * transparent background leaks through.
+     */
+    --ai-assistant-dropdown-surface: var(
         --pst-color-surface,
         var(--color-background-primary, #fff)
     );
+    background-color: var(--ai-assistant-dropdown-surface, #fff);
     border: 1px solid var(
         --pst-color-border,
         var(--color-foreground-border, #e1e4e5)
@@ -180,7 +188,9 @@
     pointer-events: auto;
 }
 
-[data-bs-theme="dark"] .ai-assistant-dropdown {
+:is([data-theme="dark"], [data-mode="dark"], [data-bs-theme="dark"], .dark)
+    .ai-assistant-dropdown {
+    --ai-assistant-dropdown-surface: var(--pst-color-surface, #29313d);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.45),
                 0  4px  6px -2px rgba(0, 0, 0, 0.30);
 }
@@ -941,7 +951,7 @@
     margin: 0;
     border: 0;
     background: transparent;
-    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
     font: inherit;
     font-weight: 600;
     line-height: inherit;
@@ -1423,8 +1433,8 @@
     padding: 0.45rem 0.75rem;
     margin: 0 0.75rem 0.5rem;
     background-color: var(
-        --pst-color-on-background,
-        var(--color-background-secondary, #f5f5f5)
+        --pst-color-surface,
+        var(--color-background-primary, #fff)
     );
     border-radius: 999px;
     font-size: 0.8rem;
@@ -1439,9 +1449,10 @@
 }
 
 .ai-assistant-panel-speak-banner:hover {
-    background-color: var(
-        --pst-color-on-background,
-        var(--color-background-secondary, #e8e8e8)
+    background-color: color-mix(
+        in srgb,
+        var(--pst-color-surface, var(--color-background-primary, #fff)) 88%,
+        var(--pst-color-text-base, var(--color-foreground-primary, #1f2328)) 12%
     );
 }
 
@@ -1451,7 +1462,8 @@
     stroke: currentColor;
     fill: none;
     flex-shrink: 0;
-    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    /* Visibility first: host primary colours can equal a custom surface. */
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
 }
 
 [data-bs-theme="dark"] .ai-assistant-panel-speak-banner {
@@ -1599,7 +1611,7 @@
 
 .ai-assistant-pdf-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: stretch;
     width: 100%;
     min-width: 0;
@@ -1636,18 +1648,21 @@
 }
 
 .ai-assistant-pdf-mode-switch {
+    --ai-assistant-toggle-thumb-travel: 16px;
     position: relative;
     align-self: stretch;
     justify-content: center;
     width: 48px;
     min-width: 48px;
-    min-height: 55px;
     margin: 0;
-    padding: 0 0.55rem;
     border: 0;
     border-radius: 0 4px 4px 0;
     color: var(--pst-color-text-muted, var(--color-foreground-secondary, #666));
     touch-action: manipulation;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
 }
 
 /* Quiet divider keeps the integrated row readable without making a card. */
@@ -1710,10 +1725,6 @@
  *                       no second mode to switch to. */
 .ai-assistant-pdf-mode-switch[aria-checked="true"] .ai-assistant-pdf-toggle-track {
     background: var(--ai-pdf-accent);
-}
-
-.ai-assistant-pdf-mode-switch[aria-checked="true"] .ai-assistant-pdf-toggle-thumb {
-    transform: translateX(16px);
 }
 
 /* Print-only mode: the toggle stays visible for a stable, discoverable layout
@@ -4001,7 +4012,14 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
 .ai-assistant-panel[data-footer-compact="true"] .ai-assistant-panel-inline-model-picker {
     min-width: unset;
     max-width: unset;
-    border: none;
+    /* T82: compact mode is still the primary half of a segmented control.
+     * Dropping this border left the sibling chevron with only its top/right/
+     * bottom outline visible at very small panel widths. Keep the same border
+     * token as wide mode; the joined-edge rule below supplies the one divider. */
+    border: 1px solid var(
+        --pst-color-border,
+        var(--color-foreground-border, rgba(127, 127, 127, 0.3))
+    );
     border-radius: 6px;
     padding: 0.35rem 0.4rem;
     background: transparent;
@@ -4932,63 +4950,100 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
    needed for the collapse mechanics themselves, only for the header row
    the summary renders as. */
 .ai-assistant-panel-bubble--assistant details.ai-md-section {
-    margin: 0.5rem 0;
+    margin: 0.6rem 0;
 }
 .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary {
     cursor: pointer;
     list-style: none;
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.48rem;
+    min-height: 2.35rem;
     user-select: none;
-    /* Bold + slightly larger than body text so a collapsible section reads
-     * as a heading-like, obviously-clickable control at a glance — not
-     * plain body-weight text that happens to have a chevron next to it. */
+    /*
+     * This is a disclosure CONTROL, not merely a heading with a chevron.
+     * A persistent surface makes that fact visible on touch devices where
+     * hover cannot provide the missing affordance.  The tokens below are
+     * theme-aware and deliberately subtle so several sections can coexist
+     * without turning an answer into a stack of loud buttons.
+     */
     font-weight: 700;
     font-size: 1.02em;
-    /*
-     * Stronger than body text, not merely bolder.
-     *
-     * The summary inherited the bubble's own `--pst-color-text-base`, so a
-     * section title differed from the paragraph under it only by weight and
-     * 2% of size. Against a tinted bubble that is not enough separation for a
-     * heading a reader is meant to scan by.
-     *
-     * "Darker" is the light-theme direction only. On a dark bubble, darker
-     * text means *less* contrast against the background, so the dark rule
-     * moves the other way -- toward white. What is shared between the themes
-     * is the intent (more contrast than body text), not the direction, and
-     * writing it as one token per theme keeps that explicit rather than
-     * hiding a reversal inside a colour literal.
-     */
+    line-height: 1.35;
     color: var(--ai-section-title-color, inherit);
-    padding: 0.2rem 0.3rem;
-    margin: 0 -0.3rem;   /* offset the padding so text still aligns visually */
-    border-radius: 6px;
-    transition: background-color 0.12s ease;
+    background: var(--ai-section-summary-bg);
+    border: 1px solid var(--ai-section-summary-border);
+    padding: 0.38rem 0.48rem;
+    margin: 0;
+    border-radius: 0.55rem;
+    box-shadow: 0 1px 1px var(--ai-section-summary-shadow);
+    transition:
+        background-color 0.14s ease,
+        border-color 0.14s ease,
+        box-shadow 0.14s ease;
 }
 .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:hover {
-    background: rgba(0, 0, 0, 0.045);
+    background: var(--ai-section-summary-hover-bg);
+    border-color: var(--ai-section-summary-hover-border);
 }
-[data-bs-theme="dark"] .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:hover {
-    background: rgba(255, 255, 255, 0.06);
+.ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:active {
+    background: var(--ai-section-summary-active-bg);
 }
-.ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:focus         { outline: none; }
+.ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:focus { outline: none; }
 .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:focus-visible {
     outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
-    outline-offset: 1px;
+    outline-offset: 2px;
 }
 .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary::-webkit-details-marker {
-    display: none;   /* replaced by the chevron span below, all browsers */
+    display: none;   /* replaced by the stateful chevron below */
+}
+.ai-md-section-title {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 .ai-md-section-chevron {
+    width: 1.42rem;
+    height: 1.42rem;
     display: inline-flex;
-    transition: transform 0.15s ease;
-    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.42rem;
+    border-radius: 999px;
+    color: var(--ai-section-chevron-color);
+    background: var(--ai-section-chevron-bg);
+    border: 1px solid var(--ai-section-chevron-border);
+    /* ICONS.chevronDown is transformed into the conventional disclosure
+     * state: right when closed, down when open. */
+    transform: rotate(-90deg);
+    transition:
+        transform 0.16s ease,
+        background-color 0.14s ease,
+        border-color 0.14s ease;
 }
-.ai-md-section-chevron svg { width: 0.8rem; height: 0.8rem; }
+.ai-md-section-chevron svg { width: 0.78rem; height: 0.78rem; }
 details.ai-md-section[open] > summary .ai-md-section-chevron {
-    transform: rotate(90deg);
+    transform: rotate(0deg);
+}
+.ai-md-section-action-hint {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--ai-section-action-color);
+    background: var(--ai-section-action-bg);
+    border: 1px solid var(--ai-section-action-border);
+    border-radius: 999px;
+    padding: 0.15rem 0.42rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+details.ai-md-section:not([open]) > summary .ai-md-section-action--hide,
+details.ai-md-section[open] > summary .ai-md-section-action--show {
+    display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary,
+    .ai-md-section-chevron { transition: none; }
 }
 
 /* Inline code */
@@ -6803,7 +6858,7 @@ details.ai-md-section[open] > summary .ai-md-section-chevron {
 }
 .ai-assistant-mic-popup-toggle[aria-pressed="true"] .ai-assistant-mic-toggle-thumb,
 .ai-assistant-mic-popup-toggle[aria-checked="true"] .ai-assistant-mic-toggle-thumb {
-    transform: translateX(12px);
+    transform: translateX(var(--ai-assistant-toggle-thumb-travel, 12px));
 }
 
 /* Focus ring — keyboard accessible */
@@ -9575,6 +9630,11 @@ ol.ai-assistant-mic-perm-settings-legacy-body[aria-hidden="true"] {
     font: inherit;
     font-size: 0.76rem;
     font-weight: 600;
+    /* Canonical tab typography must not depend on the hosting surface.
+       Export-format tabs live inside `.ai-assistant-panel-privacy-body`
+       (line-height:1.55), while workspace tabs are direct sheet children.
+       Owning the line-height here makes both compute identically. */
+    line-height: 1.55;
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
@@ -16695,6 +16755,7 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 }
 
 .ai-assistant-copy-mode-switch {
+    --ai-assistant-toggle-thumb-travel: 16px;
     position: relative;
     align-self: stretch;
     justify-content: center;
@@ -16763,10 +16824,6 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     background: var(--ai-pdf-accent);
 }
 
-.ai-assistant-copy-mode-switch[aria-checked="true"] .ai-assistant-copy-toggle-thumb {
-    transform: translateX(16px);
-}
-
 /* Accessible current-mode text. Visual feedback is the moving thumb and the
  * changing description line on the Copy item itself. */
 .ai-assistant-copy-toggle-text {
@@ -16813,6 +16870,7 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 }
 
 .ai-assistant-panel-mode-switch {
+    --ai-assistant-toggle-thumb-travel: 16px;
     position: relative;
     align-self: stretch;
     justify-content: center;
@@ -16879,10 +16937,6 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 
 .ai-assistant-panel-mode-switch[aria-checked="true"] .ai-assistant-panel-toggle-track {
     background: var(--ai-pdf-accent);
-}
-
-.ai-assistant-panel-mode-switch[aria-checked="true"] .ai-assistant-panel-toggle-thumb {
-    transform: translateX(16px);
 }
 
 /* Accessible current-state text. Visual feedback is the moving thumb and the
@@ -17356,6 +17410,14 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     position: relative;
 }
 
+.ai-assistant-panel-model-action-host {
+    position: relative;
+    display: flex;
+    flex: 0 0 auto;
+    align-self: flex-start;
+    margin-left: auto;
+}
+
 .ai-assistant-panel-model-actions {
     display: flex;
     flex-direction: column;
@@ -17363,7 +17425,7 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     justify-content: center;
     gap: 0.08rem;
     flex: 0 0 auto;
-    margin-left: auto;
+    margin: 0;
 }
 
 .ai-assistant-panel-model-edit-btn,
@@ -17583,14 +17645,15 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        margin: 0;
     }
 
     .ai-assistant-panel-model-actions {
         display: none;
         position: absolute;
         z-index: 12;
-        top: calc(100% - 0.28rem);
-        right: 0.5rem;
+        top: calc(100% + 0.24rem);
+        right: 0;
         min-width: 8.5rem;
         margin: 0;
         padding: 0.3rem;
@@ -17616,6 +17679,12 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     .ai-assistant-panel-model-row[data-actions-open="true"]
         .ai-assistant-panel-model-actions {
         display: flex;
+    }
+
+    .ai-assistant-panel-model-action-host[data-actions-placement="top"]
+        .ai-assistant-panel-model-actions {
+        top: auto;
+        bottom: calc(100% + 0.24rem);
     }
 
     .ai-assistant-panel-model-actions
@@ -18617,21 +18686,63 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
 .ai-assistant-conv-share-result { border:1px solid rgba(127,127,127,.25); border-radius:.8rem; padding:.75rem; display:flex; flex-direction:column; gap:.45rem; }
 .ai-assistant-conv-share-result-meta { font-size:.72rem; opacity:.7; }
 .ai-assistant-conv-share-result-actions { display:flex; flex-wrap:wrap; gap:.4rem; }
-.ai-assistant-conv-share-artifacts { display:flex; flex-direction:column; gap:.4rem; }
-/* The row is a flex line whose action buttons (Copy link, Open, Download) do
-   not shrink, so on a narrow panel they pushed the row wider than its
-   container instead of moving. `min-width:0` lets the row shrink inside its
-   own flex parent, and wrapping sends the buttons to a second line rather
-   than off the edge -- the artifact name is what identifies the row and must
-   not be the thing that gets pushed out. */
-.ai-assistant-conv-share-artifact { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem; min-width:0; max-width:100%; border:1px solid rgba(127,127,127,.18); border-radius:.65rem; padding:.5rem .55rem; }
-/* Below the wrap point the text claims the whole first line, so the buttons
-   land beneath it as a group rather than one per line. */
-.ai-assistant-conv-share-artifact-text { flex:1 1 12rem; }
-.ai-assistant-conv-share-artifact .ai-assistant-conv-share-action-btn { flex:0 0 auto; }
-.ai-assistant-conv-share-artifact-text { min-width:0; flex:1; display:flex; flex-direction:column; gap:.1rem; }
+.ai-assistant-conv-share-artifacts {
+    display:flex;
+    flex-direction:column;
+    gap:.4rem;
+    /* The Share sheet can be resized independently of the viewport. Responsive
+       artifact rows therefore measure the space they actually receive rather
+       than guessing from a window breakpoint. */
+    container-type:inline-size;
+    container-name:conv-share-artifacts;
+}
+/* Text and actions are two explicit layout groups. Previously every action was
+   a direct flex child and a duplicate `flex:1` declaration reset the text's
+   intended 12rem basis to 0%, allowing the description to collapse while
+   buttons stayed beside it. */
+.ai-assistant-conv-share-artifact { display:flex; align-items:center; gap:.45rem; min-width:0; max-width:100%; border:1px solid rgba(127,127,127,.18); border-radius:.65rem; padding:.5rem .55rem; }
+.ai-assistant-conv-share-artifact-text { min-width:0; flex:1 1 12rem; display:flex; flex-direction:column; gap:.1rem; }
 .ai-assistant-conv-share-artifact-text strong { font-size:.76rem; }
 .ai-assistant-conv-share-artifact-text span { font-size:.66rem; opacity:.68; overflow-wrap:anywhere; }
+.ai-assistant-conv-share-artifact-actions {
+    flex:0 0 auto;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:nowrap;
+    gap:.45rem;
+}
+.ai-assistant-conv-share-artifact-actions .ai-assistant-conv-share-action-btn { flex:0 0 auto; }
+
+/* Once the artifact list itself becomes narrow, preserve the description as a
+   readable first row and move the action group below it. This is deliberately
+   container-driven: a docked/resized panel can be narrow on a wide desktop. */
+@container conv-share-artifacts (max-width: 30rem) {
+    .ai-assistant-conv-share-artifact {
+        flex-direction:column;
+        align-items:stretch;
+    }
+    .ai-assistant-conv-share-artifact-actions {
+        width:100%;
+        justify-content:flex-start;
+        flex-wrap:wrap;
+    }
+}
+
+/* Four lifecycle actions become a balanced 2×2 control group before one lone
+   button can fall onto a third line. Three-action local rows keep their compact
+   single action row for longer. */
+@container conv-share-artifacts (max-width: 21rem) {
+    .ai-assistant-conv-share-artifact-actions:has(> .ai-assistant-conv-share-action-btn:nth-child(4)) {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .ai-assistant-conv-share-artifact-actions:has(> .ai-assistant-conv-share-action-btn:nth-child(4)) > .ai-assistant-conv-share-action-btn {
+        width:100%;
+        min-width:0;
+    }
+}
 .ai-assistant-conv-share-contribution-separated { margin-top:.65rem; }
 .ai-assistant-conv-share-fmt-yaml, .ai-assistant-conv-share-fmt-toml { font-weight:700; }
 
@@ -18646,7 +18757,6 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
      The grid already reaches one column per row on its own, so this rule now
      only has to stop being wrong. */
   .ai-assistant-conv-share-format-switcher { overflow-x:visible; }
-  .ai-assistant-conv-share-artifact { align-items:flex-start; flex-wrap:wrap; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -19224,16 +19334,9 @@ a.ai-assistant-panel-ep-card-detail-url:focus-visible {
     min-width: 0;
     text-align: center;
 }
-/* One edge, from the shared accent token, so the indicator cannot disagree
-   with the accent used everywhere else in the panel. */
-.ai-assistant-panel-feedback-workspace-tabs > .ai-assistant-conv-share-format-btn[aria-selected="true"] {
-    box-shadow: inset 0 -2px 0 0 var(--ai-artifact-accent);
-}
-@media (forced-colors: active) {
-    .ai-assistant-panel-feedback-workspace-tabs > .ai-assistant-conv-share-format-btn[aria-selected="true"] {
-        box-shadow: inset 0 -2px 0 0 Highlight;
-    }
-}
+/* Visual state intentionally has no workspace override. These buttons use
+   the exact same normal / hover / selected / focus / dark / forced-colour
+   rules as the Conversation export-format tabs. Only layout differs here. */
 
 .ai-assistant-panel-feedback-workspace-pane[hidden] {
     display: none !important;
@@ -20659,7 +20762,7 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     line-height: 1.2;
 }
 .ai-assistant-panel-attachment-batch-summary-copy span {
-    color: var(--pst-color-text-muted, #71717a);
+    color: var(--pst-color-text-base, var(--color-foreground-primary, #1f2328));
     font-size: 0.64rem;
     line-height: 1.3;
 }
@@ -21567,27 +21670,10 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     font-size: .6rem;
     text-align: right;
 }
-.ai-assistant-panel-changed-files-list { display: grid; gap: .35rem; }
-.ai-assistant-panel-changed-file {
+.ai-assistant-panel-changed-files-list {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: stretch;
     gap: .35rem;
-}
-.ai-assistant-panel-changed-file-preview {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: .5rem;
     min-width: 0;
-    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
-    border-radius: 8px;
-    padding: .45rem .52rem;
-    background: var(--pst-color-surface, #fff);
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
 }
 .ai-assistant-panel-changed-file-preview:hover,
 .ai-assistant-panel-changed-file-preview:focus-visible {
@@ -21624,10 +21710,6 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
 .ai-assistant-panel-changed-files-download-all { justify-self: start; }
 @media (max-width: 560px) {
     .ai-assistant-panel-activity { margin-left: .08rem; margin-right: .08rem; }
-    .ai-assistant-panel-changed-files-head { align-items: flex-start; flex-direction: column; gap: .15rem; }
-    .ai-assistant-panel-changed-files-head span { text-align: left; }
-    .ai-assistant-panel-changed-file { grid-template-columns: 1fr; }
-    .ai-assistant-panel-changed-file-download { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
     .ai-assistant-panel-activity-caret { transition: none; }
@@ -21684,35 +21766,10 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     .ai-assistant-panel-diff-stat-del { color: CanvasText; }
 }
 
-/* Patch export button — same affordance weight as Download, so neither reads
-   as the primary action. `git am` is offered, never assumed. */
-.ai-assistant-panel-changed-file-patch {
-    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
-    border-radius: 8px;
-    padding: .45rem .55rem;
-    background: var(--pst-color-surface, #fff);
-    color: inherit;
-    font: inherit;
-    font-size: .62rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-}
-.ai-assistant-panel-changed-file-patch:hover,
-.ai-assistant-panel-changed-file-patch:focus-visible {
-    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
-}
-.ai-assistant-panel-changed-file {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-}
-
-/* Snippet promotion and working-file continuation.
-   Both are secondary to the primary Download/Preview action: a reader who
-   only wants the bytes should never have to read past them. */
+/* Snippet promotion and bulk patch export are secondary actions. */
 .ai-md-artifact-row { display: flex; align-items: stretch; gap: .35rem; min-width: 0; }
 .ai-md-artifact-row .ai-md-artifact-card { flex: 1 1 auto; min-width: 0; }
 .ai-md-artifact-promote,
-.ai-assistant-panel-changed-file-continue,
 .ai-assistant-panel-changed-files-series {
     border: 1px dashed color-mix(in srgb, var(--pst-color-border, #d8dce1) 82%, transparent);
     border-radius: 8px;
@@ -21726,8 +21783,6 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     white-space: nowrap;
 }
 .ai-md-artifact-promote:hover, .ai-md-artifact-promote:focus-visible,
-.ai-assistant-panel-changed-file-continue:hover,
-.ai-assistant-panel-changed-file-continue:focus-visible,
 .ai-assistant-panel-changed-files-series:hover,
 .ai-assistant-panel-changed-files-series:focus-visible {
     border-style: solid;
@@ -21735,14 +21790,6 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
 }
 .ai-assistant-panel-changed-files-series { justify-self: start; margin-top: .1rem; }
-.ai-assistant-panel-changed-file {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-}
-@media (max-width: 420px) {
-    /* Four controls do not fit a narrow panel; the row wraps instead of
-       clipping the filename, which is the part that identifies the file. */
-    .ai-assistant-panel-changed-file { grid-template-columns: minmax(0, 1fr) auto; }
-}
 
 /* A generated file that lost its claim on the tracked revision. Presented, not
    hidden: the bytes are still a real answer, they simply did not win. */
@@ -21830,28 +21877,27 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
 .ai-assistant-panel-changed-files-list[hidden] { display: none; }
 
 /* ── Presented-file cards ───────────────────────────────────────────────────
-   Preview and Download are the two actions most readers want, so they own the
-   card's primary row. Patch and Continue sit on a quieter second line: still
-   one click away, but no longer competing for the same visual weight. */
+   One layout authority only. The shared artifact group owns Preview + Download;
+   the overflow trigger is the only peer beside it:
+
+       [ icon + filename/meta | Download ] [ ⋮ ]
+
+   Extra file actions live in the overflow menu, so they never create another
+   primary-row column or compete with the filename. */
 .ai-assistant-panel-changed-file {
     display: flex;
     flex-direction: column;
     gap: .3rem;
-    grid-template-columns: none;
+    min-width: 0;
 }
 .ai-assistant-panel-changed-file-primary {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: stretch;
     gap: .35rem;
+    min-width: 0;
+    position: relative;
 }
-.ai-assistant-panel-changed-file-secondary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .35rem;
-    padding-inline-start: .2rem;
-}
-.ai-assistant-panel-changed-file-secondary:empty { display: none; }
 .ai-assistant-panel-changed-file-badge {
     display: inline-block;
     margin-inline-start: .4rem;
@@ -21877,6 +21923,21 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     container-type: inline-size;
     container-name: ai-artifact-surface;
 }
+
+/* T95 — Presented-file responsiveness follows the component, not the viewport.
+   Older CSS made the Download segment `width:100%` at <=560px, which was only
+   valid when Download lived on its own row. Inside the segmented artifact
+   group that width consumes the whole group and collapses Preview toward zero.
+   The group now keeps the same [preview | separator | download] geometry at
+   every width; only labels compact via the artifact-surface queries below. */
+@container ai-artifact-surface (max-width: 35rem) {
+    .ai-assistant-panel-changed-files-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .15rem;
+    }
+    .ai-assistant-panel-changed-files-head span { text-align: left; }
+}
 .ai-assistant-panel-changed-files-footer {
     display: flex;
     flex-wrap: wrap;
@@ -21885,46 +21946,6 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
 }
 .ai-assistant-panel-changed-files-footer[hidden] { display: none; }
 .ai-assistant-panel-changed-files-download-all { flex: 1 1 100%; }
-
-/* ── Presented-file card: preview | download | save as ─────────────────────
-   Three columns, and the preview claims all the room left over. The card body
-   IS the preview target, so the whole block is the affordance rather than a
-   small word at its end — the same shape as an attachment tile, opening the
-   same full overlay. */
-.ai-assistant-panel-changed-file-primary {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-}
-.ai-assistant-panel-changed-file-preview {
-    min-height: 3.1rem;
-    align-items: center;
-}
-.ai-assistant-panel-changed-file-saveas {
-    border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
-    border-radius: 8px;
-    padding: .45rem .55rem;
-    background: var(--pst-color-surface, #fff);
-    color: inherit;
-    font: inherit;
-    font-size: .62rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-}
-.ai-assistant-panel-changed-file-saveas:hover,
-.ai-assistant-panel-changed-file-saveas:focus-visible {
-    background: color-mix(in srgb, var(--pst-color-surface, #fff) 92%, #808080 8%);
-}
-@media (max-width: 420px) {
-    /* Three actions plus a filename do not fit a narrow panel. The filename is
-       the part that identifies the card, so it keeps the full width and the
-       actions wrap beneath it rather than being clipped. */
-    .ai-assistant-panel-changed-file-primary {
-        grid-template-columns: minmax(0, 1fr);
-    }
-    .ai-assistant-panel-changed-file-primary > button:not(.ai-assistant-panel-changed-file-preview) {
-        justify-self: start;
-    }
-}
 
 /* ── File-editing sheet: code with a line-number gutter ────────────────────
    The numbers are a sibling of the code, never a prefix inside it. Prefixing
@@ -21942,14 +21963,17 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
        line of the file, stretching a 5543-line preview to the length of the
        file while the two slid out of step. */
     max-height: min(70vh, 28rem);
+    /* A real file sheet owns bounded vertical scrolling. Keep the axes
+       explicit: an `overflow: hidden` shorthand here used to silently erase
+       overflow-y:auto while leaving overscroll containment behind. */
     overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior: contain;
     align-items: stretch;
     gap: 0;
     border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
     border-top: 0;
     border-radius: 0 0 8px 8px;
-    overflow: hidden;
 }
 .ai-md-file-gutter {
     flex: 0 0 auto;
@@ -21989,33 +22013,9 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     margin-bottom: 0;
 }
 
-/* One quiet disclosure instead of two more buttons per file. Five visible
-   controls made the block read as a control panel rather than a result. */
-.ai-assistant-panel-changed-file-more {
-    align-self: start;
-    border: 0;
-    background: transparent;
-    padding: .1rem .2rem;
-    color: var(--pst-color-text-muted, #71717a);
-    font: inherit;
-    font-size: .58rem;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: underline dotted;
-    text-underline-offset: 2px;
-}
-.ai-assistant-panel-changed-file-more:hover,
-.ai-assistant-panel-changed-file-more:focus-visible { color: inherit; }
-.ai-assistant-panel-changed-file-secondary[hidden] { display: none; }
-
-/* ── File card: preview fills, then download, then ⋮ ───────────────────────
-   Preview and Download are what almost every reader wants. Everything else is
-   behind one menu — the same affordance the panel subbar already uses, so a
-   reader who has met it once has met it here. */
-.ai-assistant-panel-changed-file-primary {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    position: relative;
-}
+/* ── Presented-file overflow menu ─────────────────────────────────────────
+   The segmented preview/download group is the primary control. Everything
+   else stays behind one menu beside that group. */
 .ai-assistant-panel-changed-file-overflow {
     display: inline-flex;
     align-items: center;
@@ -22024,7 +22024,9 @@ textarea.ai-assistant-panel-skill-input { min-height:4.25rem; resize:vertical; f
     border: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, transparent);
     border-radius: 8px;
     background: var(--pst-color-surface, #fff);
-    color: var(--pst-color-text-muted, #71717a);
+    color: var(--ai-speak-toggle-ink);
+    opacity: 1;
+    visibility: visible;
     cursor: pointer;
 }
 .ai-assistant-panel-changed-file-overflow:hover,
@@ -22213,6 +22215,14 @@ button.ai-md-artifact-download-label:focus-visible {
     background: transparent;
     margin: 0;
 }
+.ai-md-artifact-group > .ai-md-artifact-card {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+}
+.ai-md-artifact-group > button.ai-md-artifact-download-label {
+    flex: 0 0 auto;
+}
 .ai-md-artifact-group > .ai-md-artifact-card:hover,
 .ai-md-artifact-group > button.ai-md-artifact-download-label:hover {
     background: color-mix(in srgb, var(--pst-color-surface, #fff) 93%, #808080 7%);
@@ -22226,27 +22236,11 @@ button.ai-md-artifact-download-label:focus-visible {
     background: color-mix(in srgb, var(--pst-color-border, #d8dce1) 70%, transparent);
 }
 
-/* The Presented files section uses the same segmented control as the snippet
-   cards above it. Only the outer grid differs: the group takes the room the
-   overflow menu leaves, and the preview segment takes the room inside it. */
-.ai-assistant-panel-changed-file-primary {
-    grid-template-columns: minmax(0, 1fr) auto;
-}
+/* Presented files inherit the exact segmented-control geometry above. The
+   outer grid only needs to guarantee that the shared group may shrink beside
+   its overflow trigger. */
 .ai-assistant-panel-changed-file-primary > .ai-md-artifact-group {
     min-width: 0;
-}
-.ai-md-artifact-group > .ai-assistant-panel-changed-file-preview {
-    flex: 1 1 auto;
-    min-width: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-}
-.ai-md-artifact-group > .ai-assistant-panel-changed-file-download {
-    flex: 0 0 auto;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
 }
 .ai-md-artifact-group > .ai-assistant-panel-changed-file-preview:hover,
 .ai-md-artifact-group > .ai-assistant-panel-changed-file-preview:focus-visible,
@@ -22477,24 +22471,27 @@ button.ai-md-artifact-download-label:focus-visible,
 }
 
 
-/* ── Icon-only download controls on a narrow panel ─────────────────────────
-   Below 22rem of surface width the label is dropped and the glyph carries the
-   button. That is safe only because every one of these already has a full
-   `aria-label` and `title`: the accessible name never changes, so a screen
-   reader announces "Download latest docs/index.rst under its own name" at
-   every width, and a pointer user gets the same sentence on hover.
+/* ── Icon-only download controls on a narrow artifact surface ──────────────
+   Per-file Download controls compete directly with the filename and the
+   overflow menu inside one segmented row.  They therefore collapse earlier,
+   below 26rem of *artifact-surface* width.  This catches full-width phones and
+   landscape/touch layouts whose message bubble can be wider than the default
+   desktop panel even though the row is already visually crowded.
 
-   Dropping the label is preferable to letting it truncate: "Downl…" is a worse
-   affordance than a recognisable glyph, and truncation would also squeeze the
-   filename beside it, which is the part that identifies the row. */
-@container ai-artifact-surface (max-width: 22rem) {
+   Bulk footer actions do not compete with a filename.  Keep their descriptive
+   labels until the original 22rem threshold so useful text is not discarded
+   just because the per-file row needs room.
+
+   Both thresholds are container queries, not viewport media queries: the panel
+   is resizable, maximizable and embeddable, so its rendered width and the
+   window width are different numbers.
+
+   Labels are clipped rather than display:none.  Every control already has a
+   full aria-label/title, and clipping preserves the button's touch target while
+   the visible glyph becomes the compact affordance. */
+@container ai-artifact-surface (max-width: 26rem) {
     .ai-md-artifact-download-label .ai-md-artifact-btn-label,
-    .ai-assistant-panel-changed-file-download .ai-md-artifact-btn-label,
-    .ai-assistant-panel-changed-files-download-all .ai-md-artifact-btn-label,
-    .ai-assistant-panel-changed-files-series .ai-md-artifact-btn-label {
-        /* clip, not display:none — the label stays in the layout box for
-           `title` and keeps the button's hit area from collapsing to the
-           glyph's width, which would make it hard to hit on a touch screen. */
+    .ai-assistant-panel-changed-file-download .ai-md-artifact-btn-label {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -22503,16 +22500,29 @@ button.ai-md-artifact-download-label:focus-visible,
         white-space: nowrap;
     }
     .ai-md-artifact-download-label .ai-md-artifact-btn-icon,
-    .ai-assistant-panel-changed-file-download .ai-md-artifact-btn-icon,
-    .ai-assistant-panel-changed-files-download-all .ai-md-artifact-btn-icon,
-    .ai-assistant-panel-changed-files-series .ai-md-artifact-btn-icon {
+    .ai-assistant-panel-changed-file-download .ai-md-artifact-btn-icon {
         margin-inline-end: 0;
     }
-    /* Minimum target size is kept even with no text to widen the button. */
     .ai-md-artifact-download-label,
     .ai-assistant-panel-changed-file-download {
         min-width: 2.25rem;
         justify-content: center;
+    }
+}
+
+@container ai-artifact-surface (max-width: 22rem) {
+    .ai-assistant-panel-changed-files-download-all .ai-md-artifact-btn-label,
+    .ai-assistant-panel-changed-files-series .ai-md-artifact-btn-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .ai-assistant-panel-changed-files-download-all .ai-md-artifact-btn-icon,
+    .ai-assistant-panel-changed-files-series .ai-md-artifact-btn-icon {
+        margin-inline-end: 0;
     }
 }
 /* The Git mark is the one glyph that is a brand rather than an operation, so
@@ -22587,30 +22597,56 @@ button.ai-md-artifact-download-label:focus-visible,
 }
 
 
-/* ── Section title contrast ────────────────────────────────────────────────
-   Derived from the theme's own text colour rather than set to a literal, so a
-   site that retints its text keeps its titles in the same family. Mixing
-   toward the extreme adds contrast against the bubble in whichever direction
-   that theme's background lies. */
+/* ── Answer section disclosure surface ────────────────────────────────────
+   The title, disclosure surface and hint form one interaction contract.  Do
+   not make discoverability depend on hover: touch users must see that these
+   rows are interactive before they tap them. */
 :root {
     --ai-section-title-color: color-mix(in srgb, var(--pst-color-text-base, var(--color-foreground-primary, #1a1a1a)) 86%, #000 14%);
+    --ai-section-summary-bg: color-mix(in srgb, var(--pst-color-surface, #fff) 91%, var(--pst-color-text-base, #1a1a1a) 9%);
+    --ai-section-summary-hover-bg: color-mix(in srgb, var(--pst-color-surface, #fff) 87%, var(--pst-color-text-base, #1a1a1a) 13%);
+    --ai-section-summary-active-bg: color-mix(in srgb, var(--pst-color-surface, #fff) 84%, var(--pst-color-text-base, #1a1a1a) 16%);
+    --ai-section-summary-border: color-mix(in srgb, var(--pst-color-border, #d8dce1) 78%, var(--pst-color-text-base, #1a1a1a) 22%);
+    --ai-section-summary-hover-border: color-mix(in srgb, var(--pst-color-border, #d8dce1) 62%, var(--pst-color-text-base, #1a1a1a) 38%);
+    --ai-section-summary-shadow: rgba(0, 0, 0, 0.045);
+    --ai-section-chevron-color: var(--pst-color-text-base, #1a1a1a);
+    --ai-section-chevron-bg: color-mix(in srgb, var(--pst-color-surface, #fff) 82%, var(--pst-color-text-base, #1a1a1a) 18%);
+    --ai-section-chevron-border: color-mix(in srgb, var(--pst-color-border, #d8dce1) 68%, var(--pst-color-text-base, #1a1a1a) 32%);
+    --ai-section-action-color: var(--pst-color-text-base, #1a1a1a);
+    --ai-section-action-bg: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, var(--pst-color-primary, #2980b9) 12%);
+    --ai-section-action-border: color-mix(in srgb, var(--pst-color-border, #d8dce1) 72%, var(--pst-color-primary, #2980b9) 28%);
 }
 [data-bs-theme="dark"],
 .dark {
     --ai-section-title-color: color-mix(in srgb, var(--pst-color-text-base, var(--color-foreground-primary, #e6e6e6)) 86%, #fff 14%);
-}
-/* The chevron stays quieter than the title it belongs to: it is an affordance,
-   not part of the heading, and matching the title's weight made the row read
-   as two emphasised things. */
-.ai-md-section-chevron { color: var(--pst-color-text-muted, #71717a); }
-.ai-assistant-panel-bubble--assistant summary.ai-md-section-summary:hover .ai-md-section-chevron {
-    color: inherit;
+    /* In a dark theme a slightly *lighter* neutral surface creates the same
+       perceptual separation that a darker neutral creates in light mode. */
+    --ai-section-summary-bg: color-mix(in srgb, var(--pst-color-surface, #1f1f1f) 88%, var(--pst-color-text-base, #e6e6e6) 12%);
+    --ai-section-summary-hover-bg: color-mix(in srgb, var(--pst-color-surface, #1f1f1f) 84%, var(--pst-color-text-base, #e6e6e6) 16%);
+    --ai-section-summary-active-bg: color-mix(in srgb, var(--pst-color-surface, #1f1f1f) 80%, var(--pst-color-text-base, #e6e6e6) 20%);
+    --ai-section-summary-border: color-mix(in srgb, var(--pst-color-border, #3f4349) 70%, var(--pst-color-text-base, #e6e6e6) 30%);
+    --ai-section-summary-hover-border: color-mix(in srgb, var(--pst-color-border, #3f4349) 56%, var(--pst-color-text-base, #e6e6e6) 44%);
+    --ai-section-summary-shadow: rgba(0, 0, 0, 0.22);
+    --ai-section-chevron-color: var(--pst-color-text-base, #f1f1f1);
+    --ai-section-chevron-bg: color-mix(in srgb, var(--pst-color-surface, #1f1f1f) 76%, var(--pst-color-text-base, #e6e6e6) 24%);
+    --ai-section-chevron-border: color-mix(in srgb, var(--pst-color-border, #3f4349) 58%, var(--pst-color-text-base, #e6e6e6) 42%);
+    --ai-section-action-color: var(--pst-color-text-base, #f1f1f1);
+    --ai-section-action-bg: color-mix(in srgb, var(--pst-color-surface, #1f1f1f) 82%, var(--pst-color-primary, #6ea8fe) 18%);
+    --ai-section-action-border: color-mix(in srgb, var(--pst-color-border, #3f4349) 65%, var(--pst-color-primary, #6ea8fe) 35%);
 }
 @media (forced-colors: active) {
-    /* color-mix results are discarded; the title falls back to the system
-       text colour rather than to whatever the mix last computed. */
-    .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary,
-    .ai-md-section-chevron { color: CanvasText; }
+    .ai-assistant-panel-bubble--assistant summary.ai-md-section-summary {
+        color: ButtonText;
+        background: ButtonFace;
+        border-color: ButtonText;
+        box-shadow: none;
+    }
+    .ai-md-section-chevron,
+    .ai-md-section-action-hint {
+        color: ButtonText;
+        background: ButtonFace;
+        border-color: ButtonText;
+    }
 }
 
 /* Snippet sheets: the same gutter as a file sheet, lighter chrome.
@@ -22621,10 +22657,24 @@ button.ai-md-artifact-download-label:focus-visible,
     border-radius: 8px;
     border-top: 1px solid color-mix(in srgb, var(--pst-color-border, #d8dce1) 80%, transparent);
     margin: .4rem 0;
+    /* Inline answer snippets belong to the conversation's scroll flow. They
+       must never become a second vertical scroller just because they reuse
+       the numbered file-sheet structure. A wheel, trackpad or vertical touch
+       gesture over code therefore continues the chat/page naturally.
+
+       Horizontal ownership stays with the inner <pre>; `overflow: visible`
+       here also removes the scroll-container/overscroll trap created by the
+       generic file-sheet contract. */
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+    /* Preserve the rounded visual crop without turning this wrapper back into
+       an overflow container. */
+    clip-path: inset(0 round 8px);
 }
 .ai-md-snippet-sheet .ai-md-pre-wrap { margin: 0; }
 /* The gutter shares the code's line box here too. Restating the values would
-   let them drift apart the moment either side is retuned, and drift shows up
+   let them drift apart the moment either side is returned, and drift shows up
    as numbers sliding out of line with their rows. */
 .ai-md-snippet-sheet .ai-md-gutter,
 .ai-md-snippet-sheet .ai-md-file-gutter {
@@ -22635,6 +22685,14 @@ button.ai-md-artifact-download-label:focus-visible,
 .ai-md-snippet-sheet .ai-md-pre {
     font-size: .72rem;
     line-height: 1.5;
+}
+/* The code cell owns only horizontal movement. Explicitly allow both pan axes
+   so touch/tablet browsers can route vertical motion to the conversation while
+   a deliberate horizontal drag still pans a long line. No wheel interceptor is
+   needed: native scroll chaining is the intended behaviour. */
+.ai-md-snippet-sheet .ai-md-pre {
+    overscroll-behavior-y: auto;
+    touch-action: pan-x pan-y pinch-zoom;
 }
 
 /* ── Numbered sheets own the scroll, and never wrap ────────────────────────
@@ -23000,24 +23058,29 @@ button.ai-md-artifact-download-label:focus-visible,
     align-items: center;
     gap: .25rem;
     /*
-     * Zero height in BOTH states, contents lifted clear.
+     * R173T96 — keep a REAL paint box on mobile hardware.
      *
-     * Collapsed it already worked this way (R173T58): the transcript took the
-     * row and the space beside the pill showed the conversation through it.
-     * Expanded it was still an in-flow row, so that same space was panel
-     * background -- opaque, with nothing behind it.
+     * The earlier zero-height row translated every child upward by -100%.
+     * Hit-testing was reliable, but some mobile/WebKit compositors could lose
+     * the painted SVG while the invisible button remained clickable: a
+     * transformed SVG inside a transformed child overflowing a zero-height
+     * flex container is an unnecessarily fragile layer tree.
      *
-     * The difference between the two states is now what is drawn, not whether
-     * the row occupies a line.
+     * Give the row a normal ~control-height box and cancel that flow cost with
+     * an equal negative block-start margin.  The transcript still reclaims the
+     * space (its end padding already reserves the floating control), but the
+     * button and SVG now paint in ordinary layout coordinates with no parent
+     * translate transform.
      */
-    height: 0;
-    min-height: 0;
-    margin: 0 0.75rem;
+    min-height: 2rem;
+    height: auto;
+    margin: -2rem 0.75rem 0;
     overflow: visible;
     position: relative;
     z-index: 3;
+    isolation: isolate;
 }
-.ai-assistant-panel-speak-row > * { transform: translateY(-100%); }
+.ai-assistant-panel-speak-row > * { transform: none; }
 .ai-assistant-panel-speak-row .ai-assistant-panel-speak-banner {
     flex: 1 1 auto;
     min-width: 0;
@@ -23053,6 +23116,21 @@ button.ai-md-artifact-download-label:focus-visible,
 }
 .ai-assistant-panel-speak-toggle {
     /*
+     * Surface/ink are a semantic pair.  `on-surface` is deliberately used
+     * instead of a generic text or accent token: this control is literally
+     * drawn on `--pst-color-surface`, and PyData publishes the matching ink.
+     * The hard fallbacks keep the control readable even in partial/custom
+     * theme integrations.
+     */
+    --ai-speak-toggle-surface: var(
+        --pst-color-surface,
+        var(--color-background-primary, #f3f4f5)
+    );
+    --ai-speak-toggle-ink: var(
+        --pst-color-on-surface,
+        var(--pst-color-text-base, var(--color-foreground-primary, #222832))
+    );
+    /*
      * The same ground as the banner beside it, at every width.
      *
      * Collapsed, both ends already carried a surface (R173T57). Expanded, the
@@ -23061,10 +23139,7 @@ button.ai-md-artifact-download-label:focus-visible,
      * next to it. The row itself stays transparent either way -- what changed
      * is that both ends now read as the same kind of thing.
      */
-    background-color: var(
-        --pst-color-on-background,
-        var(--color-background-secondary, #f5f5f5)
-    );
+    background-color: var(--ai-speak-toggle-surface);
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
@@ -23073,8 +23148,11 @@ button.ai-md-artifact-download-label:focus-visible,
     height: 1.75rem;
     border: 0;
     border-radius: 999px;
-    background: transparent;
-    color: var(--pst-color-text-muted, #71717a);
+    -webkit-appearance: none;
+    appearance: none;
+    color: var(--ai-speak-toggle-ink);
+    opacity: 1;
+    visibility: visible;
     cursor: pointer;
 }
 /* Matched heights, so the pair sits on one baseline rather than a pill beside a
@@ -23084,64 +23162,91 @@ button.ai-md-artifact-download-label:focus-visible,
     min-height: 100%;
 }
 .ai-assistant-panel-speak-toggle:hover,
-.ai-assistant-panel-speak-toggle:focus-visible {
-    background: color-mix(in srgb, var(--pst-color-surface, #fff) 88%, #808080 12%);
-    color: inherit;
+.ai-assistant-panel-speak-toggle:focus-visible,
+.ai-assistant-panel-speak-toggle:active {
+    background: color-mix(
+        in srgb,
+        var(--ai-speak-toggle-surface) 88%,
+        var(--ai-speak-toggle-ink) 12%
+    );
+    /* Never inherit here: touch browsers can keep :hover after a tap. */
+    color: var(--ai-speak-toggle-ink);
 }
-[data-bs-theme="dark"] .ai-assistant-panel-speak-toggle:hover,
-[data-bs-theme="dark"] .ai-assistant-panel-speak-toggle:focus-visible,
-.dark .ai-assistant-panel-speak-toggle:hover,
-.dark .ai-assistant-panel-speak-toggle:focus-visible {
-    background: rgba(255, 255, 255, 0.12);
-    color: #e6e6e6;
+/* PyData uses data-theme/data-mode; Bootstrap integrations may use
+   data-bs-theme and older hosts may still expose a .dark ancestor. */
+:is([data-theme="dark"], [data-mode="dark"], [data-bs-theme="dark"], .dark)
+    .ai-assistant-panel-speak-toggle:hover,
+:is([data-theme="dark"], [data-mode="dark"], [data-bs-theme="dark"], .dark)
+    .ai-assistant-panel-speak-toggle:focus-visible,
+:is([data-theme="dark"], [data-mode="dark"], [data-bs-theme="dark"], .dark)
+    .ai-assistant-panel-speak-toggle:active {
+    background: color-mix(in srgb, var(--ai-speak-toggle-surface) 82%, var(--ai-speak-toggle-ink) 18%);
+    color: var(--ai-speak-toggle-ink);
 }
 /* The chevron points the way the next press goes, rotated from the announced
    state so the glyph and `aria-expanded` cannot disagree. */
 .ai-assistant-panel-speak-toggle svg {
+    display: block;
     width: .85rem;
     height: .85rem;
+    color: var(--ai-speak-toggle-ink);
+    fill: none;
+    stroke: var(--ai-speak-toggle-ink);
+    stroke-width: 2.25;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: none;
     transition: transform .12s ease-out;
     transform: rotate(90deg);
+}
+.ai-assistant-panel-speak-toggle svg * {
+    vector-effect: non-scaling-stroke;
+}
+/* Touch has no dependable hover state.  The chevron therefore owns a
+   readable resting colour instead of relying on hover/focus to reveal it. */
+@media (hover: none), (pointer: coarse) {
+    .ai-assistant-panel-speak-toggle {
+        /* Do not wait for hover to reveal the control on touch hardware. */
+        color: var(--ai-speak-toggle-ink);
+        min-width: 2rem;
+        min-height: 2rem;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+    .ai-assistant-panel-speak-toggle svg {
+        width: 1rem;
+        height: 1rem;
+        color: var(--ai-speak-toggle-ink);
+        stroke: var(--ai-speak-toggle-ink);
+    }
 }
 .ai-assistant-panel-speak-toggle[aria-expanded="true"] svg { transform: rotate(-90deg); }
 @media (prefers-reduced-motion: reduce) {
     .ai-assistant-panel-speak-toggle svg { transition: none; }
 }
 @media (forced-colors: active) {
-    .ai-assistant-panel-speak-toggle { color: ButtonText; }
+    .ai-assistant-panel-speak-toggle {
+        --ai-speak-toggle-surface: Canvas;
+        --ai-speak-toggle-ink: ButtonText;
+        color: ButtonText;
+        border: 1px solid ButtonText;
+        forced-color-adjust: auto;
+    }
+    .ai-assistant-panel-speak-toggle svg {
+        color: ButtonText;
+        stroke: ButtonText;
+    }
 }
 
-/* ── Collapsed, the row stops costing a row ────────────────────────────────
-   Collapsed the hint is one icon, and it was still holding a full-width flex
-   line with empty space beside it. The transcript now takes that width: the
-   pill floats at the bottom-trailing corner of the panel and the row it used
-   to occupy is gone from the flow.
-
-   The trade is stated rather than hidden: a floating control can cover the
-   last line of a message, so the transcript keeps a small end padding while
-   the hint is collapsed. That padding is smaller than the row it replaces, so
-   the transcript gains height as well as width — but it is not free, and
-   pretending otherwise would mean a pill that sometimes sits on top of the
-   final line of an answer. */
-/*
- * Zero-height, lifted -- not absolutely positioned.
- *
- * The previous attempt used `position: absolute; bottom: calc(100% + …)` on
- * the assumption that the footer was the positioning ancestor. It is not: the
- * row is `panel.appendChild(speakRow)`, a sibling of the footer and a child of
- * the panel, so `100%` resolved against the panel's full height and the pill
- * was pushed clear off the top of it. It did not move; it left.
- *
- * Collapsing the row's own height to zero and lifting its contents needs no
- * positioning ancestor at all. The row keeps its place in the panel's column,
- * between the transcript and the footer, so the pill always lands just above
- * the composer however tall the composer has grown -- which is the property
- * the absolute version was reaching for and got wrong.
- */
+/* ── Collapsed row: floating without transformed paint layers ──────────────
+   The transcript keeps a small end padding for the hint.  R173T96 preserves
+   the same effective zero-flow-cost placement with a positive-height row plus
+   an equal negative block-start margin.  Unlike the old zero-height/translate
+   version, the button and SVG retain ordinary paint boxes on mobile GPUs. */
 .ai-assistant-panel-speak-row[data-collapsed="true"] > * {
-    /* Lifted fully above its own zero-height box, into the space the
-       transcript's end padding reserves for it. */
-    transform: translateY(-100%);
+    /* R173T96: no transform-based lift.  The row's negative margin performs
+       the flow offset while children retain a stable positive paint box. */
+    transform: none;
 }
 /* A backdrop, because the pill now sits over transcript text rather than over
    panel background. Without it the glyph competes with whatever is behind it. */
@@ -23150,11 +23255,12 @@ button.ai-md-artifact-download-label:focus-visible,
     background: var(--pst-color-surface, #fff);
     box-shadow: 0 1px 6px rgb(0 0 0 / .16);
 }
-[data-bs-theme="dark"] .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
-[data-bs-theme="dark"] .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle,
-.dark .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
-.dark .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle {
-    background: #2b2f36;
+:is([data-theme="dark"], [data-mode="dark"], [data-bs-theme="dark"], .dark)
+    .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-banner,
+:is([data-theme="dark"], [data-mode="dark"], [data-bs-theme="dark"], .dark)
+    .ai-assistant-panel-speak-row[data-collapsed="true"] .ai-assistant-panel-speak-toggle {
+    background: var(--pst-color-surface, #29313d);
+    color: var(--pst-color-on-surface, #f3f4f5);
     box-shadow: 0 1px 6px rgb(0 0 0 / .5);
 }
 @media (forced-colors: active) {

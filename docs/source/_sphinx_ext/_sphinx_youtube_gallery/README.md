@@ -223,7 +223,7 @@ Nested mappings use dotted paths. Identity and presentation names (for example
 ``title``, ``link``, ``content`` and ``shadow``) are reserved inside the top level of
 ``fields:`` so metadata cannot accidentally replace a player, channel link, or card
 option. Unknown top-level catalog keys are still errors; this keeps typos such as
-``titel`` visible while giving intentional extension metadata one explicit home.
+``title`` visible while giving intentional extension metadata one explicit home.
 
 A native ``channels:`` catalog may use ``fields:`` in the same way. A derived
 ``:view: channels`` projection does not guess how arbitrary per-video custom fields
@@ -508,6 +508,13 @@ their aspect ratio inside narrow cards and on mobile screens.
 
 The package declares parallel read/write safety. Catalog and query operations
 are deterministic; unchanged synchronization avoids rewriting the catalog.
+
+YouTube URL grammar and leaf-player option validation are owned by the
+dependency-free sibling package ``_sphinx_youtube_core``. Both this gallery and
+``_sphinxcontrib_youtube`` import that lower-level core, preventing the leaf
+player from depending back upward on the gallery. The historical private imports
+``_sphinx_youtube_gallery.reference`` and ``_sphinx_youtube_gallery._video_options``
+remain compatibility facades over the canonical core.
 The sync pipeline treats YouTube-owned metadata and author enrichment separately:
 matching ``handle``, ``tags`` and ``fields`` survive provider refreshes by video
 id, while title/channel/publication/playlist facts can refresh from YouTube.
@@ -528,6 +535,9 @@ and nested galleries, and guard repeated initialization.
 
 The package was renamed from `youtube_catalog` to `_sphinx_youtube_gallery`.
 The shared engine was renamed from `collection` to `_sphinx_collection`.
+Shared YouTube parsing/player-option primitives now live in ``_sphinx_youtube_core``;
+direct callers may migrate to that canonical owner, while the old gallery-private
+module paths remain compatibility facades.
 After merging the replacement tree, remove the obsolete ``youtube_catalog/``,
 ``collection/``, and ``_pydata_sphinx_theme/`` directories, update direct
 private imports to ``_sphinx_youtube_gallery``, ``_sphinx_collection``,

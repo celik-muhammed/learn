@@ -204,10 +204,10 @@ ai_assistant_endpoint_profiles = {
     "hf": {
         "label": "Scikit-plots HF",
         "base": "https://scikit-plots-ai.hf.space",
-        "chat": "v1/chat/completions",     # relative
-        "share": "/v1/share",             # relative with leading slash
-        "feedback": "",                   # inherit default
-        "training": None,                  # inherit default
+        "chat": "v1/chat/completions",  # relative
+        "share": "/v1/share",  # relative with leading slash
+        "feedback": "",  # inherit default
+        "training": None,  # inherit default
         # "datasetRepo": "scikit-plots/ai-assistant-contributions",
     },
 }
@@ -484,25 +484,25 @@ ai_assistant_enabled = True
 # Button position: 'sidebar' or 'title' (default: 'sidebar')
 # 'sidebar': Places button in the right sidebar (above TOC in Furo)
 # 'title': Places button near the page title
-ai_assistant_position = 'sidebar'
+ai_assistant_position = "sidebar"
 
 # CSS selector for content to convert (default: 'article')
 # For Furo theme, you might want: 'article'
 # For other themes, adjust as needed
-ai_assistant_content_selector = 'article'
+ai_assistant_content_selector = "article"
 
 # Enable/disable specific features (default: as shown)
 # CRITICAL: Always supply ALL keys explicitly.  If any key is absent the JS
 # widget falls back to its FEATURE_DEFAULTS where ai_panel = false — this
 # silently hides the AI-panel button even if you expect it to appear.
 ai_assistant_features = {
-    'markdown_export': True,  # Copy to clipboard
-    'view_markdown': True,    # View as Markdown in new tab
-    'ai_chat': True,          # AI chat links
-    'mcp_integration': False, # MCP tool connect buttons (opt-in)
-    'theme_toggle': True,     # Dark/light/system color-scheme toggle
-    'pdf_export': True,       # "Export as PDF" button (window.print or custom URL)
-    'ai_panel': True,         # Floating AI assistant chat panel
+    "markdown_export": True,  # Copy to clipboard
+    "view_markdown": True,  # View as Markdown in new tab
+    "ai_chat": True,  # AI chat links
+    "mcp_integration": False,  # MCP tool connect buttons (opt-in)
+    "theme_toggle": True,  # Dark/light/system color-scheme toggle
+    "pdf_export": True,  # "Export as PDF" button (window.print or custom URL)
+    "ai_panel": True,  # Floating AI assistant chat panel
 }
 
 # PDF export button
@@ -518,7 +518,7 @@ ai_assistant_pdf_export_url = None  # default: browser print dialog
 ai_assistant_pdf_url_mode_toggle = True
 
 # AI assistant panel (floating chat drawer)
-ai_assistant_panel_title = "AI Assistant"          # header label in the panel
+ai_assistant_panel_title = "AI Assistant"  # header label in the panel
 # Whether readers may permanently show or hide the floating "Ask AI" pill
 # themselves, via a switch on the "AI Assistant" dropdown row (default True).
 # The switch starts from ai_assistant_panel_start_minimized and stores the
@@ -548,9 +548,9 @@ ai_assistant_panel_remember_conversation = True
 
 # Reader-facing privacy/runtime initial values. A stored reader choice wins.
 ai_assistant_panel_feedback_telemetry_default = False  # privacy-first
-ai_assistant_panel_feedback_review_default = True      # set False for local-only/dev checks
-ai_assistant_panel_page_integration_default = False    # private event bus by default
-ai_assistant_panel_streaming_default = True            # reader preference
+ai_assistant_panel_feedback_review_default = True  # set False for local-only/dev checks
+ai_assistant_panel_page_integration_default = False  # private event bus by default
+ai_assistant_panel_streaming_default = True  # reader preference
 # Hard SSE capability ceiling; False disables streaming regardless of preference.
 ai_assistant_panel_api_streaming = True
 
@@ -559,40 +559,40 @@ ai_assistant_generate_markdown = True
 
 # Patterns to exclude from markdown generation
 ai_assistant_markdown_exclude_patterns = [
-    'genindex',
-    'search',
-    'py-modindex',
-    '_sources',  # Exclude source files
+    "genindex",
+    "search",
+    "py-modindex",
+    "_sources",  # Exclude source files
 ]
 
 # llms.txt generation
 ai_assistant_generate_llms_txt = True
-ai_assistant_base_url = 'https://docs.example.com'  # Or use html_baseurl
+ai_assistant_base_url = "https://docs.example.com"  # Or use html_baseurl
 
 # AI provider configuration
 ai_assistant_providers = {
-    'claude': {
-        'enabled': True,
-        'label': 'Ask Claude',
-        'description': 'Ask Claude about this topic.',
-        'icon': 'anthropic-logo.svg',
-        'url_template': 'https://claude.ai/new?q={prompt}',
-        'prompt_template': 'Get familiar with the documentation content at {url} so that I can ask questions about it.',
+    "claude": {
+        "enabled": True,
+        "label": "Ask Claude",
+        "description": "Ask Claude about this topic.",
+        "icon": "anthropic-logo.svg",
+        "url_template": "https://claude.ai/new?q={prompt}",
+        "prompt_template": "Get familiar with the documentation content at {url} so that I can ask questions about it.",
     },
-    'chatgpt': {
-        'enabled': True,
-        'label': 'Ask ChatGPT',
-        'description': 'Ask ChatGPT about this topic.',
-        'icon': 'chatgpt-logo.svg',
-        'url_template': 'https://chatgpt.com/?q={prompt}',
-        'prompt_template': 'Get familiar with the documentation content at {url} so that I can ask questions about it.',
+    "chatgpt": {
+        "enabled": True,
+        "label": "Ask ChatGPT",
+        "description": "Ask ChatGPT about this topic.",
+        "icon": "chatgpt-logo.svg",
+        "url_template": "https://chatgpt.com/?q={prompt}",
+        "prompt_template": "Get familiar with the documentation content at {url} so that I can ask questions about it.",
     },
     # Example: Custom AI provider
-    'custom': {
-        'enabled': True,
-        'label': 'Ask Perplexity',
-        'url_template': 'https://www.perplexity.ai/?q={prompt}',
-        'prompt_template': 'Analyze this documentation: {url}',
+    "custom": {
+        "enabled": True,
+        "label": "Ask Perplexity",
+        "url_template": "https://www.perplexity.ai/?q={prompt}",
+        "prompt_template": "Analyze this documentation: {url}",
     },
 }
 ```
