@@ -56,6 +56,10 @@ Interactive Learning & Tools
   <https://waldyrious.net/rst-playground/>`_
   (online reStructuredText editor with live preview)
 
+* `RST Viewer, Editor as PDF
+  <https://overbits.herokuapp.com/rsteditor/>`_
+  (online reStructuredText editor with live preview)
+
 * `ReStructuredText Reference
   <https://documatt.com/restructuredtext-reference/>`_
   by documatt

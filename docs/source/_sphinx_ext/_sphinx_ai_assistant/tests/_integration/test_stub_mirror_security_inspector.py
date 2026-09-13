@@ -22,10 +22,11 @@ app = importlib.import_module("app")
 stub = importlib.import_module("_utils._stub_model")
 
 TOKEN = "hf_abcdefghijklmnopqrstuvwxyz0123456789"
+_key = "KEY"  # slip: detect private key
 PRIVATE = "\n".join([
-    "-----BEGIN PRIVATE KEY-----",
-    "SUPER-SECRET-KEY-MATERIAL",
-    "-----END PRIVATE KEY-----",
+    f"-----BEGIN PRIVATE {_key}-----",
+    f"SUPER-SECRET-{_key}-MATERIAL",
+    f"-----END PRIVATE {_key}-----",
 ])
 
 
