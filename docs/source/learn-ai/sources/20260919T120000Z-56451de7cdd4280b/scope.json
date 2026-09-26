@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-isotonic",
+  "section": {
+    "body": "Covers monotonic fitting, prediction behavior, ties, and the estimator interface used independently or inside calibration workflows.",
+    "citations": [],
+    "id": "scope",
+    "links": [],
+    "title": "Scope"
+  }
+}

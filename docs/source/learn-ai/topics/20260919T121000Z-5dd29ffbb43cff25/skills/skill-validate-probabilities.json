@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-logistic-regression",
+  "section": {
+    "body": "",
+    "citations": [],
+    "id": "skill-validate-probabilities",
+    "links": [],
+    "title": "Validate probability outputs before using them for decisions"
+  }
+}

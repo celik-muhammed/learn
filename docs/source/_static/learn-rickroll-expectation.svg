@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Expectation and surprise reveal</title>
+  <desc id="desc">An original diagram showing a user expecting one destination and instead receiving an unexpected music-video reveal.</desc>
+  <rect width="1200" height="675" rx="36" fill="#f7f7f4"/>
+  <text x="70" y="90" font-family="system-ui,sans-serif" font-size="42" font-weight="700" fill="#252525">Rickroll pattern: expectation → reveal</text>
+  <rect x="75" y="180" width="330" height="300" rx="28" fill="#ffffff" stroke="#8b8b7a" stroke-width="3"/>
+  <text x="240" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="30" font-weight="700" fill="#252525">Expected</text>
+  <text x="240" y="320" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#555">A relevant link</text>
+  <text x="240" y="360" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#555">article • file • answer</text>
+  <path d="M430 330 H745" stroke="#5b5b50" stroke-width="8" stroke-linecap="round"/>
+  <path d="M715 298 L760 330 L715 362" fill="none" stroke="#5b5b50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="595" y="292" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#555">click</text>
+  <rect x="790" y="180" width="335" height="300" rx="28" fill="#ffffff" stroke="#8b8b7a" stroke-width="3"/>
+  <text x="958" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="30" font-weight="700" fill="#252525">Revealed</text>
+  <circle cx="958" cy="342" r="70" fill="#ececde" stroke="#5b5b50" stroke-width="3"/>
+  <path d="M938 303 L938 381 L1000 342 Z" fill="#5b5b50"/>
+  <text x="958" y="455" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#555">unexpected music video</text>
+  <text x="600" y="580" text-anchor="middle" font-family="system-ui,sans-serif" font-size="30" font-weight="650" fill="#252525">The humor comes from the mismatch, not from hiding what happens afterward.</text>
+</svg>

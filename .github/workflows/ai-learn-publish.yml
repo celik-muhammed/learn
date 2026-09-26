@@ -33,11 +33,9 @@ jobs:
     timeout-minutes: 2
 
     if: >-
-      (
-        inputs.operation == 'test' &&
-        github.ref_name == github.event.repository.default_branch
-      )
-      || github.repository == 'scikit-plots/learn'
+      inputs.operation == 'test' &&
+      github.repository == 'scikit-plots/learn' &&
+      github.ref_name == github.event.repository.default_branch
 
     permissions:
       contents: read
@@ -53,11 +51,9 @@ jobs:
     timeout-minutes: 15
 
     if: >-
-      (
-        inputs.operation == 'test' &&
-        github.ref_name == github.event.repository.default_branch
-      )
-      || github.repository == 'scikit-plots/learn'
+      inputs.operation == 'publish' &&
+      github.repository == 'scikit-plots/learn' &&
+      github.ref_name == github.event.repository.default_branch
 
     permissions:
       contents: write
@@ -66,7 +62,7 @@ jobs:
     env:
       AI_LEARN_ROOT: docs/source/learn-ai
       AI_LEARN_PREFIX: docs/source/learn-ai
-      AI_LEARN_BASE_BRANCH: ${{ github.ref_name }}
+      AI_LEARN_BASE_BRANCH: ${{ github.event.repository.default_branch }}
 
     steps:
       - name: Check out canonical branch
@@ -217,28 +213,97 @@ jobs:
           print(f'short_id={request_id[:12]}')
           PY
 
-      - name: Refuse branch collision or replay an existing open review
+      - name: Prepare ephemeral Git credential bridge
+        run: |
+          install -m 700 .github/scripts/ai-learn-git-askpass.sh "$RUNNER_TEMP/ai-learn-git-askpass.sh"
+
+      - name: Replay an existing review or validate a recoverable publication branch
         id: replay
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GIT_ASKPASS: ${{ runner.temp }}/ai-learn-git-askpass.sh
+          GIT_TERMINAL_PROMPT: '0'
           BRANCH: ${{ steps.meta.outputs.branch }}
         run: |
           existing="$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url // ""')"
           if [ -n "$existing" ]; then
             echo "existing_pr=$existing" >> "$GITHUB_OUTPUT"
             echo "replayed=true" >> "$GITHUB_OUTPUT"
+            echo "branch_reusable=false" >> "$GITHUB_OUTPUT"
             echo "Existing open AI Learn review: $existing" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            echo "Reserved publication branch exists without an open PR; refusing to overwrite it." >&2
+
+          closed="$(gh pr list --head "$BRANCH" --state closed --json url --jq '.[0].url // ""')"
+          merged="$(gh pr list --head "$BRANCH" --state merged --json url --jq '.[0].url // ""')"
+          if [ -n "$closed" ] || [ -n "$merged" ]; then
+            prior="${merged:-$closed}"
+            echo "A prior AI Learn review for this request is already closed or merged: $prior" >&2
+            echo "Refusing to create a second review for the same deterministic request id." >&2
             exit 1
           fi
+
+          set +e
+          git ls-remote --exit-code --heads origin "$BRANCH" >"$RUNNER_TEMP/ai-learn-branch-ref"
+          remote_status=$?
+          set -e
+
+          if [ "$remote_status" -eq 0 ]; then
+            remote_ref="refs/remotes/origin/$BRANCH"
+            git fetch --no-tags --no-recurse-submodules origin "refs/heads/$BRANCH:$remote_ref"
+
+            REMOTE_REF="$remote_ref" python - <<'PY'
+          import os
+          import subprocess
+
+          base = os.environ['AI_LEARN_BASE_BRANCH']
+          prefix = os.environ['AI_LEARN_PREFIX'].rstrip('/') + '/'
+          remote_ref = os.environ['REMOTE_REF']
+
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', f'{base}...{remote_ref}'], text=True
+          ).splitlines()
+          bad = [name for name in changed if not (name.startswith(prefix) and name.endswith('.json'))]
+          if bad:
+              raise SystemExit(
+                  'Reserved publication branch contains forbidden paths: ' + ', '.join(bad)
+              )
+          if not changed:
+              raise SystemExit('Reserved publication branch contains no canonical JSON proposal.')
+
+          same = subprocess.run(
+              ['git', 'diff', '--quiet', remote_ref, '--', os.environ['AI_LEARN_PREFIX']],
+              check=False,
+          ).returncode
+          if same != 0:
+              raise SystemExit(
+                  'Reserved publication branch does not match the current reviewed JSON plan.'
+              )
+          PY
+
+            echo "replayed=false" >> "$GITHUB_OUTPUT"
+            echo "branch_reusable=true" >> "$GITHUB_OUTPUT"
+            echo "Recovered matching AI Learn publication branch; PR creation will be retried." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "$remote_status" -ne 2 ]; then
+            echo "Unable to verify the reserved publication branch; refusing to treat a Git transport/authentication failure as branch absence." >&2
+            exit "$remote_status"
+          fi
+
           echo "replayed=false" >> "$GITHUB_OUTPUT"
+          echo "branch_reusable=false" >> "$GITHUB_OUTPUT"
 
       - name: Commit canonical JSON proposal
-        if: inputs.operation == 'publish' && steps.replay.outputs.replayed != 'true'
+        if: >-
+          steps.replay.outputs.replayed != 'true' &&
+          steps.replay.outputs.branch_reusable != 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
+          GIT_ASKPASS: ${{ runner.temp }}/ai-learn-git-askpass.sh
+          GIT_TERMINAL_PROMPT: '0'
           BRANCH: ${{ steps.meta.outputs.branch }}
           SHORT_ID: ${{ steps.meta.outputs.short_id }}
         run: |
@@ -263,6 +328,7 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           BRANCH: ${{ steps.meta.outputs.branch }}
           PR_TITLE: ${{ steps.meta.outputs.title }}
           REQUEST_ID: ${{ inputs.request_id }}

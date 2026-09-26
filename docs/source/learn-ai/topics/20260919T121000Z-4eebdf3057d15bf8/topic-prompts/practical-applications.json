@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-lasso",
+  "section": {
+    "body": "Use Lasso when a sparse linear representation is useful, especially as a baseline for high-dimensional regression or embedded feature selection. Standardize features when scale would otherwise distort the penalty, and tune regularization with validation rather than treating sparsity as automatic evidence of importance.",
+    "citations": [
+      {
+        "locator": "1.1.3. Lasso",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "practical-applications",
+    "links": [],
+    "title": "Practical Applications"
+  }
+}

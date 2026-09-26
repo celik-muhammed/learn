@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-probability-calibration",
+  "section": {
+    "body": "Probability calibration evaluates whether predicted probabilities correspond to observed outcome frequencies and provides post-hoc methods for improving probability estimates.",
+    "citations": [
+      {
+        "locator": "1.16. Probability calibration",
+        "source_id": "source-sklearn-probability-calibration"
+      }
+    ],
+    "id": "summary",
+    "links": [],
+    "title": "Summary"
+  }
+}

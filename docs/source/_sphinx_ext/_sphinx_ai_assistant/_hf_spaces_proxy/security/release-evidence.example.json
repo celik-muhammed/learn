@@ -1,0 +1,216 @@
+{
+  "artifacts": {
+    "dependencyScan": {
+      "path": "pip-audit.json",
+      "sha256": "REPLACE_WITH_64_HEX",
+      "status": "pass",
+      "subject": "sha256:REPLACE_WITH_64_HEX",
+      "tool": {
+        "name": "pip-audit",
+        "version": "REPLACE"
+      }
+    },
+    "imageSbom": {
+      "path": "image.cdx.json",
+      "sha256": "REPLACE_WITH_64_HEX",
+      "status": "pass",
+      "subject": "sha256:REPLACE_WITH_64_HEX",
+      "tool": {
+        "name": "syft",
+        "version": "REPLACE"
+      }
+    },
+    "imageScan": {
+      "path": "image-scan.json",
+      "sha256": "REPLACE_WITH_64_HEX",
+      "status": "pass",
+      "subject": "sha256:REPLACE_WITH_64_HEX",
+      "tool": {
+        "name": "REPLACE",
+        "version": "REPLACE"
+      }
+    },
+    "provenance": {
+      "path": "provenance.json",
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "sha256": "REPLACE_WITH_64_HEX",
+      "signatureVerified": true,
+      "status": "pass",
+      "subject": "sha256:REPLACE_WITH_64_HEX",
+      "tool": {
+        "name": "REPLACE",
+        "version": "REPLACE"
+      }
+    },
+    "signatureVerification": {
+      "path": "signature-verification.json",
+      "sha256": "REPLACE_WITH_64_HEX",
+      "status": "pass",
+      "subject": "sha256:REPLACE_WITH_64_HEX",
+      "tool": {
+        "name": "REPLACE",
+        "version": "REPLACE"
+      }
+    }
+  },
+  "image": {
+    "digest": "sha256:REPLACE_WITH_64_HEX",
+    "platform": "linux/amd64"
+  },
+  "logging": {
+    "apmBodyCapture": false,
+    "authorizationHeaderLogging": false,
+    "capabilityHeaderLogging": false,
+    "queryStringLogging": false,
+    "requestBodyLogging": false,
+    "reviewedAt": "2099-01-01T00:00:00Z",
+    "thirdPartyTelemetryExport": false,
+    "wafBodyCapture": false
+  },
+  "redis": {
+    "contribution": {
+      "backupRestoreTestedAt": "2098-12-15T00:00:00Z",
+      "leastPrivilegeReviewed": true,
+      "nonDefaultIdentity": true,
+      "persistenceVerified": true,
+      "replicationVerified": true,
+      "tlsVerified": true
+    },
+    "providerArtifactLifecycle": {
+      "backupRestoreTestedAt": null,
+      "leastPrivilegeReviewed": true,
+      "nonDefaultIdentity": true,
+      "persistenceVerified": false,
+      "replicationVerified": true,
+      "tlsVerified": true
+    },
+    "rateLimit": {
+      "backupRestoreTestedAt": null,
+      "leastPrivilegeReviewed": true,
+      "nonDefaultIdentity": true,
+      "persistenceVerified": false,
+      "replicationVerified": false,
+      "tlsVerified": true
+    },
+    "share": {
+      "backupRestoreTestedAt": "2098-12-15T00:00:00Z",
+      "leastPrivilegeReviewed": true,
+      "nonDefaultIdentity": true,
+      "persistenceVerified": true,
+      "replicationVerified": true,
+      "tlsVerified": true
+    }
+  },
+  "redisChaos": {
+    "redis7": {
+      "standalone": {
+        "attestation": {
+          "path": "redis7-standalone.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "scikitplot-provider-artifact-redis-chaos",
+            "version": "148"
+          }
+        },
+        "signatureVerification": {
+          "path": "redis7-standalone.signature-verification.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "REPLACE_WITH_APPROVED_SIGNATURE_VERIFIER",
+            "version": "REPLACE"
+          }
+        }
+      },
+      "cluster": {
+        "attestation": {
+          "path": "redis7-cluster.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "scikitplot-provider-artifact-redis-chaos",
+            "version": "148"
+          }
+        },
+        "signatureVerification": {
+          "path": "redis7-cluster.signature-verification.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "REPLACE_WITH_APPROVED_SIGNATURE_VERIFIER",
+            "version": "REPLACE"
+          }
+        }
+      }
+    },
+    "redis8": {
+      "standalone": {
+        "attestation": {
+          "path": "redis8-standalone.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "scikitplot-provider-artifact-redis-chaos",
+            "version": "148"
+          }
+        },
+        "signatureVerification": {
+          "path": "redis8-standalone.signature-verification.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "REPLACE_WITH_APPROVED_SIGNATURE_VERIFIER",
+            "version": "REPLACE"
+          }
+        }
+      },
+      "cluster": {
+        "attestation": {
+          "path": "redis8-cluster.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "scikitplot-provider-artifact-redis-chaos",
+            "version": "148"
+          }
+        },
+        "signatureVerification": {
+          "path": "redis8-cluster.signature-verification.json",
+          "sha256": "REPLACE_WITH_64_HEX",
+          "status": "pass",
+          "subject": "sha256:REPLACE_WITH_64_HEX",
+          "tool": {
+            "name": "REPLACE_WITH_APPROVED_SIGNATURE_VERIFIER",
+            "version": "REPLACE"
+          }
+        }
+      }
+    }
+  },
+  "release": {
+    "expiresAt": "2099-01-02T00:00:00Z",
+    "generatedAt": "2099-01-01T00:00:00Z",
+    "proxyVersion": "7.0.0",
+    "releaseId": "example-only-not-production",
+    "targetPlatform": "linux/amd64"
+  },
+  "riskExceptions": [],
+  "schemaVersion": 2,
+  "source": {
+    "baseImageIndexDigest": "sha256:REPLACE_WITH_64_HEX",
+    "baseImageManifestDigest": "sha256:REPLACE_WITH_64_HEX",
+    "pythonSbomSha256": "REPLACE_WITH_64_HEX",
+    "requirementsLockSha256": "REPLACE_WITH_64_HEX",
+    "runtimeSourceSha256": "REPLACE_WITH_64_HEX",
+    "sourceTreeSha256": "REPLACE_WITH_64_HEX",
+    "sourceRevision": "REPLACE_WITH_40_OR_64_HEX_SOURCE_REVISION"
+  }
+}

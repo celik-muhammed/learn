@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-nearest-neighbors",
+  "section": {
+    "body": "Compare uniform and distance weighting. Measure query cost under brute-force and tree-based search. Investigate how feature selection or dimensionality reduction changes neighbor quality.",
+    "citations": [
+      {
+        "locator": "1.6. Nearest Neighbors",
+        "source_id": "source-sklearn-neighbors"
+      }
+    ],
+    "id": "continue-learning",
+    "links": [],
+    "title": "Continue Learning"
+  }
+}

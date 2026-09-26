@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-isotonic",
+  "section": {
+    "body": "Isotonic regression trades parametric shape assumptions for a monotonicity constraint and can overfit when calibration data is limited.",
+    "citations": [],
+    "id": "key-points",
+    "links": [],
+    "title": "Key Points"
+  }
+}

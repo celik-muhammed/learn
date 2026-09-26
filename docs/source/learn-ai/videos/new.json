@@ -1,0 +1,7 @@
+{
+  "contract": "learn.page.v1",
+  "description": "Create a source-aware video generation request from a Topic, Source, URL, or prompt.",
+  "kind": "video",
+  "title": "Create a Video",
+  "view": "media-create"
+}

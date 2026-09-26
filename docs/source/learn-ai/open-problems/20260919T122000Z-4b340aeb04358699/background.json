@@ -1,0 +1,24 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-local-kernel-scalability",
+  "section": {
+    "body": "These methods offer flexible nonlinear behavior through different mechanisms, but their computational profiles differ substantially. Dataset size, dimensionality, kernel or distance evaluation, and latency requirements can dominate model choice before small score differences matter.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-svm"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-neighbors"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-gaussian-processes"
+      }
+    ],
+    "id": "background",
+    "links": [],
+    "title": "Background"
+  }
+}

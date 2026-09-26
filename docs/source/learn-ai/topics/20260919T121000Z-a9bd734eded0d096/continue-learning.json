@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-gaussian-processes",
+  "section": {
+    "body": "Compare Bayesian linear regression with Gaussian-process regression. Compose kernels that encode different assumptions. Measure how training and prediction costs change as the dataset grows.",
+    "citations": [
+      {
+        "locator": "1.7. Gaussian Processes",
+        "source_id": "source-sklearn-gaussian-processes"
+      }
+    ],
+    "id": "continue-learning",
+    "links": [],
+    "title": "Continue Learning"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "children": [
+    "topics/index",
+    "open-problems/index",
+    "sources/index",
+    "whiteboards/index",
+    "videos/index",
+    "audios/index",
+    "documents/index",
+    "topic-prompts/index",
+    "skills/index",
+    "bookmarks/index",
+    "collections/index"
+  ],
+  "contract": "learn.page.v1",
+  "description": "Explore a topic through sources, explanations, visuals, and questions.",
+  "title": "Learn-AI (XwAI)",
+  "view": "root"
+}

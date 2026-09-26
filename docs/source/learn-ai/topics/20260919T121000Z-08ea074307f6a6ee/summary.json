@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-lda-qda",
+  "section": {
+    "body": "LDA and QDA are probabilistic classifiers based on Gaussian class-conditional models: LDA shares one covariance matrix across classes, while QDA allows class-specific covariance matrices.",
+    "citations": [
+      {
+        "locator": "1.2. Linear and Quadratic Discriminant Analysis",
+        "source_id": "source-sklearn-lda-qda"
+      }
+    ],
+    "id": "summary",
+    "links": [],
+    "title": "Summary"
+  }
+}

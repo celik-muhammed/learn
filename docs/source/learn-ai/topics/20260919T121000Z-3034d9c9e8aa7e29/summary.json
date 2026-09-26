@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-bayesian-regression",
+  "section": {
+    "body": "Bayesian linear regression places probability distributions over model parameters so estimation can express parameter uncertainty instead of returning only a single coefficient vector.",
+    "citations": [
+      {
+        "locator": "1.1.10. Bayesian Regression",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "summary",
+    "links": [],
+    "title": "Summary"
+  }
+}

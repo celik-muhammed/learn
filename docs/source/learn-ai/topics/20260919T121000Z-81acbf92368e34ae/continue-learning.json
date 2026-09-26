@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-probability-calibration",
+  "section": {
+    "body": "Compare uncalibrated and calibrated probability curves. Contrast sigmoid and isotonic calibration on datasets of different sizes. Re-check calibration when the base model or deployment population changes.",
+    "citations": [
+      {
+        "locator": "1.16. Probability calibration",
+        "source_id": "source-sklearn-probability-calibration"
+      }
+    ],
+    "id": "continue-learning",
+    "links": [],
+    "title": "Continue Learning"
+  }
+}

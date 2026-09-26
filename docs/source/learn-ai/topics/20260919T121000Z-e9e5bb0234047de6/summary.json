@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-generalized-linear-models",
+  "section": {
+    "body": "Generalized Linear Models extend linear prediction to targets whose conditional distribution and mean-variance relationship are better represented by distributions such as Poisson, Gamma, or Tweedie families.",
+    "citations": [
+      {
+        "locator": "1.1.12. Generalized Linear Models",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "summary",
+    "links": [],
+    "title": "Summary"
+  }
+}

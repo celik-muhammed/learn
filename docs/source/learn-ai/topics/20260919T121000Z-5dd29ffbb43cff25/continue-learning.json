@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-logistic-regression",
+  "section": {
+    "body": "Compare solver and penalty compatibility. Separate classification accuracy from probability calibration. Compare batch LogisticRegression with SGD-based logistic loss on larger or streaming datasets.",
+    "citations": [
+      {
+        "locator": "1.1.11. Logistic regression",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "continue-learning",
+    "links": [],
+    "title": "Continue Learning"
+  }
+}

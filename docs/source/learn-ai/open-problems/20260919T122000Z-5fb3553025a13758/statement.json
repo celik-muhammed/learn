@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-probability-calibration-under-shift",
+  "section": {
+    "body": "Determine when a classifier’s probability estimates should be recalibrated after the base model, data collection process, class balance, or deployment population changes.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-probability-calibration"
+      }
+    ],
+    "id": "statement",
+    "links": [],
+    "title": "Statement"
+  }
+}

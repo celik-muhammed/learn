@@ -1,0 +1,7 @@
+{
+  "contract": "learn.page.v1",
+  "create_label": "Create a Whiteboard",
+  "kind": "whiteboard",
+  "title": "Whiteboards",
+  "view": "media-gallery"
+}

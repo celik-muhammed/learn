@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-lda-qda",
+  "section": {
+    "body": "Compare LDA, QDA, and Gaussian Naive Bayes assumptions. Visualize how shared versus class-specific covariance changes decision boundaries. Test shrinkage when features are numerous relative to samples.",
+    "citations": [
+      {
+        "locator": "1.2. Linear and Quadratic Discriminant Analysis",
+        "source_id": "source-sklearn-lda-qda"
+      }
+    ],
+    "id": "continue-learning",
+    "links": [],
+    "title": "Continue Learning"
+  }
+}

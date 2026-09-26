@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-probabilistic-classifier-assumptions",
+  "section": {
+    "body": "Compare LDA, QDA, and Naive Bayes when their Gaussian, covariance, or conditional-independence assumptions imply materially different decision boundaries.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-lda-qda"
+      }
+    ],
+    "id": "statement",
+    "links": [],
+    "title": "Statement"
+  }
+}

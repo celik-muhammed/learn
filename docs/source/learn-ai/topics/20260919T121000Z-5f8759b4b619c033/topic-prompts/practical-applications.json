@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-nearest-neighbors",
+  "section": {
+    "body": "Use nearest neighbors when local similarity is meaningful and dataset size permits efficient search. Choose distance metrics and weighting deliberately, scale features when appropriate, and watch for degradation in high-dimensional spaces.",
+    "citations": [
+      {
+        "locator": "1.6. Nearest Neighbors",
+        "source_id": "source-sklearn-neighbors"
+      }
+    ],
+    "id": "practical-applications",
+    "links": [],
+    "title": "Practical Applications"
+  }
+}
