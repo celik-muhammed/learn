@@ -1,0 +1,19 @@
+{
+  "author": "Scikit-Plots Learn",
+  "contract": "learn.skill.v1",
+  "default_enabled": false,
+  "description": "A generic workflow for comparing methods without reducing the decision to one score.",
+  "domains": [
+    "machine-learning"
+  ],
+  "empty_message": "No one has applied Compare models through explicit assumptions to this topic yet.",
+  "id": "skill-compare-model-assumptions",
+  "instruction": "1. State the prediction or inference task.\n2. List each candidate model’s structural, distributional, and computational assumptions.\n3. Mark which assumptions are supported, uncertain, or contradicted by the available data and sources.\n4. Compare validation evidence under one consistent split and metric policy.\n5. Record trade-offs and failure modes before choosing a model.\n6. Regenerate the comparison from current evidence instead of accumulating old rankings.",
+  "order": 30,
+  "related": [
+    "topic-lda-qda",
+    "topic-naive-bayes",
+    "topic-gaussian-processes"
+  ],
+  "title": "Compare models through explicit assumptions"
+}

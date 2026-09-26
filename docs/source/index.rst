@@ -74,13 +74,15 @@
   :hidden:
   
   scikit-plots <https://scikit-plots.github.io/dev/index.html>
+  Learn-AI <learn-ai/index.rst>
+  YouTube <youtube/index.rst>
+  Resource-Ext <resource/index.rst>
   Learn <learn/index.rst>
   Hands-On <learn/hands-on/index.rst>
-  Kitchen Sink <learn/kitchen-sink/index.rst>
-  External <learn/resource/index.rst>
-  YouTube <learn/youtube/index.rst>
+  Kitchen-Sink <learn/kitchen-sink/index.rst>
 
   Tags <_tags/tagsindex.rst>
+  Glossary <glossary/index.rst>
   Code of Conduct <https://scikit-plots.github.io/dev/project/code_of_conduct.html>
 	Community <https://scikit-plots.github.io/dev/project/community.html>
 	Developer's Guide <https://scikit-plots.github.io/dev/devel/index.html>

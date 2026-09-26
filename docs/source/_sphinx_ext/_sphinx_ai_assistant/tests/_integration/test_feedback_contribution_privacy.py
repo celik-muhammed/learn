@@ -89,6 +89,10 @@ def _reset_collection_state(monkeypatch):
     proxy_app._contrib_rl.clear()
     proxy_app._feedback_rl.clear()
     monkeypatch.setattr(proxy_app, "FEEDBACK_PERSIST_ENABLED", False)
+    # These integration cases exercise the historical mutable-ledger privacy
+    # lifecycle, not provider-native PR creation. Pin the compatibility mode
+    # explicitly now that production defaults to provider-pr.
+    monkeypatch.setattr(proxy_app, "CONTRIBUTION_REVIEW_MODE", "ledger")
     monkeypatch.setattr(proxy_app, "CONTRIBUTION_REVIEW_TOKEN", "")
     yield
     proxy_app._contrib_quarantine.clear()

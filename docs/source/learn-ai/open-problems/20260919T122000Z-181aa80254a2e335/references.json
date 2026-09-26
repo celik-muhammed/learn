@@ -1,0 +1,20 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-latent-component-stability",
+  "section": {
+    "body": "Use the Cross decomposition and Feature selection guides for the estimator definitions; treat stability criteria as an explicit evaluation design choice.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-cross-decomposition"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-feature-selection"
+      }
+    ],
+    "id": "references",
+    "links": [],
+    "title": "References"
+  }
+}

@@ -14,6 +14,11 @@
 """
 Sphinx "youtube" extension.
 
+This package owns leaf video/player directives only. Gallery search, disclosure,
+filter, sort, add/export, and persistence controls are intentionally centralized
+in the sibling ``_sphinx_collection`` browser engine and are not duplicated
+here.
+
 ..seealso::
   * https://github.com/sphinx-contrib/youtube
   * https://github.com/sphinx-contrib/youtube/commit/5238c057730f953ed7c38316aad692a5231294f1

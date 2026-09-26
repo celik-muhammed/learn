@@ -361,7 +361,12 @@ legacy/recovery fallback for receipts created before review locators were stored
 
 ## 7. Primary and Mirrors
 
-`RECORD_STORAGE_TARGETS` may configure one Primary and several Mirrors.
+`RECORD_STORAGE_TARGETS` may override the record authority with one Primary and
+several Mirrors. When that variable and legacy `TRAINING_DATASET_REPO` are both
+unset, the proxy uses its bundled `DEFAULT_RECORD_STORAGE_TARGETS` projection
+(HF Primary + GitHub Mirror) from `DEFAULT_TARGET_REGISTRY`. The registry's
+separate `github-learn-ai` publication Primary never receives contribution
+records.
 Exactly one target must have:
 
 ```json

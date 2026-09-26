@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-tree-complexity-generalization",
+  "section": {
+    "body": "Choose depth, leaf-size, split, or pruning controls that reduce unnecessary tree complexity without hiding important predictive structure.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-decision-trees"
+      }
+    ],
+    "id": "statement",
+    "links": [],
+    "title": "Statement"
+  }
+}

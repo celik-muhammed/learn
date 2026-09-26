@@ -1,0 +1,49 @@
+{
+  "add_toctree": false,
+  "contract": "learn.record.v2",
+  "record": {
+    "created_at": "2026-09-18T21:35:00Z",
+    "domains": [
+      "internet-culture"
+    ],
+    "id": "whiteboard-rickroll-showcase",
+    "kind": "whiteboard",
+    "media": {
+      "alt": "Diagram showing an expected destination changing into an unexpected music-video reveal.",
+      "caption": "Expectation → surprise reveal",
+      "image": "/_static/learn-rickroll-expectation.svg",
+      "images": [
+        {
+          "alt": "Diagram showing a link, click, reveal, recognition, and sharing flow.",
+          "caption": "Interaction flow",
+          "image": "/_static/learn-rickroll-flow.svg"
+        },
+        {
+          "alt": "Diagram showing one Rickroll topic connected to multiple video variants and one whiteboard.",
+          "caption": "Topic ↔ media relationship map",
+          "image": "/_static/learn-rickroll-media-map.svg"
+        }
+      ]
+    },
+    "related": [
+      "video-rickroll-4k",
+      "video-rickroll-hd",
+      "video-rickroll-animated",
+      "video-rickroll-audio",
+      "video-rickroll-showcase"
+    ],
+    "summary": "Three original Learn diagrams connect the Rickroll topic to its expectation/reveal pattern, interaction flow, and linked video variants.",
+    "title": "Rickroll showcase — expectation, flow, and media map",
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  "sections": [
+    {
+      "id": "description",
+      "source": "description.json"
+    },
+    {
+      "id": "evidence",
+      "source": "evidence.json"
+    }
+  ]
+}

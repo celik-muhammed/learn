@@ -1,0 +1,39 @@
+{
+  "add_toctree": false,
+  "contract": "learn.record.v2",
+  "record": {
+    "created_at": "2026-09-19T12:00:00Z",
+    "domains": [
+      "machine-learning",
+      "data-science"
+    ],
+    "format": "Official documentation",
+    "id": "source-sklearn-probability-calibration",
+    "kind": "source",
+    "publisher": "scikit-learn developers",
+    "related": [
+      "topic-probability-calibration"
+    ],
+    "summary": "Official scikit-learn 1.9 guidance for evaluating and improving classifier probability estimates.",
+    "title": "scikit-learn: Probability calibration",
+    "url": "https://scikit-learn.org/1.9/modules/calibration.html"
+  },
+  "sections": [
+    {
+      "id": "overview",
+      "source": "overview.json"
+    },
+    {
+      "id": "scope",
+      "source": "scope.json"
+    },
+    {
+      "id": "key-points",
+      "source": "key-points.json"
+    },
+    {
+      "id": "related",
+      "source": "related.json"
+    }
+  ]
+}

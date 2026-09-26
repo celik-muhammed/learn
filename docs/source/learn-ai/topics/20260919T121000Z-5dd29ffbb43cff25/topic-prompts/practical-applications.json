@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-logistic-regression",
+  "section": {
+    "body": "Use logistic regression as a strong interpretable baseline for classification, probability scoring, and sparse or dense linear decision boundaries. Match solver, regularization, and multiclass behavior deliberately, then evaluate probability calibration separately from discrimination.",
+    "citations": [
+      {
+        "locator": "1.1.11. Logistic regression",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "practical-applications",
+    "links": [],
+    "title": "Practical Applications"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "add_toctree": false,
+  "contract": "learn.record.v2",
+  "record": {
+    "created_at": "2026-09-19T12:40:00Z",
+    "domains": [
+      "machine-learning"
+    ],
+    "id": "whiteboard-lasso-regularization",
+    "kind": "whiteboard",
+    "media": {
+      "alt": "Diagram linking data fit and the L1 penalty to a sparse Lasso coefficient vector.",
+      "caption": "Lasso objective: balance fit against L1 regularization.",
+      "image": "/_static/learn-lasso-regularization.svg"
+    },
+    "related": [
+      "topic-lasso",
+      "source-sklearn-linear-models"
+    ],
+    "summary": "An original Learn diagram showing how data fit and an L1 penalty combine to encourage sparse coefficients.",
+    "title": "Lasso regularization — fit, penalty, and sparsity",
+    "url": "https://scikit-learn.org/1.9/modules/linear_model.html#lasso"
+  },
+  "sections": [
+    {
+      "id": "description",
+      "source": "description.json"
+    },
+    {
+      "id": "evidence",
+      "source": "evidence.json"
+    }
+  ]
+}

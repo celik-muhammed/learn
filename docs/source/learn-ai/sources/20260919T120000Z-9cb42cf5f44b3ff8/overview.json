@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-probability-calibration",
+  "section": {
+    "body": "Official scikit-learn 1.9 guidance for evaluating and improving classifier probability estimates.",
+    "citations": [],
+    "id": "overview",
+    "links": [],
+    "title": "Overview"
+  }
+}

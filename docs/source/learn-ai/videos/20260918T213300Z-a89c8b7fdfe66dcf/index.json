@@ -1,0 +1,39 @@
+{
+  "add_toctree": false,
+  "contract": "learn.record.v2",
+  "record": {
+    "created_at": "2026-09-18T21:33:00Z",
+    "domains": [],
+    "format": "Audio-focused video",
+    "id": "video-rickroll-audio",
+    "kind": "video",
+    "media": {
+      "youtube_id": "FON2SycdqaM"
+    },
+    "related": [
+      "whiteboard-rickroll-showcase"
+    ],
+    "status": "unverified",
+    "summary": "A Rickroll is a classic internet prank that involves tricking someone into clicking a link that leads to the music video for the song Never Gonna Give You Up by Rick Astley. The joke relies on surprise: the viewer expects something related to the link, but instead reaches the 1987 pop song.\n\nIn this showcase, the same core explanation is represented through several video variants to demonstrate how one topic can support different media treatments. The meme is used here as a familiar, lighthearted example of expectation subversion on the web.",
+    "title": "Rickroll explainer — Audio",
+    "url": "https://www.youtube.com/watch?v=FON2SycdqaM"
+  },
+  "sections": [
+    {
+      "id": "description",
+      "source": "description.json"
+    },
+    {
+      "id": "script",
+      "source": "script.json"
+    },
+    {
+      "id": "transcript",
+      "source": "transcript.json"
+    },
+    {
+      "id": "evidence",
+      "source": "evidence.json"
+    }
+  ]
+}

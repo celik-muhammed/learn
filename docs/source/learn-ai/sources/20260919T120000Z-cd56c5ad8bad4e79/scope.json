@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-svm",
+  "section": {
+    "body": "Covers SVC, NuSVC, SVR, kernel functions, mathematical formulation, scaling considerations, and implementation notes.",
+    "citations": [],
+    "id": "scope",
+    "links": [],
+    "title": "Scope"
+  }
+}

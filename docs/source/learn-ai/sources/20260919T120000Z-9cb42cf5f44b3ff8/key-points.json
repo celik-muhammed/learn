@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-probability-calibration",
+  "section": {
+    "body": "Calibration quality is distinct from ranking or classification accuracy and should be evaluated on data not used to fit the calibrator.",
+    "citations": [],
+    "id": "key-points",
+    "links": [],
+    "title": "Key Points"
+  }
+}

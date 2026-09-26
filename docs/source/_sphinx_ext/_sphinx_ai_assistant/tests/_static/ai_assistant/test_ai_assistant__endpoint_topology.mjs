@@ -7,8 +7,8 @@ const ok = (cond, name) => {
   else { fail++; console.log('FAIL ' + name); }
 };
 
-ok(/var _SCHEMA_VER\s*=\s*3;/.test(src), 'runtime profile storage schema v3 strips persisted tokens');
-ok(/\['base', 'chat', 'share', 'feedback', 'training'\]/.test(src), 'runtime URL validator accepts base');
+ok(/var _SCHEMA_VER\s*=\s*7;/.test(src), 'runtime profile storage schema v7 carries canonical media, document, and publication routes without persisted tokens');
+ok(/\['base', 'chat', 'share', 'feedback', 'training', 'image', 'video', 'audio', 'document', 'publication'\]/.test(src), 'runtime URL validator accepts base, media, document, and publication routes');
 ok(/profile\[feature\] \|\| profile\.base/.test(src), 'feature resolution falls back to base');
 ok(/resolveBaseFor/.test(src), 'canonical base resolver exists');
 ok(/datasetRepo/.test(src), 'profile dataset metadata is retained');
@@ -16,7 +16,7 @@ ok(/Base endpoint/.test(src), 'simple UI exposes Base endpoint');
 ok(/Configure one service endpoint/.test(src), 'simple UI explains one-service topology');
 ok(/Auto-discovered from service/.test(src), 'simple dataset communicates discovery');
 ok(/Save simple profile/.test(src), 'custom simple profiles are editable');
-ok(/chat: '', share: '', feedback: '', training: ''/.test(src), 'simple save clears route overrides');
+ok(/chat: '', share: '', feedback: '', training: '', image: '', video: '', audio: '', document: '', publication: ''/.test(src), 'simple save clears route overrides including image video audio document and publication');
 ok(/fd\.label \+ ' endpoint override'/.test(src), 'active Advanced UI uses endpoint override terminology');
 ok(/Base endpoint \*/.test(src), 'advanced form requires base');
 ok(/Absolute URL, relative v1\/chat\/completions, or blank to inherit/.test(src), 'advanced form accepts absolute, relative, or inherited endpoints');
@@ -42,6 +42,19 @@ ok(/_pyDqEscape\(key\)/.test(src), 'generated profile key is Python-string escap
 ok(/Secrets\/tokens are intentionally excluded/.test(src), 'generated snippet explicitly excludes secrets');
 ok(/_epSafe\.resolveFor\(_cd\.key, key\)/.test(src), 'capability pills use resolved inherited routes');
 ok(/resolveEndpoint:\s+resolveEndpoint/.test(src), 'active registry exposes complete endpoint resolver');
+ok(/image:\s+'\/v1\/image'/.test(src), 'image route inherits the canonical short generation endpoint');
+ok(/video:\s+'\/v1\/video'/.test(src), 'video route inherits the canonical short generation endpoint');
+ok(/audio:\s+'\/v1\/audio'/.test(src), 'audio route inherits the canonical short generation endpoint');
+ok(/document:\s+'\/v1\/document'/.test(src), 'document route inherits the canonical generation endpoint');
+ok(/publication:\s+'\/v1\/learn-publication'/.test(src), 'publication route inherits the canonical reviewed handoff endpoint');
+ok(/Test AI Learn publication/.test(src), 'endpoint sheet exposes a non-mutating reviewed-publication policy test');
+ok(/AI_ASSISTANT_ENDPOINT_API/.test(src) && /onProfileChange/.test(src), 'read-only sibling endpoint bridge exposes routing and profile changes');
+ok(/AI_ASSISTANT_MODEL_API/.test(src), 'sibling model bridge is installed');
+ok(/listModels:\s*function/.test(src) && /getState:\s*function/.test(src), 'model bridge exposes read-only model state');
+ok(/selectModel:\s*function \(id\) \{ return _selectQuickModel/.test(src), 'model bridge selects through the canonical assistant model path');
+ok(/openPicker:\s*function/.test(src) && /ai-assistant-open-model-configuration/.test(src), 'model bridge can open the canonical Assistant model configuration sheet');
+ok(/onChange:\s*function/.test(src) && /ai-assistant-effort-change/.test(src), 'model bridge synchronizes model and effort changes');
+ok(/function _publicModelSnapshot/.test(src) && !/function _publicModelSnapshot[\s\S]{0,1200}endpoint:/.test(src), 'public model snapshot does not expose endpoint routing');
 ok(/resolveEndpointFor/.test(src), 'arbitrary-profile complete endpoint resolver exists');
 ok(/Save routing/.test(src), 'runtime profiles can save Advanced routing changes');
 ok(/_advBaseInp\.readOnly = !canEditSimple/.test(src), 'runtime Advanced Base endpoint is editable');

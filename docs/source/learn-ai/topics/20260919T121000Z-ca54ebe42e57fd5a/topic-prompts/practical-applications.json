@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-feature-selection",
+  "section": {
+    "body": "Use feature selection to reduce noise, computation, or measurement burden, but fit the selection step inside the training pipeline to avoid leakage. Compare filter, embedded, and wrapper strategies against predictive and stability goals.",
+    "citations": [
+      {
+        "locator": "1.13. Feature selection",
+        "source_id": "source-sklearn-feature-selection"
+      }
+    ],
+    "id": "practical-applications",
+    "links": [],
+    "title": "Practical Applications"
+  }
+}

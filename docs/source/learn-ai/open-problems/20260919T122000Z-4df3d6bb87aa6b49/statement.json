@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-regression-uncertainty-choice",
+  "section": {
+    "body": "Compare Bayesian linear regression, Gaussian-process regression, and distribution-aware GLMs when uncertainty, nonlinear structure, or target-distribution assumptions matter.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "statement",
+    "links": [],
+    "title": "Statement"
+  }
+}

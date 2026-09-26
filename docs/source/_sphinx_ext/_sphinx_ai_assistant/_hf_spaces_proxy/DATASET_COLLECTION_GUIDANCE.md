@@ -106,10 +106,12 @@ Recommended redundant setup
 Browser -> app.py -> Hugging Face PRIMARY -> GitHub MIRROR
 ```
 
-> **Important — one Primary only.**
-> A configuration may contain up to 8 storage targets, but exactly one must
-> have `"role": "primary"`. A record is accepted when the Primary succeeds.
-> Mirror failure does not undo a successful Primary write.
+> **Important — one record Primary only.**
+> The records authority may contain up to 8 storage targets, but exactly one must
+> have `"role": "primary"`. A record is accepted when that Primary succeeds.
+> Mirror failure does not undo a successful Primary write. The code-owned
+> `DEFAULT_TARGET_REGISTRY` also has a separate `learn-ai-publication` Primary;
+> it is projected out before record persistence and does not violate this rule.
 
 > **Attention — the browser does not choose HF vs GitHub.**
 > `conf.py` and the Endpoint Configuration panel choose **which proxy endpoint**
@@ -132,7 +134,8 @@ Browser -> app.py -> Hugging Face PRIMARY -> GitHub MIRROR
 | Sphinx `conf.py` / AI panel | Browser → proxy endpoint routing | **No** | docs maintainer |
 | Hugging Face Space **Variables** | Non-sensitive server configuration | No | operator |
 | Hugging Face Space **Secrets** | Tokens/API credentials | **Yes** | operator/security |
-| `RECORD_STORAGE_TARGETS` | Primary/mirror topology | Token **names**, never token values | operator |
+| code-owned `DEFAULT_TARGET_REGISTRY` | Bundled record + publication destinations, separated by `authority` | Token **names**, never token values | proxy source |
+| `RECORD_STORAGE_TARGETS` | Optional record Primary/mirror override | Token **names**, never token values | operator |
 
 ### 1.1 `conf.py` is not a storage credential store
 
@@ -178,7 +181,7 @@ are readable; Secret values are write-only in the settings interface.
 
 | Name | Put in | Required? | Why |
 |---|---|---:|---|
-| `RECORD_STORAGE_TARGETS` | **Variable** | New multi-store mode | Contains topology and env-var names, not tokens |
+| `RECORD_STORAGE_TARGETS` | **Variable** | Optional record-topology override | Contains topology and env-var names, not tokens; bundled record defaults apply when absent |
 | `AI_RECORD_STORAGE_TOKEN_HF_PRIMARY` | **Secret** | if HF target | Actual HF credential |
 | `AI_RECORD_STORAGE_TOKEN_GITHUB_MIRROR` | **Secret** | if GitHub target | Actual GitHub credential |
 | `AI_RECORD_STORAGE_TOKEN_GITLAB_*` | **Secret** | if GitLab target | Actual GitLab credential |
@@ -226,9 +229,9 @@ configuration when they are meant to be visible to readers.
 
 ## 3. Current configuration precedence
 
-### 3.1 Provider-neutral mode is authoritative
+### 3.1 Explicit provider-neutral record mode is authoritative
 
-When this is non-empty:
+When this operator override is non-empty:
 
 ```text
 RECORD_STORAGE_TARGETS
@@ -243,6 +246,12 @@ replace the explicit targets in `RECORD_STORAGE_TARGETS`.
 The proxy has been hardened so keeping `TRAINING_DATASET_REPO` during migration
 does **not** trigger misleading legacy “missing HF dataset token” warnings while
 `RECORD_STORAGE_TARGETS` is active.
+
+If neither explicit record topology nor `TRAINING_DATASET_REPO` is set, the
+proxy activates `DEFAULT_RECORD_STORAGE_TARGETS`, which is derived from the
+`authority: "records"` entries in `DEFAULT_TARGET_REGISTRY`: HF Primary plus
+GitHub Mirror. The separate `github-learn-ai` publication Primary is not part of
+that projection.
 
 ### 3.2 Legacy mode
 
@@ -1673,10 +1682,12 @@ conflict resolution could hide corruption or unauthorized modification.
 
 ### `app.py` / `_utils/_storage.py`
 
-- provider-neutral target schema;
+- authority-scoped code-owned default target registry;
+- provider-neutral record target schema;
 - Hugging Face, GitHub, GitLab, Bitbucket Cloud write adapters;
-- exactly one Primary + optional Mirrors;
-- legacy HF synthesis when `RECORD_STORAGE_TARGETS` is absent;
+- exactly one record Primary + optional Mirrors;
+- bundled HF Primary + GitHub Mirror projection when no topology/legacy repo is set;
+- legacy HF synthesis when explicit topology is absent and `TRAINING_DATASET_REPO` is set;
 - Fine-grained / Read / Write HF token classification;
 - repo-write preflight with modern `huggingface_hub`;
 - Read-token write blocking;

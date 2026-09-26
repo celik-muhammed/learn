@@ -6261,7 +6261,7 @@
         var _STORAGE_CUSTOM_KEY = 'ai-assistant-ep-custom';
 
         // ── Limits ───────────────────────────────────────────────────────────
-        var _SCHEMA_VER          = 3;    // v3: endpoint tokens are memory-only and scrubbed from persisted profiles
+        var _SCHEMA_VER          = 7;    // v7: AI Learn reviewed-publication route
         var _MAX_CUSTOM_PROFILES = 20;   // hard cap on runtime-added profiles
         var _MAX_LABEL_LEN       = 80;   // max profile label length (display)
         var _MAX_URL_LEN         = 2048; // max absolute URL length per field
@@ -6280,6 +6280,11 @@
             share:    '/v1/share',
             feedback: '/v1/feedback',
             training: '/v1/contribute',
+            image:    '/v1/image',
+            video:    '/v1/video',
+            audio:    '/v1/audio',
+            document: '/v1/document',
+            publication: '/v1/learn-publication',
         };
 
         // ── Profile key allowlist ─────────────────────────────────────────────
@@ -6568,7 +6573,7 @@
                 shareToken: '', feedbackToken: '',
                 ttlDays: (typeof profile.ttlDays === 'number' && profile.ttlDays > 0) ? Math.floor(profile.ttlDays) : 30,
             };
-            var fields = ['chat', 'share', 'feedback', 'training'];
+            var fields = ['chat', 'share', 'feedback', 'training', 'image', 'video', 'audio', 'document', 'publication'];
             for (var i = 0; i < fields.length; i++) {
                 var checked = _sanitizeRuntimeEndpoint(profile[fields[i]]);
                 if (!checked.ok) {
@@ -6583,7 +6588,7 @@
         // ── Profile shape validator for localStorage reads (V-03) ─────────────
         function _isValidProfileShape(obj) {
             if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
-            var url_keys = ['base', 'chat', 'share', 'feedback', 'training'];
+            var url_keys = ['base', 'chat', 'share', 'feedback', 'training', 'image', 'video', 'audio', 'document', 'publication'];
             for (var i = 0; i < url_keys.length; i++) {
                 var v = obj[url_keys[i]];
                 if (typeof v === 'string' && v) return true;
@@ -6612,6 +6617,7 @@
                 _metadata[k] = { isBuiltin: true, createdAt: null, lastActivated: null };
             }
         }());
+
 // =============================================================================
 // ██████╗  █████╗ ██████╗ ████████╗ ██████╗
 // ██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝ ██╔══██╗
@@ -6634,13 +6640,13 @@
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
 
             // Schema version gate. v1/v2 are accepted only so they can be
-            // migrated into v3, which never persists bearer-token values.
+            // migrated into v4, which never persists bearer-token values and adds the video route.
             var schemaVer = parsed._v;
             var profilesObj, metaObj;
             var needsRewrite = false;
 
             if (typeof schemaVer === 'number' &&
-                    (schemaVer === 1 || schemaVer === 2 || schemaVer === _SCHEMA_VER)) {
+                    (schemaVer === 1 || schemaVer === 2 || schemaVer === 3 || schemaVer === 4 || schemaVer === 5 || schemaVer === _SCHEMA_VER)) {
                 profilesObj = parsed.profiles;
                 metaObj     = parsed.meta;
                 needsRewrite = schemaVer !== _SCHEMA_VER;
@@ -6693,7 +6699,7 @@
             }
 
             // Function declarations are hoisted within the registry closure, so
-            // this safely rewrites accepted legacy data using the v3 serializer.
+            // this safely rewrites accepted legacy data using the v4 serializer.
             // The rewrite is best-effort (private/quota storage can fail) but no
             // token value is copied into the new payload.
             if (needsRewrite) _persistCustom();
@@ -6738,6 +6744,9 @@
                         share:       p.share       || '',
                         feedback:    p.feedback    || '',
                         training:    p.training    || '',
+                        image:       p.image       || '',
+                        video:       p.video       || '',
+                        audio:       p.audio       || '',
                         datasetRepo: p.datasetRepo || '',
                         ttlDays:     p.ttlDays     || 30,
                     };
@@ -6969,6 +6978,11 @@
                 share:         p.share         !== undefined && p.share         !== null ? String(p.share)         : '',
                 feedback:      p.feedback      !== undefined && p.feedback      !== null ? String(p.feedback)      : '',
                 training:      p.training      !== undefined && p.training      !== null ? String(p.training)      : '',
+                image:         p.image         !== undefined && p.image         !== null ? String(p.image)         : '',
+                video:         p.video         !== undefined && p.video         !== null ? String(p.video)         : '',
+                audio:         p.audio         !== undefined && p.audio         !== null ? String(p.audio)         : '',
+                document:      p.document      !== undefined && p.document      !== null ? String(p.document)      : '',
+                publication:   p.publication   !== undefined && p.publication   !== null ? String(p.publication)   : '',
                 datasetRepo:   p.datasetRepo   !== undefined && p.datasetRepo   !== null ? String(p.datasetRepo)   : '',
                 shareToken:    _runtimeTokensAllowed() && p.shareToken    !== undefined && p.shareToken    !== null ? String(p.shareToken)    : '',
                 feedbackToken: _runtimeTokensAllowed() && p.feedbackToken !== undefined && p.feedbackToken !== null ? String(p.feedbackToken) : '',
@@ -7025,7 +7039,7 @@
             var baseResult = _sanitizeRuntimeUrl(profile.base, false);
             if (!baseResult.ok) { _endpointSecurityWarn(baseResult.code || 'BASE_REJECTED', 'base'); return { ok: false, error: 'base: ' + baseResult.error }; }
             sanitized.base = baseResult.url;
-            var endpointKeys = ['chat', 'share', 'feedback', 'training'];
+            var endpointKeys = ['chat', 'share', 'feedback', 'training', 'image', 'video', 'audio', 'document', 'publication'];
             for (var i = 0; i < endpointKeys.length; i++) {
                 var field  = endpointKeys[i];
                 var result = _sanitizeRuntimeEndpoint(profile[field]);
@@ -7099,6 +7113,9 @@
                     share:       p.share       || '',
                     feedback:    p.feedback    || '',
                     training:    p.training    || '',
+                    image:       p.image       || '',
+                    video:       p.video       || '',
+                    audio:       p.audio       || '',
                     datasetRepo: p.datasetRepo || '',
                     // Tokens intentionally excluded.
                     ttlDays:     p.ttlDays     || 30,
@@ -7440,7 +7457,7 @@
                 var base = String(profile.base || '').trim().replace(/\/+$/, '');
                 var suffixes = {
                     chat: '/v1/chat/completions', share: '/v1/share',
-                    feedback: '/v1/feedback', training: '/v1/contribute'
+                    feedback: '/v1/feedback', training: '/v1/contribute', image: '/v1/image', video: '/v1/video', audio: '/v1/audio', document: '/v1/document', publication: '/v1/learn-publication'
                 };
                 var suffix = suffixes[feature] || '';
                 function joinDefault(root) {
@@ -7477,10 +7494,10 @@
                 // value is already a full standard endpoint, strip only the
                 // known default suffix; arbitrary custom routes cannot safely
                 // reveal a service base, so fall back to their origin.
-                var first = String(profile.chat || profile.share || profile.feedback || profile.training || '')
+                var first = String(profile.chat || profile.share || profile.feedback || profile.training || profile.image || profile.video || profile.audio || profile.document || profile.publication || '')
                     .replace(/\/+$/, '');
                 if (!first) return '';
-                var known = ['/v1/chat/completions', '/v1/share', '/v1/feedback', '/v1/contribute'];
+                var known = ['/v1/chat/completions', '/v1/share', '/v1/feedback', '/v1/contribute', '/v1/image', '/v1/video', '/v1/audio', '/v1/document', '/v1/image-generations', '/v1/video-generations', '/v1/audio-generations', '/v1/document-generations', '/v1/learn-publication'];
                 for (var i = 0; i < known.length; i++) {
                     if (first.slice(-known[i].length) === known[i]) {
                         return first.slice(0, -known[i].length).replace(/\/+$/, '');
@@ -7566,6 +7583,33 @@
         }(_EP));
     }
     // ── end _EP Compatibility Shim ─────────────────────────────────────────
+
+    // Public, read-only endpoint bridge for sibling static extensions such as
+    // _sphinx_ai_learn. It exposes routing metadata and a profile-change
+    // subscription only; bearer-token access remains private to the assistant
+    // registry. Unknown feature names fail closed instead of becoming arbitrary
+    // URL lookups. The bridge is installed after the compatibility shim so its
+    // subscription can follow the assistant's private event bus without making
+    // that bus public.
+    try {
+        var _PUBLIC_ENDPOINT_FEATURES = new Set(['chat', 'share', 'feedback', 'training', 'image', 'video', 'audio', 'document', 'publication']);
+        var _endpointBridge = {
+            resolveEndpoint: function (feature) {
+                return _PUBLIC_ENDPOINT_FEATURES.has(String(feature || '')) ? _EP.resolveEndpoint(String(feature)) : '';
+            },
+            getActiveProfile: function () { return _EP.getActive(); },
+            getProfile: function (key) { return _EP.getProfile(String(key || '')); },
+            listProfiles: function () { return _EP.list(); },
+            onProfileChange: function (callback) {
+                return (typeof _EP.onChange === 'function' && typeof callback === 'function')
+                    ? _EP.onChange(callback) : function () {};
+            },
+        };
+        Object.freeze(_endpointBridge);
+        Object.defineProperty(window, 'AI_ASSISTANT_ENDPOINT_API', {
+            value: _endpointBridge, configurable: false, enumerable: false, writable: false
+        });
+    } catch (_) {}
 
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -22803,6 +22847,11 @@
             { key: 'share',    label: 'Share',    suffix: '/v1/share',            priority: 'P1' },
             { key: 'feedback', label: 'Feedback', suffix: '/v1/feedback',         priority: 'P3' },
             { key: 'training', label: 'Dataset contribution', suffix: '/v1/contribute', priority: 'P2' },
+            { key: 'image', label: 'Image generation', suffix: '/v1/image', priority: 'P3' },
+            { key: 'video', label: 'Video generation', suffix: '/v1/video', priority: 'P3' },
+            { key: 'audio', label: 'Audio generation', suffix: '/v1/audio', priority: 'P3' },
+            { key: 'document', label: 'Document generation', suffix: '/v1/document', priority: 'P3' },
+            { key: 'publication', label: 'AI Learn publication', suffix: '/v1/learn-publication', priority: 'P1' },
         ];
         var _MAX_LABEL   = 100;
         var _MAX_CUSTOM  = (_epSafe && _epSafe.MAX_CUSTOM_PROFILES) ? _epSafe.MAX_CUSTOM_PROFILES : 20;
@@ -23020,7 +23069,7 @@
         var _simpleHint = document.createElement('p');
         _simpleHint.className   = 'ai-assistant-panel-ep-hint ai-assistant-panel-ep-simple-intro';
         _simpleHint.textContent =
-            'Configure one service endpoint. Chat, Share, Feedback and Training inherit it; ' +
+            'Configure one service endpoint. Chat, Share, Feedback, generation, and AI Learn publication routes inherit it; ' +
             'the dataset is discovered automatically unless you override it.';
         _simpleWrap.appendChild(_simpleHint);
 
@@ -23166,7 +23215,7 @@
             var saved = _epSafe.addProfile(activeKey, {
                 label: current.label,
                 base: base,
-                chat: '', share: '', feedback: '', training: '',
+                chat: '', share: '', feedback: '', training: '', image: '', video: '', audio: '', document: '', publication: '',
                 datasetRepo: datasetRepo,
                 shareToken: current.shareToken || '',
                 feedbackToken: current.feedbackToken || '',
@@ -23354,6 +23403,51 @@
         testRow.appendChild(testBtn);
         testRow.appendChild(testResultsEl);
         detailSection.appendChild(testRow);
+
+        // Reviewed-publication transport diagnostic. Unlike generic connectivity
+        // probes, this POST exercises the proxy's fixed GitHub/stub policy but
+        // is guaranteed by the server contract to perform no repository write.
+        var publicationTestRow = document.createElement('div');
+        publicationTestRow.className = 'ai-assistant-panel-ep-health-row ai-assistant-panel-ep-publication-test-row';
+        var publicationTestBtn = document.createElement('button');
+        publicationTestBtn.type = 'button';
+        publicationTestBtn.className = 'ai-assistant-panel-ep-test-btn';
+        publicationTestBtn.textContent = 'Test AI Learn publication';
+        var publicationTestStatus = document.createElement('p');
+        publicationTestStatus.className = 'ai-assistant-panel-ep-hint';
+        publicationTestStatus.setAttribute('role', 'status');
+        publicationTestStatus.setAttribute('aria-live', 'polite');
+        publicationTestStatus.textContent = 'Checks disabled/stub/GitHub workflow policy without opening a pull request.';
+        publicationTestRow.appendChild(publicationTestBtn);
+        publicationTestRow.appendChild(publicationTestStatus);
+        detailSection.appendChild(publicationTestRow);
+
+        publicationTestBtn.addEventListener('click', async function () {
+            var endpoint = _epSafe ? (_epSafe.resolveEndpoint ? _epSafe.resolveEndpoint('publication') : _epSafe.resolve('publication')) : '';
+            if (!endpoint) { publicationTestStatus.textContent = 'AI Learn publication endpoint is not configured.'; return; }
+            publicationTestBtn.disabled = true;
+            publicationTestStatus.textContent = 'Testing publication policy…';
+            try {
+                var response = await _fetch(endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json','Accept':'application/json'},
+                    body: JSON.stringify({contract:'learn.publication-request.v1', action:'test'}),
+                    credentials: 'omit',
+                    cache: 'no-store',
+                    redirect: 'error'
+                });
+                var raw = await response.text();
+                if (raw.length > 65536) throw new Error('Oversized response');
+                var doc = raw ? JSON.parse(raw) : {};
+                if (!response.ok) throw new Error(String(doc.detail || doc.message || ('HTTP ' + response.status)));
+                var target = [doc.repository, doc.default_branch ? 'branch ' + doc.default_branch : '', doc.canonical_prefix].filter(Boolean).join(' · ');
+                publicationTestStatus.textContent = String(doc.message || doc.state || 'Publication policy reachable.') + (target ? ' Target: ' + target + '.' : '');
+            } catch (error) {
+                publicationTestStatus.textContent = 'Publication test failed: ' + String(error && error.message || error);
+            } finally {
+                publicationTestBtn.disabled = false;
+            }
+        });
 
         testBtn.addEventListener('click', function () {
             testResultsEl.style.display = '';
@@ -23626,6 +23720,11 @@
             { key: 'share',         label: 'Share endpoint',  type: 'text',     ph: 'Absolute URL, relative v1/share, or blank to inherit' },
             { key: 'feedback',      label: 'Feedback endpoint', type: 'text',   ph: 'Absolute URL, relative v1/feedback, or blank to inherit' },
             { key: 'training',      label: 'Dataset contribution endpoint', type: 'text', ph: 'Absolute URL, relative v1/contribute, or blank to inherit' },
+            { key: 'image',         label: 'Image generation endpoint', type: 'text', ph: 'Absolute URL, relative v1/image, or blank to inherit' },
+            { key: 'video',         label: 'Video generation endpoint', type: 'text', ph: 'Absolute URL, relative v1/video, or blank to inherit' },
+            { key: 'audio',         label: 'Audio generation endpoint', type: 'text', ph: 'Absolute URL, relative v1/audio, or blank to inherit' },
+            { key: 'document',      label: 'Document generation endpoint', type: 'text', ph: 'Absolute URL, relative v1/document, or blank to inherit' },
+            { key: 'publication',   label: 'AI Learn publication endpoint', type: 'text', ph: 'Absolute URL, relative v1/learn-publication, or blank to inherit' },
             { key: 'datasetRepo',   label: 'Dataset override', type: 'text',    ph: 'Auto-discover, or owner/repo' },
             { key: 'shareToken',    label: 'Share token',    type: 'password', ph: '(optional Bearer token)'   },
             { key: 'feedbackToken', label: 'Feedback token', type: 'password', ph: '(optional Bearer token)'   },
@@ -23755,7 +23854,7 @@
                 }
                 profileData = {
                     label: label, base: base,
-                    chat: '', share: '', feedback: '', training: '',
+                    chat: '', share: '', feedback: '', training: '', image: '', video: '', audio: '', document: '', publication: '',
                     datasetRepo: simpleDataset,
                     shareToken: '', feedbackToken: '', ttlDays: 30,
                 };
@@ -23765,6 +23864,11 @@
                 var aSh = fAdvInputs.share    ? fAdvInputs.share.value.trim().replace(/\/+$/, '')    : '';
                 var aFb = fAdvInputs.feedback ? fAdvInputs.feedback.value.trim().replace(/\/+$/, '') : '';
                 var aTr = fAdvInputs.training ? fAdvInputs.training.value.trim().replace(/\/+$/, '') : '';
+                var aIm = fAdvInputs.image ? fAdvInputs.image.value.trim().replace(/\/+$/, '') : '';
+                var aVi = fAdvInputs.video ? fAdvInputs.video.value.trim().replace(/\/+$/, '') : '';
+                var aAu = fAdvInputs.audio ? fAdvInputs.audio.value.trim().replace(/\/+$/, '') : '';
+                var aDoc = fAdvInputs.document ? fAdvInputs.document.value.trim().replace(/\/+$/, '') : '';
+                var aPub = fAdvInputs.publication ? fAdvInputs.publication.value.trim().replace(/\/+$/, '') : '';
                 var aDataset = fAdvInputs.datasetRepo ? fAdvInputs.datasetRepo.value.trim() : '';
                 if (!aBase) {
                     fError.textContent = 'Base endpoint is required. Use overrides only for exceptions.';
@@ -23779,7 +23883,7 @@
                     return;
                 }
                 var urlPairs = [
-                    ['base', aBase], ['chat', aC], ['share', aSh], ['feedback', aFb], ['training', aTr]
+                    ['base', aBase], ['chat', aC], ['share', aSh], ['feedback', aFb], ['training', aTr], ['image', aIm], ['video', aVi], ['audio', aAu], ['document', aDoc], ['publication', aPub]
                 ];
                 var urlErr = '';
                 for (var _vi = 0; _vi < urlPairs.length && !urlErr; _vi++) {
@@ -23805,7 +23909,7 @@
                 }
                 profileData = {
                     label: label, base: aBase,
-                    chat: aC, share: aSh, feedback: aFb, training: aTr,
+                    chat: aC, share: aSh, feedback: aFb, training: aTr, image: aIm, video: aVi, audio: aAu, document: aDoc, publication: aPub,
                     datasetRepo: aDataset,
                     shareToken:    fAdvInputs.shareToken    ? fAdvInputs.shareToken.value.trim()    : '',
                     feedbackToken: fAdvInputs.feedbackToken ? fAdvInputs.feedbackToken.value.trim() : '',
@@ -24421,7 +24525,7 @@
                 base = _snippetNormUrl(_epSafe.resolveBaseFor(key));
             }
             if (!base) {
-                base = _snippetNormUrl(prof.base || prof.chat || prof.share || prof.feedback || prof.training);
+                base = _snippetNormUrl(prof.base || prof.chat || prof.share || prof.feedback || prof.training || prof.image || prof.video || prof.audio || prof.document || prof.publication);
             }
 
             var lines = [
@@ -24452,7 +24556,7 @@
                 lines.push('        "base": "' + _pyDqEscape(base) + '",');
             }
 
-            var urlFields = ['chat', 'share', 'feedback', 'training'];
+            var urlFields = ['chat', 'share', 'feedback', 'training', 'image', 'video', 'audio', 'document', 'publication'];
             for (var _si = 0; _si < urlFields.length; _si++) {
                 var _sf = urlFields[_si];
                 var _explicit = _snippetNormUrl(prof[_sf]);
@@ -25913,6 +26017,7 @@
                 { key: 'share',    label: 'Share'    },
                 { key: 'feedback', label: 'Feedback' },
                 { key: 'training', label: 'Training' },
+                { key: 'video', label: 'Video generation' },
             ];
             for (var _ci = 0; _ci < _capDefs.length; _ci++) {
                 var _cd  = _capDefs[_ci];
@@ -30675,29 +30780,19 @@
                 row.appendChild(info);
             }
 
-            // ── Change handler (mirrors original _buildModelSheet logic) ──────
+            // ── Change handler ───────────────────────────────────────────────
+            // Every user-facing model selector goes through one transaction.
+            // This keeps persistence, the private model-change bus, effort/
+            // reasoning support, the sheet/footer surfaces, and sibling
+            // AI_ASSISTANT_MODEL_API consumers synchronized.
             row.addEventListener('change', function () {
                 if (!radio.checked) return;
                 var id = m.id;
-                _setActiveModelId(id);
-                try {
-                    var liveModels = _cfg().panelApiModels;
-                    var liveM = _findModel(
-                        Array.isArray(liveModels) ? liveModels : models, id
-                    );
-                    _dispatchAssistantEvent(new CustomEvent(
-                        'ai-assistant-model-change',
-                        { detail: liveM
-                            ? { id: liveM.id, provider: liveM.provider,
-                                model: liveM.model }
-                            : { id: id } }
-                    ));
-                } catch (_) {}
+                if (!_selectQuickModel(id)) return;
                 // Sync data-checked for :has() fallback (Issue 15).
                 sheet.querySelectorAll('.ai-assistant-panel-model-row[data-checked]')
                     .forEach(function (r) { r.removeAttribute('data-checked'); });
                 row.setAttribute('data-checked', 'true');
-                _syncInlinePickers(id);
             });
 
             // ── Edit affordance ───────────────────────────────────────────
@@ -41460,7 +41555,13 @@
                     return {
                         label: (m.id === currentId ? '\u2713 ' : '') + (m.label || m.id),
                         hint: m.id === currentId ? 'Current model' : (m.provider || ''),
-                        run: function () { _setActiveModelId(m.id); }
+                        // Route through the same canonical selection transaction used
+                        // by the full model sheet and the public sibling bridge.  Updating
+                        // only _setActiveModelId() changes persistence/memory but skips the
+                        // model-change event, effort reconciliation, sheet refresh, and
+                        // Learn's AI_ASSISTANT_MODEL_API subscribers -- the rare split-brain
+                        // state reported when this compact menu was used.
+                        run: function () { _selectQuickModel(m.id); }
                     };
                 });
             }, 'ai-assistant-panel-inline-picker-more', ICONS.chevronDown);
@@ -52000,6 +52101,85 @@
         );
     }
 
+    // ── Public model-selection bridge for sibling extensions ────────────────
+    //
+    // _sphinx_ai_learn needs to present a compact model chooser for generation
+    // requests without duplicating the assistant's model registry, scraping the
+    // panel DOM, or reading private persistence keys.  This bridge intentionally
+    // exposes only non-secret model metadata plus the same selection action the
+    // assistant's own quick picker uses.  Endpoint URLs and bearer tokens stay
+    // private to the assistant/runtime boundary.
+    function _publicModelSnapshot(model) {
+        if (!model || typeof model !== 'object') return null;
+        return Object.freeze({
+            id: String(model.id || '').slice(0, 160),
+            label: String(model.label || model.id || 'Model').slice(0, 200),
+            provider: String(model.provider || 'custom').slice(0, 80),
+            model: String(model.model || model.id || '').slice(0, 240),
+            description: String(model.description || '').slice(0, 600),
+            info_url: (typeof model.info_url === 'string' && /^https?:\/\//i.test(model.info_url))
+                ? model.info_url.slice(0, 2048) : '',
+            is_custom: !!model._isCustom,
+        });
+    }
+
+    function _publicModelState() {
+        var cfg = _cfg();
+        var active = _getActiveModel(cfg);
+        var support = _reasoningSupport(active, cfg);
+        var effort = _effortById(_getEffortLevel());
+        return Object.freeze({
+            active: _publicModelSnapshot(active),
+            effort: Object.freeze({
+                id: support.effort ? effort.id : 'default',
+                label: support.effort ? effort.label : 'Default',
+                supported: !!support.effort,
+            }),
+        });
+    }
+
+    function _installPublicModelBridge() {
+        try {
+            if (window.AI_ASSISTANT_MODEL_API) return;
+            var bridge = {
+                listModels: function () {
+                    return _quickModelCandidates(_cfg()).map(_publicModelSnapshot).filter(Boolean);
+                },
+                getState: function () { return _publicModelState(); },
+                selectModel: function (id) { return _selectQuickModel(String(id || '')); },
+                openPicker: function (opener) {
+                    try {
+                        if (!_aiPanelEl) _aiPanelEl = createAIPanel();
+                        _openAIPanel();
+                        _dispatchAssistantEvent(new CustomEvent(
+                            'ai-assistant-open-model-configuration',
+                            { detail: { opener: opener || document.activeElement }, bubbles: false }
+                        ));
+                        return true;
+                    } catch (_) { return false; }
+                },
+                onChange: function (callback) {
+                    if (typeof callback !== 'function') return function () {};
+                    var bus = (typeof _assistantEvents !== 'undefined') ? _assistantEvents : document;
+                    var handler = function () {
+                        try { callback(_publicModelState()); } catch (_) {}
+                    };
+                    bus.addEventListener('ai-assistant-model-change', handler);
+                    bus.addEventListener('ai-assistant-effort-change', handler);
+                    return function () {
+                        bus.removeEventListener('ai-assistant-model-change', handler);
+                        bus.removeEventListener('ai-assistant-effort-change', handler);
+                    };
+                },
+            };
+            Object.freeze(bridge);
+            Object.defineProperty(window, 'AI_ASSISTANT_MODEL_API', {
+                value: bridge, configurable: false, enumerable: false, writable: false
+            });
+            try { window.dispatchEvent(new CustomEvent('ai-assistant-model-api-ready')); } catch (_) {}
+        } catch (_) {}
+    }
+
     // ── Shared surface: window.AI_ASSISTANT ──────────────────────────────────
     // A small, stable namespace exposing the symbols shared between the
     // lightweight toolbar buttons (copy / view-as-Markdown / ask-LLM / PDF) and
@@ -52082,6 +52262,9 @@
             _clearReasoningCircuit(_getActiveModel(_cfg()));
             _announceEffortScaleChange(activeId);
         };
+        // Sibling extensions consume model state through a separate frozen
+        // bridge so this broader namespace never becomes a secret-bearing API.
+        _installPublicModelBridge();
     }());
 
     // B41 diagnostic surface contains no secret/capability material.

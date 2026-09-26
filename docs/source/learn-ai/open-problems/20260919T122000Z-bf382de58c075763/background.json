@@ -1,0 +1,24 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-sgd-convergence-monitoring",
+  "section": {
+    "body": "SGD exposes choices around loss, regularization, learning-rate behavior, stopping criteria, and feature scaling. Those controls make it useful for large or incremental workloads but also make convergence a workflow concern that should be observed rather than assumed.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-sgd"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-linear-models"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-svm"
+      }
+    ],
+    "id": "background",
+    "links": [],
+    "title": "Background"
+  }
+}

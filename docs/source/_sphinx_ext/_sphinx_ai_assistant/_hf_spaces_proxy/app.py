@@ -5,7 +5,7 @@
 # Authors: The scikit-plots developers
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# scikit-plots/ai  ·  _hf_spaces_proxy/app.py  v7.4.0
+# scikit-plots/ai  ·  _hf_spaces_proxy/app.py  v7.7.0
 #
 # Server-authoritative chat proxy for sphinx-ai-assistant.
 #
@@ -91,6 +91,9 @@
 #                       Accepted values: fine-grained | read | write.
 #   ALLOWED_ORIGINS     Comma-separated exact CORS origins. Additive by default; use ALLOWED_ORIGINS_MODE=replace for downstream sites.
 #   ALLOWED_ORIGINS_MODE additive (default) keeps built-in Scikit-plots origins; replace trusts only ALLOWED_ORIGINS.
+#   LOCAL_DEV_ORIGINS   Optional comma-separated exact loopback browser origins
+#                       for local docs development (for example
+#                       http://127.0.0.1:8000). Non-loopback entries are ignored.
 #   RECORD_STORAGE_TARGETS  Optional JSON array defining one primary record
 #                       store plus mirrors (huggingface/github/gitlab/bitbucket).
 #                       Credentials are referenced only through env names with
@@ -107,6 +110,16 @@
 #   PROVIDER_ARTIFACT_RATE_LIMIT_PER_HOUR Per-IP provider binary generation operations. Default: 10.
 #   PROVIDER_ARTIFACT_OUTPUT_ADAPTERS Comma-separated explicit production binary-output adapters.
 #                       Currently: openai. Default: empty (production output disabled).
+#   VIDEO_GENERATION_MODE disabled (default), stub (test-only/no publication),
+#                       or upstream (delegate to a real generation service).
+#   VIDEO_GENERATION_UPSTREAM_URL Exact HTTPS /v1/video-generations collection
+#                       endpoint used only when mode=upstream.
+#   VIDEO_GENERATION_UPSTREAM_TOKEN Optional server-only bearer credential bound
+#                       only to VIDEO_GENERATION_UPSTREAM_URL. Never browser-visible.
+#   VIDEO_GENERATION_TIMEOUT_SECONDS Upstream lifecycle request timeout. Default: 600.
+#   VIDEO_GENERATION_RATE_LIMIT_PER_HOUR Per-IP create operations. Default: 12.
+#   DOCUMENT_GENERATION_RATE_LIMIT_PER_HOUR Per-IP document operations. Default: 20.
+#   VIDEO_GENERATION_STUB_READY_SECONDS Test backend time-to-ready. Default: 3.
 #   PROVIDER_ARTIFACT_LIFECYCLE_BACKEND memory (default) or redis. Redis is the shared
 #                       atomic lifecycle authority for multi-worker/multi-replica output + ZIP correlation.
 #   PROVIDER_ARTIFACT_LIFECYCLE_REDIS_URL Redis/rediss URL used only when lifecycle backend=redis.
@@ -146,9 +159,17 @@
 #                       Redis initialization/runtime failure returns HTTP 503.
 #   RATE_LIMIT_REDIS_TIMEOUT_SECONDS Redis operation timeout; clamped 0.25..10 s.
 #   FEEDBACK_PERSIST_ENABLED Persist privacy-minimal consent-gated rating telemetry only. Default false.
-#   CONTRIBUTION_REVIEW_MODE ledger (compatibility) or provider-pr. provider-pr
-#                       stores consented submissions in a native Git/HF review ref;
-#                       only merge into the canonical branch makes them eligible.
+#   CONTRIBUTION_REVIEW_MODE provider-pr (default) or ledger compatibility.
+#                       provider-pr stores consented submissions in a native
+#                       provider review ref; only merge into the canonical branch
+#                       makes them eligible. Invalid explicit values fall back to ledger.
+#   AI_LEARN_PUBLICATION_MODE github (default), stub, or disabled. GitHub mode
+#                       still fails closed until a server-side dispatch credential
+#                       is available. Generate itself never publishes.
+#   AI_LEARN_GITHUB_TOKEN Preferred fixed-workflow dispatch credential. When unset,
+#                       AI_RECORD_STORAGE_TOKEN_GITHUB_MIRROR is an ordered
+#                       compatibility fallback and must independently have access
+#                       to the fixed AI Learn repository/workflow.
 #   CONTRIBUTION_REVIEW_TOKEN Optional operator token for API-driven merge/promotion.
 #                       Native provider UI merge/close remains the preferred review path.
 #   CONTRIBUTION_QUARANTINE_TTL_SECONDS Pending contribution lifetime. Default 86400.
@@ -202,6 +223,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import secrets
 import time as _time
 import uuid
@@ -371,6 +393,15 @@ try:
         parse_resource_chat_request,
     )
     from ._utils._shared_logic import (  # type: ignore[import]
+        DEFAULT_AI_LEARN_CANONICAL_PREFIX,
+        DEFAULT_AI_LEARN_GITHUB_DEFAULT_BRANCH,
+        DEFAULT_AI_LEARN_GITHUB_REPOSITORY,
+        DEFAULT_AI_LEARN_GITHUB_TOKEN_ENVS,
+        DEFAULT_AI_LEARN_GITHUB_WORKFLOW,
+        DEFAULT_AI_LEARN_PUBLICATION_MAX_BODY_BYTES,
+        DEFAULT_AI_LEARN_PUBLICATION_MODE,
+        DEFAULT_AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR,
+        DEFAULT_CONTRIBUTION_REVIEW_MODE,
         DEFAULT_HF_BASE,
         DEFAULT_HF_PROVIDER_MODELS,
         DEFAULT_HF_SPACES_MODEL_NAMESPACES,
@@ -380,10 +411,12 @@ try:
         DEFAULT_PATH2_READ_TIMEOUT,
         DEFAULT_PATH3_READ_TIMEOUT,
         DEFAULT_PROXY_TIMEOUT,
+        DEFAULT_RECORD_STORAGE_TARGETS,
         PROXY_VERSION,
         _classify_token_type,
         _mask_ip,
         _RedactingFilter,
+        _resolve_first_env_value,
         _resolve_upstream_url,
         _safe_float,
         _safe_int,
@@ -410,6 +443,15 @@ except Exception:  # noqa: BLE001
         parse_resource_chat_request,
     )
     from _utils._shared_logic import (  # type: ignore[import]
+        DEFAULT_AI_LEARN_CANONICAL_PREFIX,
+        DEFAULT_AI_LEARN_GITHUB_DEFAULT_BRANCH,
+        DEFAULT_AI_LEARN_GITHUB_REPOSITORY,
+        DEFAULT_AI_LEARN_GITHUB_TOKEN_ENVS,
+        DEFAULT_AI_LEARN_GITHUB_WORKFLOW,
+        DEFAULT_AI_LEARN_PUBLICATION_MAX_BODY_BYTES,
+        DEFAULT_AI_LEARN_PUBLICATION_MODE,
+        DEFAULT_AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR,
+        DEFAULT_CONTRIBUTION_REVIEW_MODE,
         DEFAULT_HF_BASE,
         DEFAULT_HF_PROVIDER_MODELS,
         DEFAULT_HF_SPACES_MODEL_NAMESPACES,
@@ -419,10 +461,12 @@ except Exception:  # noqa: BLE001
         DEFAULT_PATH2_READ_TIMEOUT,
         DEFAULT_PATH3_READ_TIMEOUT,
         DEFAULT_PROXY_TIMEOUT,
+        DEFAULT_RECORD_STORAGE_TARGETS,
         PROXY_VERSION,
         _classify_token_type,
         _mask_ip,
         _RedactingFilter,
+        _resolve_first_env_value,
         _resolve_upstream_url,
         _safe_float,
         _safe_int,
@@ -437,6 +481,108 @@ except Exception:  # noqa: BLE001
         stub_modes,
         stub_payload,
         stub_sse_frames,
+    )
+
+try:
+    from ._utils._video_generation import (  # type: ignore[import]
+        VIDEO_GENERATION_ACTIONS,
+        VIDEO_GENERATION_CAPABILITY_VERSION,
+        VIDEO_GENERATION_JOB_CONTRACT,
+        VIDEO_GENERATION_MAX_BODY_BYTES,
+        VIDEO_GENERATION_REQUEST_CONTRACT,
+        VIDEO_GENERATION_RESULT_PROVIDERS,
+        StubVideoGenerationStore,
+        VideoGenerationError,
+        normalize_video_job,
+        normalize_video_upstream_url,
+        parse_video_generation_request,
+        validate_generation_id,
+        validate_idempotency_key,
+    )
+except Exception:  # noqa: BLE001
+    from _utils._video_generation import (  # type: ignore[import]
+        VIDEO_GENERATION_ACTIONS,
+        VIDEO_GENERATION_CAPABILITY_VERSION,
+        VIDEO_GENERATION_JOB_CONTRACT,
+        VIDEO_GENERATION_MAX_BODY_BYTES,
+        VIDEO_GENERATION_REQUEST_CONTRACT,
+        VIDEO_GENERATION_RESULT_PROVIDERS,
+        StubVideoGenerationStore,
+        VideoGenerationError,
+        normalize_video_job,
+        normalize_video_upstream_url,
+        parse_video_generation_request,
+        validate_generation_id,
+        validate_idempotency_key,
+    )
+
+try:
+    from ._utils._audio_generation import (  # type: ignore[import]
+        AUDIO_GENERATION_CAPABILITY_VERSION,
+        AUDIO_GENERATION_MAX_REQUEST_BYTES,
+        AUDIO_GENERATION_REQUEST_CONTRACT,
+        GENERATION_JOB_CONTRACT,
+        AudioGenerationError,
+        AudioGenerationService,
+        parse_audio_generation_request,
+    )
+except Exception:  # noqa: BLE001
+    from _utils._audio_generation import (  # type: ignore[import]
+        AUDIO_GENERATION_CAPABILITY_VERSION,
+        AUDIO_GENERATION_MAX_REQUEST_BYTES,
+        AUDIO_GENERATION_REQUEST_CONTRACT,
+        GENERATION_JOB_CONTRACT,
+        AudioGenerationError,
+        AudioGenerationService,
+        parse_audio_generation_request,
+    )
+
+try:
+    from ._utils._document_generation import (  # type: ignore[import]
+        DOCUMENT_GENERATION_CAPABILITY_VERSION,
+        DOCUMENT_GENERATION_REQUEST_CONTRACT,
+        MAX_DOCUMENT_GENERATION_REQUEST_BYTES,
+        DocumentGenerationError,
+        build_document_prompt,
+        build_document_response,
+        extract_text_completion,
+        parse_document_generation_request,
+    )
+except Exception:  # noqa: BLE001
+    from _utils._document_generation import (  # type: ignore[import]
+        DOCUMENT_GENERATION_CAPABILITY_VERSION,
+        DOCUMENT_GENERATION_REQUEST_CONTRACT,
+        MAX_DOCUMENT_GENERATION_REQUEST_BYTES,
+        DocumentGenerationError,
+        build_document_prompt,
+        build_document_response,
+        extract_text_completion,
+        parse_document_generation_request,
+    )
+
+try:
+    from ._utils._learn_publication import (  # type: ignore[import]
+        PUBLICATION_RECEIPT_CONTRACT,
+        LearnPublicationTransportError,
+        build_publication_policy,
+        parse_publication_request,
+        publication_request_id,
+        workflow_dispatch_body,
+    )
+    from ._utils._learn_publication import (
+        capability_document as _learn_publication_capability_document,
+    )
+except Exception:  # noqa: BLE001
+    from _utils._learn_publication import (  # type: ignore[import]
+        PUBLICATION_RECEIPT_CONTRACT,
+        LearnPublicationTransportError,
+        build_publication_policy,
+        parse_publication_request,
+        publication_request_id,
+        workflow_dispatch_body,
+    )
+    from _utils._learn_publication import (
+        capability_document as _learn_publication_capability_document,
     )
 
 try:
@@ -1096,6 +1242,90 @@ ALLOWED_MODELS: tuple[str, ...] = (
     or _DEFAULT_ALLOWED_MODELS
 )
 
+#: AI Learn reviewed-publication transport. GitHub is the default transport;
+#: repository identity, workflow, branch, subtree and credential are server-owned
+#: policy and are never accepted from browser requests.
+AI_LEARN_PUBLICATION_MODE: str = (
+    os.environ.get("AI_LEARN_PUBLICATION_MODE", DEFAULT_AI_LEARN_PUBLICATION_MODE)
+    .strip()
+    .lower()
+    or DEFAULT_AI_LEARN_PUBLICATION_MODE
+)
+AI_LEARN_GITHUB_REPOSITORY: str = (
+    os.environ.get(
+        "AI_LEARN_GITHUB_REPOSITORY", DEFAULT_AI_LEARN_GITHUB_REPOSITORY
+    ).strip()
+    or DEFAULT_AI_LEARN_GITHUB_REPOSITORY
+)
+AI_LEARN_GITHUB_DEFAULT_BRANCH: str = (
+    os.environ.get(
+        "AI_LEARN_GITHUB_DEFAULT_BRANCH", DEFAULT_AI_LEARN_GITHUB_DEFAULT_BRANCH
+    ).strip()
+    or DEFAULT_AI_LEARN_GITHUB_DEFAULT_BRANCH
+)
+AI_LEARN_GITHUB_WORKFLOW: str = (
+    os.environ.get("AI_LEARN_GITHUB_WORKFLOW", DEFAULT_AI_LEARN_GITHUB_WORKFLOW).strip()
+    or DEFAULT_AI_LEARN_GITHUB_WORKFLOW
+)
+AI_LEARN_CANONICAL_PREFIX: str = (
+    os.environ.get(
+        "AI_LEARN_CANONICAL_PREFIX",
+        DEFAULT_AI_LEARN_CANONICAL_PREFIX,
+    ).strip()
+    or DEFAULT_AI_LEARN_CANONICAL_PREFIX
+)
+AI_LEARN_GITHUB_TOKEN, AI_LEARN_GITHUB_TOKEN_ENV = _resolve_first_env_value(
+    DEFAULT_AI_LEARN_GITHUB_TOKEN_ENVS
+)
+AI_LEARN_PUBLICATION_MAX_BODY_BYTES: int = max(
+    4096,
+    min(
+        _safe_int(
+            os.environ.get("AI_LEARN_PUBLICATION_MAX_BODY_BYTES"),
+            DEFAULT_AI_LEARN_PUBLICATION_MAX_BODY_BYTES,
+        ),
+        60_000,
+    ),
+)
+AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR: int = max(
+    1,
+    min(
+        _safe_int(
+            os.environ.get("AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR"),
+            DEFAULT_AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR,
+        ),
+        120,
+    ),
+)
+try:
+    AI_LEARN_PUBLICATION_POLICY = build_publication_policy(
+        mode=AI_LEARN_PUBLICATION_MODE,
+        repository=AI_LEARN_GITHUB_REPOSITORY,
+        default_branch=AI_LEARN_GITHUB_DEFAULT_BRANCH,
+        canonical_prefix=AI_LEARN_CANONICAL_PREFIX,
+        workflow=AI_LEARN_GITHUB_WORKFLOW,
+        max_request_bytes=AI_LEARN_PUBLICATION_MAX_BODY_BYTES,
+    )
+except LearnPublicationTransportError as exc:
+    logger.error("AI Learn publication policy invalid; publication disabled: %s", exc)
+    AI_LEARN_PUBLICATION_POLICY = build_publication_policy(
+        mode="disabled",
+        repository=DEFAULT_AI_LEARN_GITHUB_REPOSITORY,
+        default_branch=DEFAULT_AI_LEARN_GITHUB_DEFAULT_BRANCH,
+        canonical_prefix=DEFAULT_AI_LEARN_CANONICAL_PREFIX,
+        workflow=DEFAULT_AI_LEARN_GITHUB_WORKFLOW,
+        max_request_bytes=DEFAULT_AI_LEARN_PUBLICATION_MAX_BODY_BYTES,
+    )
+if (
+    AI_LEARN_PUBLICATION_POLICY.mode == "github"  # lint
+    and AI_LEARN_GITHUB_TOKEN_ENV  # lint
+    == "AI_RECORD_STORAGE_TOKEN_GITHUB_MIRROR"  # ruff: ignore[hardcoded-password-string]
+):
+    logger.info(
+        "AI Learn publication is using the ordered GitHub mirror-token fallback; "
+        "the credential must also be authorized for the fixed AI Learn repository workflow."
+    )
+
 #: Maximum accepted request body size (bytes).
 MAX_BODY_BYTES: int = max(
     16_384,
@@ -1163,6 +1393,7 @@ _RESOURCE_PROVIDER_REGISTRY = ProviderRegistry(
 _RESOURCE_EXECUTOR_REGISTRY = ProviderExecutorRegistry(provider_names())
 # Binary output generation is a separate authority from chat/resource input.
 _PROVIDER_ARTIFACT_OUTPUT_REGISTRY = ProviderArtifactOutputRegistry()
+_AUDIO_GENERATION_SERVICE: AudioGenerationService | None = None
 _PROVIDER_ARTIFACT_LIFECYCLE = None  # configured after Redis transport policy is known
 
 
@@ -1603,6 +1834,52 @@ def _normalise_browser_origin(value: str) -> str:
     return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
+def _normalise_local_dev_origin(value: str) -> str:
+    """Return a canonical exact loopback origin for local browser development.
+
+    This intentionally accepts only ``localhost`` or numeric loopback addresses.
+    It is a developer convenience layer, not a second general-purpose public
+    origin allowlist. Exact ports remain part of the browser origin.
+    """
+    origin = _normalise_browser_origin(value)
+    if not origin:
+        return ""
+    try:
+        from ipaddress import ip_address  # ruff: ignore[import-outside-top-level]
+        from urllib.parse import urlsplit  # ruff: ignore[import-outside-top-level]
+
+        parsed = urlsplit(origin)
+        hostname = (parsed.hostname or "").lower()
+        if hostname == "localhost":
+            return origin
+        try:
+            if ip_address(hostname).is_loopback:
+                return origin
+        except ValueError:
+            pass
+    except ValueError:
+        pass
+    return ""
+
+
+def _build_local_dev_origins(raw: str) -> list[str]:
+    """Build an exact, loopback-only local-development origin allowlist."""
+    merged: list[str] = []
+    for item in str(raw or "").split(","):
+        item = item.strip()  # ruff: ignore[redefined-loop-name]
+        if not item:
+            continue
+        normalised = _normalise_local_dev_origin(item)
+        if not normalised:
+            logger.warning(
+                "AI proxy [CORS_LOCAL_DEV_ORIGIN_IGNORED]: LOCAL_DEV_ORIGINS accepts only exact localhost/loopback HTTP(S) origins."
+            )
+            continue
+        if normalised not in merged:
+            merged.append(normalised)
+    return merged
+
+
 def _normalise_allowed_origins_mode(value: str) -> str:
     """Return the supported CORS composition mode without echoing bad input."""
     mode = str(value or "additive").strip().lower() or "additive"
@@ -1615,12 +1892,13 @@ def _normalise_allowed_origins_mode(value: str) -> str:
 
 
 def _build_allowed_origins(raw: str, *, mode: str = "additive") -> list[str]:
-    """Build the exact browser-origin allowlist.
+    """Build the exact general browser-origin allowlist.
 
     ``additive`` retains the package defaults and appends deployment-specific
     exact origins. ``replace`` starts empty so downstream/open-source deployments
     can own their complete browser-origin trust boundary without editing source.
-    Only an explicit ``*`` selects wildcard compatibility mode.
+    Local-development origins are intentionally composed in a separate step.
+    Only an explicit ``ALLOWED_ORIGINS=*`` selects wildcard compatibility mode.
     """
     text = str(raw or "").strip()
     if text == "*":
@@ -1644,12 +1922,28 @@ def _build_allowed_origins(raw: str, *, mode: str = "additive") -> list[str]:
     return merged
 
 
+def _merge_local_dev_origins(
+    origins: list[str], local_dev_origins: list[str]
+) -> list[str]:
+    """Merge explicit loopback dev origins without weakening wildcard semantics."""
+    if origins == ["*"]:
+        return ["*"]
+    merged = list(origins)
+    for origin in local_dev_origins:
+        if origin not in merged:
+            merged.append(origin)
+    return merged
+
+
 _raw_origins: str = os.environ.get("ALLOWED_ORIGINS", "").strip()
+_raw_local_dev_origins: str = os.environ.get("LOCAL_DEV_ORIGINS", "").strip()
+_local_dev_origins: list[str] = _build_local_dev_origins(_raw_local_dev_origins)
 ALLOWED_ORIGINS_MODE: str = _normalise_allowed_origins_mode(
     os.environ.get("ALLOWED_ORIGINS_MODE", "additive")
 )
-_allowed_origins: list[str] = _build_allowed_origins(
-    _raw_origins, mode=ALLOWED_ORIGINS_MODE
+_allowed_origins: list[str] = _merge_local_dev_origins(
+    _build_allowed_origins(_raw_origins, mode=ALLOWED_ORIGINS_MODE),
+    _local_dev_origins,
 )
 
 #: Optional Share-only compatibility for browser opaque origins such as
@@ -1690,6 +1984,11 @@ elif _raw_origins:
         "AI proxy CORS: built-in documentation origins retained; ALLOWED_ORIGINS contributes additional exact origins."
     )
 
+if _local_dev_origins:
+    logger.warning(
+        "AI proxy CORS [LOCAL_DEV_ORIGINS_ENABLED]: exact loopback browser origins are enabled for local development; keep this list narrow and remove it when not needed."
+    )
+
 #: Trust ``X-Forwarded-For`` only when a known ingress proxy strips/overwrites
 #: caller-supplied values.  Default false prevents rate-limit identity spoofing.
 TRUST_X_FORWARDED_FOR: bool = os.environ.get(
@@ -1700,12 +1999,17 @@ TRUST_X_FORWARDED_FOR: bool = os.environ.get(
 #: Must be set if POST /v1/contribute is expected to succeed.
 TRAINING_DATASET_REPO: str = os.environ.get("TRAINING_DATASET_REPO", "").strip()
 
-#: Provider-neutral record storage targets. JSON array; see README.  When unset,
-#: TRAINING_DATASET_REPO + HF_WRITE_TOKEN/HF_TOKEN are synthesized as one
-#: Hugging Face primary target for backwards compatibility.
-RECORD_STORAGE_TARGETS: str = (
+#: Provider-neutral record storage targets. JSON array; see README. Explicit
+#: topology wins, then the deprecated DATASET_TARGETS_JSON alias. If neither is
+#: set, a legacy TRAINING_DATASET_REPO still preserves historical single-HF
+#: synthesis; otherwise the code-owned records projection of DEFAULT_TARGET_REGISTRY
+#: provides the bundled HF Primary + GitHub Mirror topology.
+_EXPLICIT_RECORD_STORAGE_TARGETS: str = (
     os.environ.get("RECORD_STORAGE_TARGETS", "").strip()
     or os.environ.get("DATASET_TARGETS_JSON", "").strip()
+)
+RECORD_STORAGE_TARGETS: str = _EXPLICIT_RECORD_STORAGE_TARGETS or (
+    "" if TRAINING_DATASET_REPO else DEFAULT_RECORD_STORAGE_TARGETS
 )
 
 
@@ -1748,7 +2052,10 @@ FEEDBACK_REVIEW_TTL_SECONDS: int = max(
 #: provider review ref (GitHub PR, GitLab MR, Bitbucket PR, or Hugging Face PR);
 #: only merging into the configured canonical branch makes it training eligible.
 CONTRIBUTION_REVIEW_MODE: str = (
-    os.environ.get("CONTRIBUTION_REVIEW_MODE", "ledger").strip().lower() or "ledger"
+    os.environ.get("CONTRIBUTION_REVIEW_MODE", DEFAULT_CONTRIBUTION_REVIEW_MODE)
+    .strip()
+    .lower()
+    or DEFAULT_CONTRIBUTION_REVIEW_MODE
 )
 if CONTRIBUTION_REVIEW_MODE not in {"ledger", "provider-pr"}:
     CONTRIBUTION_REVIEW_MODE = "ledger"
@@ -2010,6 +2317,66 @@ REASONING_BUDGET_MAX: int = max(
 #: Maximum records per contribution POST.
 MAX_CONTRIBUTION_RECORDS: int = 100
 
+#: Video generation stays fail-closed unless an operator deliberately enables
+#: either the deterministic test backend or an HTTPS upstream generation API.
+#: ``stub`` is safe for end-to-end browser testing: it never publishes media.
+#: ``upstream`` delegates lifecycle calls to VIDEO_GENERATION_UPSTREAM_URL and
+#: keeps any bearer token server-side.
+VIDEO_GENERATION_MODE: str = (
+    os.environ.get(
+        "VIDEO_GENERATION_MODE",
+        "disabled",
+    )
+    .strip()
+    .lower()
+)
+VIDEO_GENERATION_RATE_LIMIT_PER_HOUR: int = max(
+    1,
+    min(_safe_int(os.environ.get("VIDEO_GENERATION_RATE_LIMIT_PER_HOUR"), 12), 120),
+)
+DOCUMENT_GENERATION_RATE_LIMIT_PER_HOUR: int = max(
+    1,
+    min(_safe_int(os.environ.get("DOCUMENT_GENERATION_RATE_LIMIT_PER_HOUR"), 20), 240),
+)
+VIDEO_GENERATION_TIMEOUT_SECONDS: float = max(
+    5.0,
+    min(_safe_float(os.environ.get("VIDEO_GENERATION_TIMEOUT_SECONDS"), 600.0), 3600.0),
+)
+VIDEO_GENERATION_STUB_READY_SECONDS: float = max(
+    0.0,
+    min(_safe_float(os.environ.get("VIDEO_GENERATION_STUB_READY_SECONDS"), 3.0), 300.0),
+)
+VIDEO_GENERATION_UPSTREAM_TOKEN: str = os.environ.get(
+    "VIDEO_GENERATION_UPSTREAM_TOKEN",
+    "",
+).strip()
+_VIDEO_GENERATION_CONFIG_ERROR: str = ""
+_VIDEO_GENERATION_UPSTREAM_URL: str = ""
+if VIDEO_GENERATION_MODE not in {"disabled", "stub", "upstream"}:
+    _VIDEO_GENERATION_CONFIG_ERROR = "invalid-mode"
+    logger.error(
+        "AI proxy [VIDEO_GENERATION_CONFIG_INVALID]: unsupported VIDEO_GENERATION_MODE."
+    )
+    VIDEO_GENERATION_MODE = "disabled"
+if VIDEO_GENERATION_MODE == "upstream":
+    try:
+        _VIDEO_GENERATION_UPSTREAM_URL = normalize_video_upstream_url(
+            os.environ.get("VIDEO_GENERATION_UPSTREAM_URL", "")
+        )
+        if not _VIDEO_GENERATION_UPSTREAM_URL:
+            raise VideoGenerationError(
+                "VIDEO_UPSTREAM_INVALID", "Video generation upstream is not configured."
+            )
+    except VideoGenerationError:
+        _VIDEO_GENERATION_CONFIG_ERROR = "invalid-upstream"
+        logger.error(
+            "AI proxy [VIDEO_GENERATION_CONFIG_INVALID]: VIDEO_GENERATION_UPSTREAM_URL is missing or invalid."
+        )
+
+_VIDEO_GENERATION_STUB = StubVideoGenerationStore(
+    ready_seconds=VIDEO_GENERATION_STUB_READY_SECONDS
+)
+
 #: Maximum number of distinct identities kept in each in-memory rate-limit dict.
 #: Expired windows are swept before admission; when all remaining entries are
 #: live, a new identity fails closed instead of growing the map.  This keeps
@@ -2030,6 +2397,14 @@ _zip_edit_rl: dict[str, tuple[int, float]] = {}
 _zip_edit_rl_lock = asyncio.Lock()
 _provider_artifact_rl: dict[str, tuple[int, float]] = {}
 _provider_artifact_rl_lock = asyncio.Lock()
+_video_generation_rl: dict[str, tuple[int, float]] = {}
+_video_generation_rl_lock = asyncio.Lock()
+_audio_generation_rl: dict[str, tuple[int, float]] = {}
+_audio_generation_rl_lock = asyncio.Lock()
+_document_generation_rl: dict[str, tuple[int, float]] = {}
+_document_generation_rl_lock = asyncio.Lock()
+_learn_publication_rl: dict[str, tuple[int, float]] = {}
+_learn_publication_rl_lock = asyncio.Lock()
 _contrib_rl: dict[str, tuple[int, float]] = {}
 _contrib_rl_lock = asyncio.Lock()
 _feedback_review_rl: dict[str, tuple[int, float]] = {}
@@ -2389,6 +2764,11 @@ async def _lifespan(  # ruff: ignore[too-many-branches]
             "Provider artifact lifecycle backend unavailable: code=%s", exc.code
         )
     _configure_provider_artifact_outputs(_http_client)
+    global _AUDIO_GENERATION_SERVICE  # ruff: ignore[global-statement]
+    _AUDIO_GENERATION_SERVICE = AudioGenerationService(
+        registry=_PROVIDER_ARTIFACT_OUTPUT_REGISTRY,
+        model_allowed=_resource_model_allowed,
+    )
     if _RESOURCE_EXECUTOR_REGISTRY.execution_state("openai") == "enabled":
         logger.info(
             "OpenAI first-class resource executor enabled for the pinned official backend."
@@ -2663,6 +3043,9 @@ app.add_middleware(
         "X-AI-Resource-Id",
         "X-AI-Management-Token-Hash",
         "X-AI-Operation-Created-At",
+        "Idempotency-Key",
+        "X-Generation-Capability",
+        "X-Artifact-Capability",
     ],
     expose_headers=[
         "Content-Disposition",
@@ -2693,8 +3076,9 @@ async def _browser_origin_guard(request: Request, call_next):
             )
         else:
             detail = (
-                "Origin not allowed. Official Scikit-Plots documentation origin "
-                "is always permitted by proxy v6.5.1+."
+                "Origin not allowed. Official Scikit-Plots documentation origins are built in. "
+                "For local browser development, add the exact loopback origin to LOCAL_DEV_ORIGINS "
+                "(for example http://127.0.0.1:8000); for other sites use ALLOWED_ORIGINS."
             )
         return JSONResponse(
             {"detail": detail},
@@ -3634,6 +4018,7 @@ def _cors_public_status() -> dict[str, Any]:
         ),
         "wildcard": wildcard,
         "allowed_origin_count": None if wildcard else len(_allowed_origins),
+        "local_dev_origin_count": len(_local_dev_origins),
         "env_semantics": ALLOWED_ORIGINS_MODE,
         "share_opaque_origin_allowed": SHARE_ALLOW_OPAQUE_ORIGIN,
         "share_opaque_origin_write_allowed": bool(
@@ -3861,7 +4246,8 @@ def _public_capabilities() -> dict:
         "version": 2,
         "contract": PROVIDER_ARTIFACT_CONTRACT,
         "receipt_contract": PROVIDER_ARTIFACT_RECEIPT_CONTRACT,
-        "endpoint": "/v1/artifacts/provider-output",
+        "endpoint": "/v1/image",
+        "legacy_endpoint": "/v1/artifacts/provider-output",
         "max_request_bytes": PROVIDER_ARTIFACT_MAX_REQUEST_BYTES,
         "max_prompt_chars": PROVIDER_ARTIFACT_MAX_PROMPT_CHARS,
         "max_output_bytes": PROVIDER_ARTIFACT_MAX_OUTPUT_BYTES,
@@ -3879,6 +4265,118 @@ def _public_capabilities() -> dict:
         "generators": generators,
         "chat_text_is_output_authority": False,
         "resource_input_is_output_authority": False,
+    }
+    video_enabled = (
+        not _VIDEO_GENERATION_CONFIG_ERROR
+        and VIDEO_GENERATION_MODE in {"stub", "upstream"}
+        and (
+            VIDEO_GENERATION_MODE != "upstream" or bool(_VIDEO_GENERATION_UPSTREAM_URL)
+        )
+    )
+    caps["video_generation"] = {
+        "version": VIDEO_GENERATION_CAPABILITY_VERSION,
+        "enabled": bool(video_enabled),
+        "mode": VIDEO_GENERATION_MODE if video_enabled else "disabled",
+        "test_mode": bool(video_enabled and VIDEO_GENERATION_MODE == "stub"),
+        "contract": VIDEO_GENERATION_REQUEST_CONTRACT,
+        "job_contract": VIDEO_GENERATION_JOB_CONTRACT,
+        "endpoint": "/v1/video",
+        "legacy_endpoint": "/v1/video-generations",
+        "status_endpoint": "/v1/video/{generation_id}",
+        # Your Videos is a browser-local receipt library. Collection
+        # enumeration is exposed only by the deterministic test backend; the
+        # public upstream gateway must not accidentally become a cross-user
+        # job index.
+        "list_endpoint": (
+            "/v1/video" if video_enabled and VIDEO_GENERATION_MODE == "stub" else None
+        ),
+        "library_scope": "browser-local-receipts",
+        "enumeration": (
+            "test-only"
+            if video_enabled and VIDEO_GENERATION_MODE == "stub"
+            else "disabled"
+        ),
+        "status_access": "opaque-generation-id",
+        "actions": list(VIDEO_GENERATION_ACTIONS),
+        "idempotency_header": "Idempotency-Key",
+        "lifecycle": [
+            "draft",
+            "submitted",
+            "queued",
+            "running",
+            "ready",
+            "failed",
+            "cancelled",
+            "archived",
+        ],
+        "result_providers": list(VIDEO_GENERATION_RESULT_PROVIDERS),
+        "publish_provider": (
+            "youtube"
+            if video_enabled and VIDEO_GENERATION_MODE == "upstream"
+            else "none"
+        ),
+        "publishes_media": bool(video_enabled and VIDEO_GENERATION_MODE == "upstream"),
+        "model_selection": "requested-provenance",
+        "lifecycle_authority": {
+            "backend": (
+                "memory"
+                if VIDEO_GENERATION_MODE == "stub"
+                else ("upstream" if video_enabled else "none")
+            ),
+            "shared": bool(video_enabled and VIDEO_GENERATION_MODE == "upstream"),
+            "durable": bool(video_enabled and VIDEO_GENERATION_MODE == "upstream"),
+        },
+        "reason": (
+            "test-backend-enabled"
+            if video_enabled and VIDEO_GENERATION_MODE == "stub"
+            else (
+                "upstream-configured"
+                if video_enabled and VIDEO_GENERATION_MODE == "upstream"
+                else _VIDEO_GENERATION_CONFIG_ERROR or "disabled-by-operator"
+            )
+        ),
+    }
+    audio_specs = [
+        spec
+        for spec in _PROVIDER_ARTIFACT_OUTPUT_REGISTRY.public_specs()
+        if spec.kind == "audio"
+    ]
+    audio_enabled = bool(audio_specs and _AUDIO_GENERATION_SERVICE is not None)
+    caps["audio_generation"] = {
+        "version": AUDIO_GENERATION_CAPABILITY_VERSION,
+        "enabled": audio_enabled,
+        "contract": AUDIO_GENERATION_REQUEST_CONTRACT,
+        "job_contract": GENERATION_JOB_CONTRACT,
+        "endpoint": "/v1/audio",
+        "legacy_endpoint": "/v1/audio-generations",
+        "status_endpoint": "/v1/audio/{generation_id}",
+        "artifact_endpoint": "/v1/generated-artifacts/{artifact_id}",
+        "idempotency_header": "Idempotency-Key",
+        "job_capability_header": "X-Generation-Capability",
+        "artifact_capability_header": "X-Artifact-Capability",
+        "operation": "speech.synthesize",
+        "modes": ["narration"],
+        "test_mode": bool(
+            audio_enabled and all(spec.diagnostic for spec in audio_specs),
+        ),
+        "lifecycle": ["queued", "running", "ready", "failed", "cancelled"],
+        "job_authority": (
+            _AUDIO_GENERATION_SERVICE.manifest()
+            if _AUDIO_GENERATION_SERVICE is not None
+            else {"backend": "none", "shared": False, "durable": False}
+        ),
+        "reason": "renderer-configured" if audio_enabled else "no-audio-renderer",
+    }
+    caps["document_generation"] = {
+        "version": DOCUMENT_GENERATION_CAPABILITY_VERSION,
+        "enabled": bool(ALLOWED_MODELS),
+        "contract": DOCUMENT_GENERATION_REQUEST_CONTRACT,
+        "endpoint": "/v1/document",
+        "legacy_endpoint": "/v1/document-generations",
+        "formats": ["markdown", "rst", "text"],
+        "execution": "chat-backed",
+        "publication": "separate-reviewed-step",
+        "model_selection": "requested-or-default",
     }
     caps["zip_edit_artifact"] = {
         "version": 1,
@@ -4443,6 +4941,8 @@ def _provider_artifact_error_response(  # ruff: ignore[too-many-branches]
     )
 
 
+@app.post("/v1/image")
+@app.post("/v1/image-generations")
 @app.post("/v1/artifacts/provider-output")
 async def provider_artifact_output(request: Request) -> Response:
     """Generate one bounded ephemeral binary candidate without ZIP authority."""
@@ -4767,6 +5267,910 @@ async def zip_edit_artifact(  # ruff: ignore[too-many-branches]
             "X-AI-Artifact-SHA256": artifact.receipt.output_sha256,
         },
     )
+
+
+_VIDEO_GENERATION_MAX_RESPONSE_BYTES: int = 512 * 1024
+
+
+def _video_generation_ready() -> bool:
+    return (
+        not _VIDEO_GENERATION_CONFIG_ERROR
+        and VIDEO_GENERATION_MODE in {"stub", "upstream"}
+        and (
+            VIDEO_GENERATION_MODE != "upstream" or bool(_VIDEO_GENERATION_UPSTREAM_URL)
+        )
+    )
+
+
+def _video_generation_error_response(
+    exc: VideoGenerationError,
+    *,
+    status_code: int | None = None,
+) -> JSONResponse:
+    mapping = {
+        "VIDEO_JOB_NOT_FOUND": 404,
+        "VIDEO_ACTION_INVALID_STATE": 409,
+        "VIDEO_ACTION_UNSUPPORTED": 405,
+        "VIDEO_REQUEST_TOO_LARGE": 413,
+    }
+    status = int(status_code or mapping.get(exc.code, 422))
+    logger.warning("AI proxy [%s]: video generation request rejected.", exc.code)
+    return JSONResponse(
+        status_code=status,
+        content={
+            "code": exc.code,
+            "error": {
+                "type": "video_generation_error",
+                "code": exc.code,
+                "message": str(exc),
+            },
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+def _video_generation_require_ready() -> None:
+    if not _video_generation_ready():
+        raise HTTPException(
+            status_code=503,
+            detail="Video generation is not enabled by this proxy deployment.",
+        )
+
+
+async def _video_generation_upstream(  # ruff: ignore[too-many-branches]
+    method: str,
+    suffix: str = "",
+    *,
+    body: bytes | None = None,
+    idempotency_key: str = "",
+) -> tuple[int, Any]:
+    """Delegate one bounded lifecycle call to the configured generation service.
+
+    The browser never receives ``VIDEO_GENERATION_UPSTREAM_TOKEN`` and the proxy
+    never forwards arbitrary browser destinations.  ``suffix`` is assembled
+    only from locally validated generation ids and fixed lifecycle action names.
+    """
+    if _http_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Video generation transport is unavailable.",
+        )
+    if not _VIDEO_GENERATION_UPSTREAM_URL:
+        raise HTTPException(
+            status_code=503,
+            detail="Video generation upstream is not configured.",
+        )
+    url = _VIDEO_GENERATION_UPSTREAM_URL + suffix
+    headers: dict[str, str] = {"Accept": "application/json"}
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key
+    if VIDEO_GENERATION_UPSTREAM_TOKEN:
+        headers["Authorization"] = "Bearer " + VIDEO_GENERATION_UPSTREAM_TOKEN
+    response: httpx.Response | None = None
+    try:
+        timeout = httpx.Timeout(
+            connect=min(15.0, VIDEO_GENERATION_TIMEOUT_SECONDS),
+            read=VIDEO_GENERATION_TIMEOUT_SECONDS,
+            write=min(60.0, VIDEO_GENERATION_TIMEOUT_SECONDS),
+            pool=min(15.0, VIDEO_GENERATION_TIMEOUT_SECONDS),
+        )
+        req = _http_client.build_request(
+            method.upper(), url, content=body, headers=headers, timeout=timeout
+        )
+        response = await _http_client.send(req, stream=True)
+        content = await _read_upstream_limited(
+            response, _VIDEO_GENERATION_MAX_RESPONSE_BYTES
+        )
+        if not content:
+            payload: Any = {}
+        else:
+            try:
+                payload = json.loads(content.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                logger.warning(
+                    "AI proxy [VIDEO_UPSTREAM_RESPONSE_INVALID]: upstream returned non-JSON content."
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail="Video generation upstream returned an invalid response.",
+                ) from exc
+        return int(response.status_code), payload
+    except _UpstreamResponseTooLarge as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Video generation upstream response exceeded the proxy safety limit.",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=504, detail="Video generation upstream timed out."
+        ) from exc
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "AI proxy [VIDEO_UPSTREAM_UNAVAILABLE]: video generation transport failed."
+        )
+        raise HTTPException(
+            status_code=502, detail="Video generation upstream is unavailable."
+        ) from exc
+    finally:
+        if response is not None:
+            await response.aclose()
+
+
+def _video_generation_upstream_error(status: int, payload: Any) -> JSONResponse:
+    message = "Video generation upstream rejected the request."
+    code = "VIDEO_UPSTREAM_REJECTED"
+    if isinstance(payload, dict):
+        raw_detail = payload.get("detail")
+        raw_error = payload.get("error")
+        if isinstance(raw_detail, str) and raw_detail.strip():
+            message = raw_detail.strip()[:600]
+        elif isinstance(raw_error, dict) and isinstance(raw_error.get("message"), str):
+            message = str(raw_error["message"]).strip()[:600] or message
+        raw_code = payload.get("code") or (
+            raw_error.get("code") if isinstance(raw_error, dict) else ""
+        )
+        if isinstance(raw_code, str) and re.fullmatch(r"[A-Z0-9_.:-]{1,120}", raw_code):
+            code = raw_code
+    safe_status = (
+        status if 400 <= status <= 599 else 502  # ruff: ignore[magic-value-comparison]
+    )
+    return JSONResponse(
+        status_code=safe_status,
+        content={
+            "code": code,
+            "error": {
+                "type": "video_generation_error",
+                "code": code,
+                "message": message,
+            },
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+def _audio_generation_error_response(exc: AudioGenerationError) -> JSONResponse:
+    code = exc.code
+    if code in {"REQUEST_INVALID", "IDEMPOTENCY_INVALID"}:
+        status = 422
+    elif code == "REQUEST_TOO_LARGE":
+        status = 413
+    elif code == "IDEMPOTENCY_CONFLICT":
+        status = 409
+    elif code in {"MODEL_UNKNOWN", "NO_COMPATIBLE_DEPLOYMENT"} or code == "QUEUE_FULL":
+        status = 503
+    elif code in {"JOB_NOT_ACCESSIBLE", "ARTIFACT_NOT_ACCESSIBLE"}:
+        status = 404
+    elif code == "JOB_NOT_CANCELLABLE":
+        status = 409
+    else:
+        status = 500
+    return JSONResponse(
+        status_code=status,
+        content={
+            "error": {
+                "type": "generation_error",
+                "code": code,
+                "layer": "request" if code.startswith("REQUEST") else "lifecycle",
+                "message": (
+                    str(exc)
+                    if str(exc) and str(exc) != code
+                    else "Audio generation request could not be completed."
+                ),
+                "retryable": bool(getattr(exc, "retryable", False)),
+            }
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.post("/v1/audio")
+@app.post("/v1/audio-generations")
+async def audio_generation_create(request: Request) -> Response:
+    """Create one asynchronous narration job using server-owned renderer policy."""
+    if _AUDIO_GENERATION_SERVICE is None:
+        return _audio_generation_error_response(
+            AudioGenerationError("NO_COMPATIBLE_DEPLOYMENT"),
+        )
+    client_ip = _client_ip(request)
+    # Idempotent replay is resolved by the service before paid execution, but
+    # this compatibility route still keeps the same bounded per-IP admission as
+    # the other media surfaces.
+    body = await _read_limited_body(
+        request, AUDIO_GENERATION_MAX_REQUEST_BYTES, "Audio generation request"
+    )
+    try:
+        parsed = parse_audio_generation_request(body)
+        idem = str(request.headers.get("Idempotency-Key", "")).strip()
+        # Fast replay path: submit() returns the original job when the key/body match.
+        # Rate admission remains bounded for genuinely new requests.
+        existing = getattr(_AUDIO_GENERATION_SERVICE, "_idempotency", {}).get(idem)
+        if existing is None:
+            allowed, _count = await _consume_rate_limit(
+                _audio_generation_rl,
+                _audio_generation_rl_lock,
+                client_ip,
+                limit=12,
+                scope="audio-generation",
+            )
+            if not allowed:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Rate limit exceeded for audio generation.",
+                    headers={"Retry-After": "3600"},
+                )
+        job = await _AUDIO_GENERATION_SERVICE.submit(parsed, idem)
+        current, artifact = await _AUDIO_GENERATION_SERVICE.get(
+            job.generation_id, job.capability
+        )
+        return JSONResponse(
+            status_code=202 if current.state in {"queued", "running"} else 200,
+            content=current.public(artifact),
+            headers={"Cache-Control": "no-store"},
+        )
+    except AudioGenerationError as exc:
+        return _audio_generation_error_response(exc)
+
+
+@app.get("/v1/audio/{generation_id}")
+@app.get("/v1/audio-generations/{generation_id}")
+async def audio_generation_status(generation_id: str, request: Request) -> Response:
+    if _AUDIO_GENERATION_SERVICE is None:
+        return _audio_generation_error_response(
+            AudioGenerationError("NO_COMPATIBLE_DEPLOYMENT"),
+        )
+    try:
+        job, artifact = await _AUDIO_GENERATION_SERVICE.get(
+            generation_id, request.headers.get("X-Generation-Capability", "")
+        )
+        return JSONResponse(
+            content=job.public(artifact), headers={"Cache-Control": "no-store"}
+        )
+    except AudioGenerationError as exc:
+        return _audio_generation_error_response(exc)
+
+
+@app.post("/v1/audio/{generation_id}/cancel")
+@app.post("/v1/audio-generations/{generation_id}/cancel")
+async def audio_generation_cancel(generation_id: str, request: Request) -> Response:
+    if _AUDIO_GENERATION_SERVICE is None:
+        return _audio_generation_error_response(
+            AudioGenerationError("NO_COMPATIBLE_DEPLOYMENT"),
+        )
+    try:
+        job = await _AUDIO_GENERATION_SERVICE.cancel(
+            generation_id, request.headers.get("X-Generation-Capability", "")
+        )
+        return JSONResponse(content=job.public(), headers={"Cache-Control": "no-store"})
+    except AudioGenerationError as exc:
+        return _audio_generation_error_response(exc)
+
+
+@app.get("/v1/generated-artifacts/{artifact_id}")
+async def generated_artifact(artifact_id: str, request: Request) -> Response:
+    if _AUDIO_GENERATION_SERVICE is None:
+        return _audio_generation_error_response(
+            AudioGenerationError("ARTIFACT_NOT_ACCESSIBLE"),
+        )
+    try:
+        artifact = await _AUDIO_GENERATION_SERVICE.artifact(
+            artifact_id, request.headers.get("X-Artifact-Capability", "")
+        )
+        return Response(
+            content=artifact.data,
+            media_type=artifact.mime_type,
+            headers={
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": "inline",
+            },
+        )
+    except AudioGenerationError as exc:
+        return _audio_generation_error_response(exc)
+
+
+def _document_generation_error_response(exc: DocumentGenerationError) -> JSONResponse:
+    status = {
+        "REQUEST_INVALID": 422,
+        "REQUEST_TOO_LARGE": 413,
+        "MODEL_UNKNOWN": 422,
+        "UPSTREAM_RESPONSE_INVALID": 502,
+        "UPSTREAM_RESPONSE_TOO_LARGE": 502,
+    }.get(exc.code, 502)
+    return JSONResponse(
+        status_code=status,
+        content={
+            "error": {
+                "type": "document_generation_error",
+                "code": exc.code,
+                "message": (
+                    str(exc)
+                    if str(exc) != exc.code
+                    else "Document generation could not be completed."
+                ),
+            }
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.post("/v1/document")
+@app.post("/v1/document-generations")
+async def document_generation_create(request: Request) -> Response:
+    """Generate one bounded text document through the existing chat model authority."""
+    client_ip = _client_ip(request)
+    allowed, _count = await _consume_rate_limit(
+        _document_generation_rl,
+        _document_generation_rl_lock,
+        client_ip,
+        limit=DOCUMENT_GENERATION_RATE_LIMIT_PER_HOUR,
+        scope="document-generation",
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for document generation.",
+            headers={"Retry-After": "3600"},
+        )
+    try:
+        body = await _read_limited_body(
+            request,
+            MAX_DOCUMENT_GENERATION_REQUEST_BYTES,
+            "Document generation request",
+        )
+        parsed = parse_document_generation_request(body)
+        model = parsed.selected_model or DEFAULT_MODEL
+        if not _resource_model_allowed(model):
+            raise DocumentGenerationError(
+                "MODEL_UNKNOWN", "selected model is not available"
+            )
+        public_chat = json.dumps(
+            {
+                "contract": CHAT_CONTRACT,
+                "model": model,
+                "user_message": build_document_prompt(parsed),
+                "context": {
+                    "page_text": "",
+                    "page_descriptor": "AI Learn document generation",
+                },
+                "max_tokens": min(12_000, 32_000),
+                "stream": False,
+                "reasoning": {},
+                "resources": [],
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        stubbed = await _stub_intercept(public_chat, request.headers)
+        response = stubbed
+        if response is None:
+            upstream_body = _server_owned_chat_body(public_chat)
+            response = await _forward(upstream_body, structured_body=public_chat)
+        if response.status_code != 200:  # ruff: ignore[magic-value-comparison]
+            # Preserve bounded status semantics without reflecting arbitrary upstream bodies.
+            return JSONResponse(
+                status_code=(
+                    response.status_code  # lint
+                    if 400  # ruff: ignore[magic-value-comparison]
+                    <= response.status_code
+                    <= 599  # ruff: ignore[magic-value-comparison]
+                    else 502  # ruff: ignore[magic-value-comparison]
+                ),
+                content={
+                    "error": {
+                        "type": "document_generation_error",
+                        "code": "UPSTREAM_REJECTED",
+                        "message": (
+                            "The selected model could not generate the document."
+                        ),
+                    }
+                },
+                headers={"Cache-Control": "no-store"},
+            )
+        raw_body = getattr(response, "body", None)
+        if not isinstance(raw_body, (bytes, bytearray)):
+            raise DocumentGenerationError(
+                "UPSTREAM_RESPONSE_INVALID",
+                "document generation requires a non-stream JSON response",
+            )
+        try:
+            payload = json.loads(bytes(raw_body))
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise DocumentGenerationError("UPSTREAM_RESPONSE_INVALID") from exc
+        content = extract_text_completion(payload)
+        return JSONResponse(
+            content=build_document_response(parsed, content, selected_model=model),
+            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+        )
+    except DocumentGenerationError as exc:
+        return _document_generation_error_response(exc)
+    except ChatContractError as exc:
+        return _chat_contract_error_response(exc)
+
+
+@app.post("/v1/video")
+@app.post("/v1/video-generations")
+async def create_video_generation(request: Request) -> Response:
+    """Create one idempotent video-generation job.
+
+    ``stub`` mode exercises the complete browser lifecycle but never publishes
+    media. ``upstream`` mode forwards only the validated canonical envelope to
+    the configured server-side generation service.
+    """
+    _video_generation_require_ready()
+    client_ip = _client_ip(request)
+    allowed, _count = await _consume_rate_limit(
+        _video_generation_rl,
+        _video_generation_rl_lock,
+        client_ip,
+        limit=VIDEO_GENERATION_RATE_LIMIT_PER_HOUR,
+        scope="video-generation",
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for video generation.",
+            headers={"Retry-After": "3600"},
+        )
+    try:
+        idempotency_key = validate_idempotency_key(
+            request.headers.get("Idempotency-Key", "")
+        )
+        raw = await _read_limited_body(
+            request, VIDEO_GENERATION_MAX_BODY_BYTES, "Video generation"
+        )
+        request_doc = parse_video_generation_request(raw)
+    except VideoGenerationError as exc:
+        return _video_generation_error_response(exc)
+
+    if VIDEO_GENERATION_MODE == "stub":
+        job = _VIDEO_GENERATION_STUB.create(request_doc, idempotency_key)
+        return JSONResponse(
+            normalize_video_job(job),
+            status_code=202,
+            headers={
+                "Cache-Control": "no-store",
+                "X-Video-Generation-Test-Mode": "true",
+            },
+        )
+
+    canonical = json.dumps(
+        request_doc, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    status, payload = await _video_generation_upstream(
+        "POST", body=canonical, idempotency_key=idempotency_key
+    )
+    if status < 200 or status >= 300:  # ruff: ignore[magic-value-comparison]
+        return _video_generation_upstream_error(status, payload)
+    try:
+        job = normalize_video_job(payload)
+    except VideoGenerationError as exc:
+        return _video_generation_error_response(exc, status_code=502)
+    return JSONResponse(
+        job,
+        status_code=(
+            202 if status == 202 else 200  # ruff: ignore[magic-value-comparison]
+        ),
+        headers={
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@app.get("/v1/video")
+@app.get("/v1/video-generations")
+async def list_video_generations(request: Request) -> Response:
+    """Enumerate only deterministic stub jobs.
+
+    The production Learn UI keeps its private library as browser-local opaque
+    receipts and polls individual status URLs.  Forwarding a public collection
+    GET to an upstream service could accidentally expose another reader's jobs,
+    so upstream enumeration is deliberately closed until an authenticated
+    ownership contract exists.
+    """
+    _video_generation_require_ready()
+    if VIDEO_GENERATION_MODE != "stub":
+        return JSONResponse(
+            status_code=405,
+            content={
+                "code": "VIDEO_ENUMERATION_DISABLED",
+                "error": {
+                    "type": "video_generation_error",
+                    "code": "VIDEO_ENUMERATION_DISABLED",
+                    "message": (
+                        "Video job enumeration is not available on the public generation gateway."
+                    ),
+                },
+            },
+            headers={"Cache-Control": "no-store", "Allow": "POST"},
+        )
+    return JSONResponse(
+        {
+            "contract": VIDEO_GENERATION_JOB_CONTRACT,
+            "jobs": _VIDEO_GENERATION_STUB.list(),
+        },
+        headers={"Cache-Control": "no-store", "X-Video-Generation-Test-Mode": "true"},
+    )
+
+
+@app.get("/v1/video/{generation_id}")
+@app.get("/v1/video-generations/{generation_id}")
+async def get_video_generation(generation_id: str) -> Response:
+    _video_generation_require_ready()
+    try:
+        generation_id = validate_generation_id(generation_id)
+        if VIDEO_GENERATION_MODE == "stub":
+            return JSONResponse(
+                normalize_video_job(_VIDEO_GENERATION_STUB.get(generation_id)),
+                headers={
+                    "Cache-Control": "no-store",
+                    "X-Video-Generation-Test-Mode": "true",
+                },
+            )
+    except VideoGenerationError as exc:
+        return _video_generation_error_response(exc)
+    status, payload = await _video_generation_upstream("GET", "/" + generation_id)
+    if status < 200 or status >= 300:  # ruff: ignore[magic-value-comparison]
+        return _video_generation_upstream_error(status, payload)
+    try:
+        job = normalize_video_job(payload)
+    except VideoGenerationError as exc:
+        return _video_generation_error_response(exc, status_code=502)
+    return JSONResponse(job, headers={"Cache-Control": "no-store"})
+
+
+async def _video_generation_action(generation_id: str, action: str) -> Response:
+    _video_generation_require_ready()
+    try:
+        generation_id = validate_generation_id(generation_id)
+        if action not in VIDEO_GENERATION_ACTIONS:
+            raise VideoGenerationError(
+                "VIDEO_ACTION_UNSUPPORTED",
+                "Unsupported video generation lifecycle action.",
+            )
+        if VIDEO_GENERATION_MODE == "stub":
+            return JSONResponse(
+                normalize_video_job(
+                    _VIDEO_GENERATION_STUB.action(generation_id, action)
+                ),
+                headers={
+                    "Cache-Control": "no-store",
+                    "X-Video-Generation-Test-Mode": "true",
+                },
+            )
+    except VideoGenerationError as exc:
+        return _video_generation_error_response(exc)
+    status, payload = await _video_generation_upstream(
+        "POST", "/" + generation_id + "/" + action
+    )
+    if status < 200 or status >= 300:  # ruff: ignore[magic-value-comparison]
+        return _video_generation_upstream_error(status, payload)
+    if status == 204 or payload in ({}, None):  # ruff: ignore[magic-value-comparison]
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
+    try:
+        job = normalize_video_job(payload)
+    except VideoGenerationError as exc:
+        return _video_generation_error_response(exc, status_code=502)
+    return JSONResponse(job, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/v1/video/{generation_id}/cancel")
+@app.post("/v1/video-generations/{generation_id}/cancel")
+async def cancel_video_generation(generation_id: str) -> Response:
+    return await _video_generation_action(generation_id, "cancel")
+
+
+@app.post("/v1/video/{generation_id}/retry")
+@app.post("/v1/video-generations/{generation_id}/retry")
+async def retry_video_generation(generation_id: str) -> Response:
+    return await _video_generation_action(generation_id, "retry")
+
+
+@app.post("/v1/video/{generation_id}/archive")
+@app.post("/v1/video-generations/{generation_id}/archive")
+async def archive_video_generation(generation_id: str) -> Response:
+    return await _video_generation_action(generation_id, "archive")
+
+
+@app.post("/v1/video/{generation_id}/restore")
+@app.post("/v1/video-generations/{generation_id}/restore")
+async def restore_video_generation(generation_id: str) -> Response:
+    return await _video_generation_action(generation_id, "restore")
+
+
+def _learn_publication_headers() -> dict[str, str]:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2026-03-10",
+        "User-Agent": "scikit-plots-ai-learn-publication",
+    }
+    if AI_LEARN_GITHUB_TOKEN:
+        headers["Authorization"] = "Bearer " + AI_LEARN_GITHUB_TOKEN
+    return headers
+
+
+def _learn_publication_workflow_api_url() -> str:
+    repository = AI_LEARN_PUBLICATION_POLICY.repository
+    workflow = AI_LEARN_PUBLICATION_POLICY.workflow
+    return f"https://api.github.com/repos/{repository}/actions/workflows/{workflow}"
+
+
+def _learn_publication_capability() -> dict[str, Any]:
+    return _learn_publication_capability_document(
+        AI_LEARN_PUBLICATION_POLICY,
+        credential_ready=bool(AI_LEARN_GITHUB_TOKEN),
+    )
+
+
+@app.get("/v1/learn-publication")
+async def learn_publication_capability(request: Request) -> JSONResponse:
+    """Return public, non-secret reviewed-publication transport policy."""
+    return JSONResponse(
+        _learn_publication_capability(),
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+async def _learn_publication_test_github() -> (  # ruff: ignore[too-many-return-statements]
+    dict[str, Any]
+):
+    """Exercise the real workflow-dispatch permission without repository writes."""
+    if AI_LEARN_PUBLICATION_POLICY.mode == "disabled":
+        return {
+            "ok": False,
+            "state": "disabled",
+            "message": "AI Learn publication is disabled on this proxy.",
+        }
+    if AI_LEARN_PUBLICATION_POLICY.mode == "stub":
+        return {
+            "ok": True,
+            "state": "stub-ready",
+            "message": (
+                "Stub publication is ready. No GitHub call or repository write occurred."
+            ),
+        }
+    if not AI_LEARN_GITHUB_TOKEN:
+        return {
+            "ok": False,
+            "state": "credential-missing",
+            "message": "GitHub publication credential is not configured.",
+        }
+    if _http_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Publication transport unavailable.",
+        )
+    payload = {
+        "ref": AI_LEARN_PUBLICATION_POLICY.default_branch,
+        "inputs": {"operation": "test"},
+    }
+    try:
+        response = await _http_client.post(
+            _learn_publication_workflow_api_url() + "/dispatches",
+            headers={
+                **_learn_publication_headers(),
+                "Content-Type": "application/json",
+            },
+            content=json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8"),
+            timeout=_make_timeout(30.0),
+        )
+        content = await _read_upstream_limited(response, 64 * 1024)
+    except httpx.TimeoutException:
+        return {
+            "ok": False,
+            "state": "github-timeout",
+            "message": "GitHub publication dry-run dispatch timed out.",
+        }
+    except (httpx.HTTPError, _UpstreamResponseTooLarge):
+        return {
+            "ok": False,
+            "state": "github-unreachable",
+            "message": "GitHub publication dry-run dispatch failed.",
+        }
+    if response.status_code not in {200, 204}:
+        return {
+            "ok": False,
+            "state": "github-rejected",
+            "status": int(response.status_code),
+            "message": "GitHub rejected the publication dry-run workflow dispatch.",
+        }
+    doc: dict[str, Any] = {}
+    if content:
+        try:
+            loaded = json.loads(content.decode("utf-8"))
+            if isinstance(loaded, dict):
+                doc = loaded
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            doc = {}
+    result: dict[str, Any] = {
+        "ok": True,
+        "state": "github-ready",
+        "message": (
+            "GitHub publication workflow dry-run was dispatched. No branch, commit, or pull request is created by test mode."
+        ),
+    }
+    run_id = doc.get("workflow_run_id")
+    html_url = doc.get("html_url")
+    if isinstance(run_id, int) and run_id > 0:
+        result["workflow_run_id"] = run_id
+    if isinstance(html_url, str) and html_url.startswith(
+        "https://github.com/"
+        + AI_LEARN_PUBLICATION_POLICY.repository
+        + "/actions/runs/"
+    ):
+        result["workflow_url"] = html_url
+    return result
+
+
+@app.post("/v1/learn-publication")
+async def learn_publication_dispatch(  # ruff: ignore[too-many-branches]
+    request: Request,
+) -> JSONResponse:
+    """Validate a reviewed draft handoff and optionally dispatch GitHub Actions.
+
+    The browser never supplies repository identity, branch names, file paths,
+    workflow names or GitHub credentials. Canonical JSON projection is repeated
+    by the repository-local workflow after checkout of the configured branch.
+    """
+    raw = await _read_limited_body(
+        request,
+        AI_LEARN_PUBLICATION_POLICY.max_request_bytes,
+        "AI Learn publication",
+    )
+    try:
+        parsed = parse_publication_request(raw, AI_LEARN_PUBLICATION_POLICY)
+    except LearnPublicationTransportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if parsed["action"] == "test":
+        if AI_LEARN_PUBLICATION_POLICY.mode == "github":
+            allowed, _count = await _consume_rate_limit(
+                _learn_publication_rl,
+                _learn_publication_rl_lock,
+                _client_ip(request),
+                limit=AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR,
+                scope="learn-publication-test",
+            )
+            if not allowed:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Rate limit exceeded for AI Learn publication tests.",
+                )
+        result = await _learn_publication_test_github()
+        return JSONResponse(
+            {
+                "contract": PUBLICATION_RECEIPT_CONTRACT,
+                "action": "test",
+                **_learn_publication_capability(),
+                **result,
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+    if AI_LEARN_PUBLICATION_POLICY.mode == "disabled":
+        raise HTTPException(status_code=503, detail="AI Learn publication is disabled.")
+
+    allowed, _count = await _consume_rate_limit(
+        _learn_publication_rl,
+        _learn_publication_rl_lock,
+        _client_ip(request),
+        limit=AI_LEARN_PUBLICATION_RATE_LIMIT_PER_HOUR,
+        scope="learn-publication",
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for AI Learn publication requests.",
+        )
+
+    request_id = publication_request_id(parsed)
+    if AI_LEARN_PUBLICATION_POLICY.mode == "stub":
+        return JSONResponse(
+            {
+                "contract": PUBLICATION_RECEIPT_CONTRACT,
+                "action": "publish",
+                "mode": "stub",
+                "state": "simulated",
+                "request_id": request_id,
+                "repository": AI_LEARN_PUBLICATION_POLICY.repository,
+                "default_branch": AI_LEARN_PUBLICATION_POLICY.default_branch,
+                "canonical_prefix": AI_LEARN_PUBLICATION_POLICY.canonical_prefix,
+                "workflow": AI_LEARN_PUBLICATION_POLICY.workflow,
+                "message": (
+                    "Reviewed publication request validated in stub mode. No GitHub write occurred."
+                ),
+            },
+            headers={
+                "Cache-Control": "no-store",
+                "X-AI-Learn-Publication-Test-Mode": "true",
+            },
+        )
+
+    if not AI_LEARN_GITHUB_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="GitHub publication credential is not configured.",
+        )
+    if _http_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Publication transport unavailable.",
+        )
+
+    try:
+        request_id, dispatch = workflow_dispatch_body(
+            AI_LEARN_PUBLICATION_POLICY,
+            parsed,
+        )
+    except LearnPublicationTransportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    url = _learn_publication_workflow_api_url() + "/dispatches"
+    try:
+        response = await _http_client.post(
+            url,
+            headers={
+                **_learn_publication_headers(),
+                "Content-Type": "application/json",
+            },
+            content=json.dumps(
+                dispatch, ensure_ascii=False, separators=(",", ":")
+            ).encode("utf-8"),
+            timeout=_make_timeout(30.0),
+        )
+        content = await _read_upstream_limited(response, 64 * 1024)
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=504,
+            detail="GitHub workflow dispatch timed out.",
+        ) from exc
+    except (httpx.HTTPError, _UpstreamResponseTooLarge) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="GitHub workflow dispatch failed.",
+        ) from exc
+    if response.status_code not in {200, 204}:
+        raise HTTPException(
+            status_code=502,
+            detail=f"GitHub workflow dispatch was rejected ({response.status_code}).",
+        )
+    doc: dict[str, Any] = {}
+    if content:
+        try:
+            loaded = json.loads(content.decode("utf-8"))
+            if isinstance(loaded, dict):
+                doc = loaded
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            doc = {}
+    receipt: dict[str, Any] = {
+        "contract": PUBLICATION_RECEIPT_CONTRACT,
+        "action": "publish",
+        "mode": "github",
+        "state": "queued",
+        "request_id": request_id,
+        "repository": AI_LEARN_PUBLICATION_POLICY.repository,
+        "default_branch": AI_LEARN_PUBLICATION_POLICY.default_branch,
+        "canonical_prefix": AI_LEARN_PUBLICATION_POLICY.canonical_prefix,
+        "workflow": AI_LEARN_PUBLICATION_POLICY.workflow,
+        "message": (
+            "Reviewed publication request queued for repository validation and pull-request creation."
+        ),
+    }
+    run_id = doc.get("workflow_run_id")
+    html_url = doc.get("html_url")
+    if isinstance(run_id, int) and run_id > 0:
+        receipt["workflow_run_id"] = run_id
+    if isinstance(html_url, str) and html_url.startswith(
+        "https://github.com/"
+        + AI_LEARN_PUBLICATION_POLICY.repository
+        + "/actions/runs/"
+    ):
+        receipt["workflow_url"] = html_url
+    return JSONResponse(receipt, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/v1/resource-capabilities")

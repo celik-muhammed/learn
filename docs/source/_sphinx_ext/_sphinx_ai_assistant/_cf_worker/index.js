@@ -77,6 +77,30 @@ function _allowedOriginsMode(env) {
   return ALLOWED_ORIGIN_MODES.includes(mode) ? mode : 'additive';
 }
 
+function _normaliseLocalDevOrigin(value) {
+  const origin = _normaliseBrowserOrigin(value);
+  if (!origin) return '';
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]') return origin;
+    if (/^127(?:\.\d{1,3}){3}$/.test(host)) {
+      const octets = host.split('.').map(Number);
+      if (octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) return origin;
+    }
+  } catch {}
+  return '';
+}
+
+function _localDevOrigins(env) {
+  const out = [];
+  for (const item of String(env.LOCAL_DEV_ORIGINS || '').split(',')) {
+    const origin = _normaliseLocalDevOrigin(item);
+    if (origin && !out.includes(origin)) out.push(origin);
+  }
+  return out;
+}
+
 function _allowedOrigins(env) {
   const raw = String(env.ALLOWED_ORIGINS || '').trim();
   if (raw === '*') return ['*'];
@@ -84,6 +108,9 @@ function _allowedOrigins(env) {
   for (const item of raw.split(',')) {
     const origin = _normaliseBrowserOrigin(item);
     if (origin && !merged.includes(origin)) merged.push(origin);
+  }
+  for (const origin of _localDevOrigins(env)) {
+    if (!merged.includes(origin)) merged.push(origin);
   }
   return merged;
 }
@@ -1158,6 +1185,7 @@ export default {
           default_allowed_origins_allowed: _allowedOrigins(env).includes('*') || DEFAULT_ALLOWED_ORIGINS.every((origin) => _allowedOrigins(env).includes(origin)),
           wildcard: _allowedOrigins(env).includes('*'),
           allowed_origin_count: _allowedOrigins(env).includes('*') ? null : _allowedOrigins(env).length,
+          local_dev_origin_count: _localDevOrigins(env).length,
           env_semantics: _allowedOriginsMode(env),
           share_opaque_origin_allowed: String(env.SHARE_ALLOW_OPAQUE_ORIGIN || '').toLowerCase() === 'true',
           share_opaque_origin_write_allowed:

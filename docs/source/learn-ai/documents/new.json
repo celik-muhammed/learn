@@ -1,0 +1,7 @@
+{
+  "contract": "learn.page.v1",
+  "description": "Create a durable written learning artifact from a Topic, Source, or prompt.",
+  "kind": "document",
+  "title": "Create a Document",
+  "view": "media-create"
+}

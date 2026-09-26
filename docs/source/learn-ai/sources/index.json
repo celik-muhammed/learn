@@ -1,0 +1,7 @@
+{
+  "contract": "learn.page.v1",
+  "create_label": "Add a Source",
+  "kind": "source",
+  "title": "Sources",
+  "view": "explorer"
+}

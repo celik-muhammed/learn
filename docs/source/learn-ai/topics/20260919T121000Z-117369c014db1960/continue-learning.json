@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-cross-decomposition",
+  "section": {
+    "body": "Compare PLSRegression and CCA objectives. Study the effect of scaling on learned components. Test component stability under resampling or correlated predictors.",
+    "citations": [
+      {
+        "locator": "1.8. Cross decomposition",
+        "source_id": "source-sklearn-cross-decomposition"
+      }
+    ],
+    "id": "continue-learning",
+    "links": [],
+    "title": "Continue Learning"
+  }
+}

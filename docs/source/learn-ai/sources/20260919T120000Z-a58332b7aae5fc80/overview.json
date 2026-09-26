@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-gaussian-processes",
+  "section": {
+    "body": "Official scikit-learn 1.9 guidance for Gaussian-process regression, classification, and covariance kernels.",
+    "citations": [],
+    "id": "overview",
+    "links": [],
+    "title": "Overview"
+  }
+}

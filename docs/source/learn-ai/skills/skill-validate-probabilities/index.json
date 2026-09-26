@@ -1,0 +1,20 @@
+{
+  "author": "Scikit-Plots Learn",
+  "contract": "learn.skill.v1",
+  "default_enabled": false,
+  "description": "A generic workflow for separating ranking quality, threshold decisions, and probability calibration.",
+  "domains": [
+    "machine-learning"
+  ],
+  "empty_message": "No one has applied Validate probability outputs before using them for decisions to this topic yet.",
+  "id": "skill-validate-probabilities",
+  "instruction": "1. Confirm that the estimator output is intended to represent a probability.\n2. Evaluate discrimination and calibration separately.\n3. Use held-out or cross-validated predictions for calibration checks.\n4. Inspect calibration curves and an appropriate probabilistic score.\n5. Re-check after changes to the model, target prevalence, or deployment population.\n6. State when available data is insufficient to support reliable probability claims.",
+  "order": 40,
+  "related": [
+    "topic-logistic-regression",
+    "topic-probability-calibration",
+    "topic-isotonic-regression",
+    "topic-naive-bayes"
+  ],
+  "title": "Validate probability outputs before using them for decisions"
+}

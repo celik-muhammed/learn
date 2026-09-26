@@ -569,10 +569,14 @@ every downstream theme.
 
 ## Search, options, and reverting changes
 
-The compact toolbar shows a rounded gallery search field, search button, and
-an overflow (⋮) button. Typing filters locally; Enter and the search button
-apply the same search. Active search, filters and sorting appear as removable
-chips below the result count. Clear a chip to remove only that setting.
+The collection browser uses the same compact search/disclosure interaction as
+AI Learn: a left-aligned result count, then one primary row containing the
+search field with its integrated search icon and a chevron disclosure button.
+Typing filters locally; Enter and the search icon apply the same search. The
+chevron expands the long-form controls *inside the same bordered control
+surface* rather than opening a second toolbar/popup. Active search, filters and
+sorting appear as removable chips below the control surface. Clear a chip to
+remove only that setting.
 
 A small **Try** row offers context-aware shortcuts without hiding the canonical
 controls. While typing it can suggest matching card titles. For interactive
@@ -581,32 +585,43 @@ set and offers a useful sort such as **Newest first** or **Title A–Z** when th
 sort exists. Suggestions are generated from the gallery metadata, so new filter
 fields and sort fields participate without JavaScript changes.
 
-The options disclosure holds filter/sort controls, Add video or channel,
-Export additions, optional browser preferences, Reset view, Revert to initial
-gallery, and Close options. Add and export forms expand only when needed. The Add
-form includes compact beginner guidance plus prefill chips for Video, Short, Live,
-Watch + list, Channel latest, Playlist latest, and Post source shapes. These chips only
-fill the input and select the replaceable placeholder token; they never submit or add a
-card automatically. A live readiness hint classifies what the visitor pasted before
-submission: exact video sources are marked ready without an API key, while latest channel,
-playlist, Courses, or Post lookups explain when optional site support is needed. A collapsed
-**Site setup for latest/post sources (optional)** disclosure includes a same-origin resolver
-stub so maintainers can keep provider credentials server-side. Escape
-closes options and returns focus to the trigger. Clicking or tapping outside the
-panel also closes it, but leaves focus with the destination the visitor chose.
-Native controls use ordinary Tab navigation. The panel stays in document flow
-to avoid covering players; its height is bounded, overscroll is contained and
-its content scrolls when necessary. The layout follows available gallery width,
-including narrow columns on desktop. Inputs retain 44px minimum height at the
-standard root font size, theme colors, focus outlines and logical RTL spacing.
+The expanded state is intentionally grouped rather than rendered as one long
+utility form. **View** contains facets, sort, and Reset view. **Gallery tools**
+contains compact nested panels for Add video/channel, Browser preferences, and
+Export additions. Closed tools share the available width on larger layouts;
+opening one spans the tools area so forms and status messages remain easy to
+read. On tablet and mobile the same structure naturally becomes a single-column
+stack. **Restore original gallery** is kept apart from ordinary Reset because it
+also clears local additions and saved preferences.
+
+The Add form includes compact beginner guidance plus prefill chips for Video,
+Short, Live, Watch + list, Channel latest, Playlist latest, and Post source
+shapes. These chips only fill the input and select the replaceable placeholder
+token; they never submit or add a card automatically. A live readiness hint
+classifies what the visitor pasted before submission: exact video sources are
+marked ready without an API key, while latest channel, playlist, Courses, or
+Post lookups explain when optional site support is needed. A collapsed **Site
+setup for latest/post sources (optional)** disclosure includes a same-origin
+resolver stub so maintainers can keep provider credentials server-side.
+
+There is no separate Close-options button or generic explanatory footer. Escape
+closes the expanded panel and returns focus to the main disclosure, while the
+chevron remains the primary explicit open/close control. The panel remains open
+while the user interacts elsewhere, mirroring AI Learn's inline disclosure
+model rather than popup behavior. Native controls use ordinary Tab navigation.
+The panel stays in document flow inside the same control surface, so it never
+covers players; its height is bounded, overscroll is contained and its content
+scrolls when necessary. The layout follows available gallery width, including
+narrow columns on desktop. Controls keep theme colors, visible focus outlines
+and logical RTL spacing.
 
 | Action | Visible cards | Saved additions / view |
 | --- | --- | --- |
 | Reset view | Clear search/filters/sort; keep added cards | Keep consent; saved filters/sort become clear |
 | Forget saved additions / saved view | Keep the current visible gallery | Clear only that saved scope |
-| Revert to initial gallery | Restore original cards/order, clear view and forms | Clear additions and saved view; turn both remembering choices off |
+| Restore original gallery | Restore original cards/order, clear view and forms | Clear additions and saved view; turn both remembering choices off |
 
-Revert does not reload the page or reset playback in original frames. If browser
+Restore original gallery does not reload the page or reset playback in original frames. If browser
 storage cannot be cleared, the original visible gallery is still restored and
 options stay open with a Forget saved additions retry button. It never clears
 unrelated browser keys. The initial state is the gallery built from your source,

@@ -62,6 +62,7 @@
 🌕 Learning Hub • AI-Powered ✨
 ======================================================================
 
+
 .. grid:: 1 1 1 1
 
     .. grid-item-card::
@@ -79,12 +80,37 @@
         :padding: 2
         :columns: 12 12 6 6
 
-        **ext resource**
+        **cheatsheet**
         ^^^
         .. toctree::
             :maxdepth: 2
 
-            External Resource <./resource/index.rst>
+            Cheatsheet <./cheatsheet/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **hands-on material**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Hands-On Material <./hands-on/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **kitchen-sink**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Kitchen Sink <./kitchen-sink/index.rst>
+
+
+.. grid:: 1 1 1 1
 
     .. grid-item-card::
         :padding: 2
@@ -140,57 +166,3 @@
             :maxdepth: 2
 
             Deep Learning <./deep_learning/index.rst>
-
-    .. grid-item-card::
-        :padding: 2
-        :columns: 12 12 6 6
-
-        **hands-on material**
-        ^^^
-        .. toctree::
-            :maxdepth: 2
-
-            Hands-On Material <./hands-on/index.rst>
-
-    .. grid-item-card::
-        :padding: 2
-        :columns: 12 12 6 6
-
-        **kitchen-sink**
-        ^^^
-        .. toctree::
-            :maxdepth: 2
-
-            Kitchen Sink <./kitchen-sink/index.rst>
-
-    .. grid-item-card::
-        :padding: 2
-        :columns: 12 12 6 6
-
-        **youtu.be**
-        ^^^
-        .. toctree::
-            :maxdepth: 2
-
-            YouTube <./youtube/index.rst>
-
-    .. grid-item-card::
-        :padding: 2
-        :columns: 12 12 6 6
-
-        **cheatsheet**
-        ^^^
-        .. toctree::
-            :maxdepth: 2
-
-            Cheatsheet <./cheatsheet/index.rst>
-
-    .. grid-item-card::
-        :padding: 2
-
-        **glossary**
-        ^^^
-        .. toctree::
-            :maxdepth: 2
-
-            Glossary <glossary/index.rst>

@@ -1,0 +1,11 @@
+{
+  "author": "scikit-plots",
+  "contract": "learn.topic-prompt.v1",
+  "default_enabled": false,
+  "description": "Separate claims, assumptions, supporting evidence, and unresolved dependencies into an auditable map.",
+  "empty_message": "No one has generated an assumptions-and-evidence map for this topic yet.",
+  "id": "assumptions-evidence",
+  "instruction": "Build an assumptions-and-evidence map for this topic. List the major claims, the assumptions each claim depends on, the available evidence supporting or challenging it, and the consequence if an assumption fails. Distinguish direct evidence, indirect evidence, expert interpretation, and open inference. End with the small set of assumptions whose failure would most change the topic's conclusions.",
+  "order": 130,
+  "title": "Assumptions & Evidence Map"
+}

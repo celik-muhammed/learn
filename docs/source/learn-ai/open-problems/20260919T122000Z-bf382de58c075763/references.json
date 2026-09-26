@@ -1,0 +1,24 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-sgd-convergence-monitoring",
+  "section": {
+    "body": "Use the SGD practical-use and stopping-criterion guidance, and compare with batch linear baselines when feasible.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-sgd"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-linear-models"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-svm"
+      }
+    ],
+    "id": "references",
+    "links": [],
+    "title": "References"
+  }
+}

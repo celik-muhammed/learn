@@ -1,0 +1,11 @@
+{
+  "author": "scikit-plots",
+  "contract": "learn.topic-prompt.v1",
+  "default_enabled": true,
+  "description": "Identify concrete limitations, uncertainties, missing evidence, and unresolved questions.",
+  "empty_message": "No one has generated a list of knowledge gaps for this topic yet.",
+  "id": "knowledge-gaps",
+  "instruction": "Review this topic and its available sources as a research analyst. Produce one clear list of knowledge gaps, limitations, uncertainties, and unresolved questions.\n\n- Focus on what is missing, weakly supported, disputed, unmeasured, or outside the current evidence.\n- Separate a true evidence gap from a source that simply was not included.\n- Make each item concrete enough that a researcher or practitioner could investigate it.\n- Prefer concise bullets and avoid repeating the topic summary.\n- Do not claim a gap unless the available sources support that interpretation or clearly label it as an inference.",
+  "order": 20,
+  "title": "Knowledge Gaps"
+}

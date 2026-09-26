@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-naive-bayes",
+  "section": {
+    "body": "Official scikit-learn 1.9 guidance for Gaussian, multinomial, complement, Bernoulli, categorical, and other Naive Bayes variants.",
+    "citations": [],
+    "id": "overview",
+    "links": [],
+    "title": "Overview"
+  }
+}
