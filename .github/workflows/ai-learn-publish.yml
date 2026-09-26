@@ -32,10 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
 
-    if: inputs.operation == 'test' && github.ref_name == github.event.repository.default_branch
-
-    # To enable this workflow on a fork, comment out:
-    if: github.repository == 'scikit-plots/learn'
+    if: >-
+      (
+        inputs.operation == 'test' &&
+        github.ref_name == github.event.repository.default_branch
+      )
+      || github.repository == 'scikit-plots/learn'
 
     permissions:
       contents: read
@@ -50,10 +52,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    if: inputs.operation == 'publish' && github.ref_name == github.event.repository.default_branch
-
-    # To enable this workflow on a fork, comment out:
-    if: github.repository == 'scikit-plots/learn'
+    if: >-
+      (
+        inputs.operation == 'test' &&
+        github.ref_name == github.event.repository.default_branch
+      )
+      || github.repository == 'scikit-plots/learn'
 
     permissions:
       contents: write
