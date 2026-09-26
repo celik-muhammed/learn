@@ -1,7 +1,0 @@
-{
-  "contract": "learn.page.v1",
-  "create_label": "Create a Video",
-  "kind": "video",
-  "title": "Videos",
-  "view": "media-gallery"
-}

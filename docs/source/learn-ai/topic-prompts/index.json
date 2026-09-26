@@ -1,6 +1,0 @@
-{
-  "contract": "learn.page.v1",
-  "description": "Create and browse reusable community prompts for topic pages.",
-  "title": "Topic Prompts",
-  "view": "prompt-library"
-}

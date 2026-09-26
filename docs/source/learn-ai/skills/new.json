@@ -1,6 +1,0 @@
-{
-  "contract": "learn.page.v1",
-  "description": "Generate a private reusable skill draft for review before publication.",
-  "title": "Create a Skill",
-  "view": "skill-create"
-}

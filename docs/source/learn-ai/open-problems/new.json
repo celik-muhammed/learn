@@ -1,7 +1,0 @@
-{
-  "contract": "learn.page.v1",
-  "description": "Create a source-grounded open-problem draft with explicit uncertainty and evidence gaps.",
-  "kind": "problem",
-  "title": "Create an Open Problem",
-  "view": "record-create"
-}
