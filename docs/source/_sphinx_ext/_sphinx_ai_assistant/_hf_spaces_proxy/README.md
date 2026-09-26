@@ -1204,6 +1204,29 @@ without writing. ``action=publish`` accepts a bounded reviewed draft envelope; i
 Repository projection remains inside ``_sphinx_ai_learn`` in the checked-out
 repository.
 
+The repository workflow uses two separate GitHub authorities. The server-side
+``AI_LEARN_GITHUB_TOKEN`` (or its documented fallback) only dispatches the fixed
+workflow. Once that workflow is running in ``scikit-plots/learn``, its
+repository-scoped ``GITHUB_TOKEN`` performs the reviewed branch and PR write with
+job-local ``contents: write`` and ``pull-requests: write`` permissions. Checkout
+keeps ``persist-credentials: false``: Git credentials are not left in the
+repository configuration. Instead, only the branch-replay/fetch and push steps
+receive ``GH_TOKEN`` plus a fail-closed ``GIT_ASKPASS`` bridge, with terminal
+credential prompting disabled. The token is therefore neither embedded in the
+remote URL nor persisted in Git config.
+
+Workflow operations are mutually exclusive and default-branch bound: ``test``
+runs only the transport check, while ``publish`` runs only the validation/PR job,
+and both require ``github.ref_name`` to equal the repository default branch. A
+deterministic ``ai-learn/<request-id>`` branch with an existing open PR is
+replayed. If a prior run pushed the branch but failed before opening the PR, a
+retry may reuse that orphan branch only when its branch-side changes are all
+canonical ``docs/source/learn-ai/*.json`` paths **and** its complete canonical
+Learn tree exactly matches the newly rebuilt reviewed plan. A request whose prior
+PR is already closed or merged is terminal and is never silently reopened as a
+second review. Any other branch collision fails closed instead of being
+overwritten.
+
 Image and Whiteboard generation reuse the provider-artifact registry and its
 validated binary lifecycle. Document generation reuses the server-owned chat/model
 authority but returns a bounded document artifact contract (Markdown, RST, or

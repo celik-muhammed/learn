@@ -1089,5 +1089,6 @@ ai_assistant_mcp_tools = {
 ai_learn_content_root = "learn-ai"
 ai_learn_site_id = "scikit-plots-learn"
 ai_learn_runtime = "assistant"
+ai_learn_explorer_search_variant = "pill-overflow"  # alternative: "classic"
 ai_learn_media = True
 ai_learn_youtube_subscribe_url = ""  # set an HTTPS youtube.com channel URL to enable Subscribe

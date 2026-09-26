@@ -200,6 +200,10 @@ def _configure(  # ruff: ignore[too-many-branches]
     """Validate runtime config, then materialize canonical JSON before discovery."""
     if config.ai_learn_runtime not in ("none", "assistant"):
         raise ConfigError("ai_learn_runtime must be 'none' or 'assistant'")
+    if config.ai_learn_explorer_search_variant not in ("pill-overflow", "classic"):
+        raise ConfigError(
+            "ai_learn_explorer_search_variant must be 'pill-overflow' or 'classic'"
+        )
 
     if not isinstance(config.ai_learn_site_id, str) or not ID_PATTERN.fullmatch(
         config.ai_learn_site_id
@@ -327,7 +331,7 @@ def setup_extension(app):
     """Wire public hooks without importing or starting the proxy application."""
     if getattr(app, "_ai_learn_registered", False):
         return {
-            "version": "0.34.0",
+            "version": "0.35.0",
             "parallel_read_safe": True,
             "parallel_write_safe": True,
         }
@@ -339,6 +343,7 @@ def setup_extension(app):
     app.add_config_value("ai_learn_content_root", "learn-ai", "env")
     app.add_config_value("ai_learn_site_id", "scikit-plots-learn", "env")
     app.add_config_value("ai_learn_runtime", "none", "env")
+    app.add_config_value("ai_learn_explorer_search_variant", "pill-overflow", "env")
     app.add_config_value("ai_learn_media", False, "env")
     app.add_config_value("ai_learn_youtube_subscribe_url", "", "env")
     if app.config.ai_learn_media:
@@ -366,7 +371,7 @@ def setup_extension(app):
     app.connect("html-page-context", _page_assets)
     app.connect("doctree-resolved", _resolve_routes)
     return {
-        "version": "0.34.0",
+        "version": "0.35.0",
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

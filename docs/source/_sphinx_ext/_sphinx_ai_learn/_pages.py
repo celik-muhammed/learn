@@ -1193,6 +1193,7 @@ class ExplorerDirective(SphinxDirective):
             ),
             "bookmarks_href": "#",
             "collections_href": "#",
+            "search_control_variant": self.config.ai_learn_explorer_search_variant,
         }
         catalog = lookup(self)
         if kind == "topic":

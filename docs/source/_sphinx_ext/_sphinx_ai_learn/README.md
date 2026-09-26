@@ -31,6 +31,7 @@ extensions += ["_sphinx_ext._sphinx_ai_learn"]
 ai_learn_content_root = "learn-ai"
 ai_learn_site_id = "scikit-plots-learn"
 ai_learn_runtime = "assistant"  # or "none"
+ai_learn_explorer_search_variant = "pill-overflow"  # or "classic"
 ```
 
 Materialization runs at `config-inited`, before Sphinx discovers/reads source
@@ -238,7 +239,12 @@ only selects directives and structural classes.
   of whether results render as table rows (Topics, Sources, Open Problems, Skills)
   or cards (Videos, Audio, Documents, Whiteboards): a visually hidden label, a
   search input with an integrated icon submit button, and one disclosure button
-  for advanced filters. Typing in the query field filters immediately and updates
+  for advanced filters. `ai_learn_explorer_search_variant` controls presentation
+  only: `pill-overflow` (default) uses a pill search field plus circular vertical
+  overflow button, while `classic` retains the rounded-rectangle field plus
+  chevron disclosure. Both variants use the same controller, filter panel, URL
+  state, keyboard semantics, and accessible labels; do not fork search behavior by
+  variant or modality. Typing in the query field filters immediately and updates
   URL state; submit/Enter remains available as an equivalent accessible action.
   IME composition is allowed to finish before filtering. Advanced category,
   timeframe, sort, direction, and reset controls stay collapsed unless explicitly

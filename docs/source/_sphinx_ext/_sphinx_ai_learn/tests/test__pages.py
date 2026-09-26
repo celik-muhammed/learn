@@ -825,9 +825,16 @@ def test_all_catalog_explorers_use_live_compact_shared_controls():
     assert 'learn-search-field' in primary
     assert 'learn-search-input' in primary
     assert 'aria-label="Search"' in primary
+    assert 'maxlength="1024"' in primary
+    assert 'aria-haspopup' not in primary
     assert 'M10 3a7 7 0 1 0 0 14' in primary
     assert 'data-explorer-filter-toggle' in primary
     assert 'aria-expanded="false"' in primary
+    assert 'data-explorer-search-variant' in primary
+    assert 'learn-search-primary-row--pill-overflow' in primary
+    assert 'learn-filter-disclosure--overflow' in primary
+    assert '<circle cx="12" cy="5" r="1.8"></circle>' in primary
+    assert 'learn-filter-disclosure--chevron' in primary
     assert '<polyline points="6 9 12 15 18 9"></polyline>' in primary
     assert "function setFilterOptions(expanded)" in js
     assert "filterOptions.hidden=!expanded" in js
@@ -837,11 +844,28 @@ def test_all_catalog_explorers_use_live_compact_shared_controls():
     assert "form.elements.q?.addEventListener('compositionend',()=>apply(true))" in js
     assert "if(!tbody){" in js
     assert '.learn-search-primary-row { display:grid; grid-template-columns:minmax(0,1fr) 2.75rem;' in css
+    assert '.learn-search-primary-row--pill-overflow { grid-template-columns:minmax(0,1fr) 2.5rem; }' in css
     assert '.learn-search-field { display:grid; grid-template-columns:minmax(0,1fr) 2.7rem;' in css
-    assert '.learn-search-submit svg { width:1.12rem; height:1.12rem; fill:currentColor; }' in css
-    assert '.learn-filter-disclosure[aria-expanded="true"] svg { transform:rotate(180deg); }' in css
+    assert '.learn-search-field--pill { border-radius:999px; }' in css
+    assert '.learn-trending-controls .learn-search-submit svg { width:1.12rem; height:1.12rem; fill:currentColor; }' in css
+    assert 'height:2.5rem; min-height:2.5rem; box-sizing:border-box;' in css
+    assert '.learn-trending-controls .learn-filter-disclosure--overflow { width:2.5rem; min-width:2.5rem; border-radius:999px; }' in css
+    assert '.learn-trending-controls .learn-filter-disclosure--chevron[aria-expanded="true"] svg { transform:rotate(180deg); }' in css
     assert '.learn-filter-options[hidden] { display:none!important; }' in css
     assert '.learn-filters {' not in css
+
+def test_explorer_search_variant_is_shared_config_not_a_second_controller():
+    sphinx = (EXT/'_sphinx_ext/_sphinx_ai_learn/_sphinx.py').read_text()
+    pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
+    readme = (EXT/'_sphinx_ext/_sphinx_ai_learn/README.md').read_text()
+    conf = (EXT/'conf.py').read_text()
+    assert 'app.add_config_value("ai_learn_explorer_search_variant", "pill-overflow", "env")' in sphinx
+    assert "ai_learn_explorer_search_variant must be 'pill-overflow' or 'classic'" in sphinx
+    assert '"search_control_variant": self.config.ai_learn_explorer_search_variant' in pages
+    assert 'ai_learn_explorer_search_variant = "pill-overflow"  # alternative: "classic"' in conf
+    assert '`pill-overflow` (default)' in readme
+    assert '`classic` retains the rounded-rectangle field' in readme
+
 
 def test_explorer_search_partial_resolves_from_sphinx_template_root():
     template_root = EXT / '_sphinx_ext/_sphinx_ai_learn/_templates'
@@ -853,7 +877,18 @@ def test_explorer_search_partial_resolves_from_sphinx_template_root():
     assert 'id="learn-topic-search"' in rendered
     assert 'for="learn-topic-search"' in rendered
     assert 'aria-label="Search"' in rendered
+    assert 'data-explorer-search-variant="pill-overflow"' in rendered
+    assert 'learn-search-field--pill' in rendered
+    assert 'learn-filter-disclosure--overflow' in rendered
+    assert 'learn-filter-overflow-icon' in rendered
     assert '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' in rendered
+
+    classic = template.render(search_placeholder='Topic or keyword', filter_panel_id='learn-topic-filter-options', search_input_id='learn-topic-search', search_control_variant='classic')
+    assert 'data-explorer-search-variant="classic"' in classic
+    assert 'learn-search-primary-row--classic' in classic
+    assert 'learn-search-field--pill' not in classic
+    assert 'learn-filter-disclosure--chevron' in classic
+    assert '<polyline points="6 9 12 15 18 9"></polyline>' in classic
 
 
 def test_audio_topic_and_detail_contracts_are_materialized_without_autoplay():

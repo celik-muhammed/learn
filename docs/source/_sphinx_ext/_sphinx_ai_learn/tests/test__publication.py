@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -544,16 +546,87 @@ def test_reviewed_source_request_requires_explicit_metadata_review(tmp_path):
 
 
 def test_reviewed_publication_workflow_separates_dry_run_and_json_only_write_authority():
-    workflow_path = Path(__file__).resolve().parents[5] / ".github" / "workflows" / "ai-learn-publish.yml"
+    root = Path(__file__).resolve().parents[5]
+    workflow_path = root / ".github" / "workflows" / "ai-learn-publish.yml"
     text = workflow_path.read_text()
     assert "transport-test:" in text
     assert "permissions:\n      contents: read" in text
     assert "validate-plan-and-open-pr:" in text
     assert "contents: write" in text
     assert "pull-requests: write" in text
-    assert "operation == 'test'" in text
-    assert "operation == 'publish'" in text
+    assert "inputs.operation == 'test' &&" in text
+    assert "inputs.operation == 'publish' &&" in text
+    assert text.count("github.repository == 'scikit-plots/learn' &&") == 2
+    assert text.count("github.ref_name == github.event.repository.default_branch") == 2
+    assert "AI_LEARN_BASE_BRANCH: ${{ github.event.repository.default_branch }}" in text
+    assert "persist-credentials: false" in text
+    assert "persist-credentials: true" not in text
     assert "Publication changed forbidden repository paths" in text
     assert "Non-JSON staged path detected" in text
     assert "docs/source/learn-ai" in text
+    assert "install -m 700 .github/scripts/ai-learn-git-askpass.sh" in text
+    assert "GIT_ASKPASS: ${{ runner.temp }}/ai-learn-git-askpass.sh" in text
+    assert text.count("GH_TOKEN: ${{ github.token }}") >= 3
+    assert text.count("GH_REPO: ${{ github.repository }}") >= 2
+    assert "GIT_TERMINAL_PROMPT: '0'" in text
+    assert "git push origin HEAD:\"$BRANCH\"" in text
+    assert "branch_reusable=true" in text
+    assert "--state closed" in text
+    assert "--state merged" in text
+    assert "Refusing to create a second review for the same deterministic request id." in text
+    assert "refusing to treat a Git transport/authentication failure as branch absence" in text
+    assert "Reserved publication branch contains forbidden paths" in text
+    assert "Reserved publication branch does not match the current reviewed JSON plan" in text
+    assert "Recovered matching AI Learn publication branch; PR creation will be retried." in text
     assert "gh pr create" in text
+    assert "https://x-access-token" not in text
+
+
+def test_reviewed_publication_git_askpass_is_prompt_scoped_and_fail_closed():
+    root = Path(__file__).resolve().parents[5]
+    helper = root / ".github" / "scripts" / "ai-learn-git-askpass.sh"
+    assert helper.is_file()
+
+    env = os.environ.copy()
+    env["GH_TOKEN"] = "test-publication-token"
+
+    username = subprocess.run(
+        ["/bin/sh", str(helper), "Username for 'https://github.com':"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert username.stdout.strip() == "x-access-token"
+    assert "test-publication-token" not in username.stdout
+
+    password = subprocess.run(
+        ["/bin/sh", str(helper), "Password for 'https://x-access-token@github.com':"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert password.stdout.strip() == "test-publication-token"
+
+    unknown = subprocess.run(
+        ["/bin/sh", str(helper), "Unexpected prompt"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert unknown.returncode != 0
+    assert unknown.stdout == ""
+
+    missing_env = env.copy()
+    missing_env.pop("GH_TOKEN", None)
+    missing = subprocess.run(
+        ["/bin/sh", str(helper), "Password for 'https://github.com':"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=missing_env,
+    )
+    assert missing.returncode != 0
+    assert missing.stdout == ""
