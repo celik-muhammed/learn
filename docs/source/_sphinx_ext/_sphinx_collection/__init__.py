@@ -1,3 +1,10 @@
+# scikitplot/_externals/_sphinx_ext/_sphinx_collection/__init__.py
+#
+# flake8: noqa: D213
+#
+# Authors: The scikit-plots developers
+# SPDX-License-Identifier: BSD-3-Clause
+
 """
 Domain-agnostic collection infrastructure, lazily exported.
 

@@ -1,0 +1,7 @@
+{
+  "contract": "learn.page.v1",
+  "create_label": "Create Audio",
+  "kind": "audio",
+  "title": "Audio",
+  "view": "explorer"
+}

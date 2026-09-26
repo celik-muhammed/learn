@@ -1,0 +1,11 @@
+{
+  "author": "scikit-plots",
+  "contract": "learn.topic-prompt.v1",
+  "default_enabled": false,
+  "description": "Audit how the topic is evaluated and whether its metrics measure the outcomes that actually matter.",
+  "empty_message": "No one has generated an evaluation-and-metrics analysis for this topic yet.",
+  "id": "evaluation-metrics",
+  "instruction": "Analyze the evaluation methods and metrics used across this topic's available sources. Explain what each metric measures, what it misses, and whether the evaluation design supports the claimed conclusions. Look for leakage, weak baselines, ceiling effects, proxy metrics, aggregation problems, missing uncertainty, and distribution shift where relevant. Suggest additional or alternative evaluations only when they would answer a clearly identified gap.",
+  "order": 120,
+  "title": "Evaluation & Metrics Analysis"
+}

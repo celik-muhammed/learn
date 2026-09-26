@@ -69,6 +69,7 @@ extensions = [
     "_sphinx_ext._sphinxcontrib_youtube",  # "sphinxcontrib.youtube",
     "_sphinx_ext._sphinx_youtube_gallery",
     "_sphinx_ext._sphinx_ai_assistant",
+    "_sphinx_ext._sphinx_ai_learn",
 ]
 
 # -- Sitemap -----------------------------------------------------------------
@@ -90,10 +91,12 @@ templates_path = ['_templates']
 # Prevent Sphinx from scanning temporary files, virtualenvs, or root build dirs
 exclude_patterns = [  # glob-style
     "build",  # Ignore the _build directory where generated files are stored
-
+    ## local test
     # "_tags",
-    # "learn",
-    # "learn/hands-on/edtech/**/includes/*.inc",
+    # "glossary",
+    # "learn",  # "learn/hands-on/edtech/**/includes/*.inc",
+    # "resource",
+    # "youtube",
 ]
 
 # The suffix(es) of source filenames.
@@ -163,7 +166,7 @@ html_theme_options = {
     #     "image_dark": "_static/logo-dark.svg",
     # },
     "logo": {
-        "text": "scikit-plots Learn",
+        "text": "scikit-plots\nLearn XwAI",
         # "image_dark": "_static/logos/scikit-plots-logo.svg",
     },
     # "logo": {
@@ -176,7 +179,7 @@ html_theme_options = {
     "search_bar_text": "Search the docs ...",
     "show_toc_level": 1,
     # -- Header and Footer Settings -------------------------------------------
-    "header_links_before_dropdown": 6,
+    "header_links_before_dropdown": 7,
     "header_dropdown_text": "More",
     # [left, content, right] For testing that the navbar items align properly
     "navbar_align": "left",
@@ -1006,6 +1009,7 @@ ai_assistant_isolation_allow_microphone = False
 #   share    -> /v1/share
 #   feedback -> /v1/feedback
 #   training -> /v1/contribute
+#   video    -> /v1/video-generations
 # No build-time tokens belong in this profile. The service authenticates
 # upstream/server-side writes using its own secret store.
 ai_assistant_global_share_ttl_days = 30
@@ -1078,3 +1082,12 @@ ai_assistant_mcp_tools = {
         "transport": "sse",
     },
 }
+
+# -- Sphinx AI Learn ---------------------------------------------------------
+# The exported learn-ai tree is data-driven; without these values the page
+# directives have no catalog to render and produce empty/stale build output.
+ai_learn_content_root = "learn-ai"
+ai_learn_site_id = "scikit-plots-learn"
+ai_learn_runtime = "assistant"
+ai_learn_media = True
+ai_learn_youtube_subscribe_url = ""  # set an HTTPS youtube.com channel URL to enable Subscribe

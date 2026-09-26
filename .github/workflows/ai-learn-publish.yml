@@ -1,0 +1,283 @@
+name: AI ✨ Learn reviewed publication
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Dry-run transport test or reviewed publication
+        required: true
+        default: publish
+        type: choice
+        options:
+          - test
+          - publish
+      request_id:
+        description: Canonical SHA-256 identifier for the reviewed publication request
+        required: false
+        type: string
+      request_json:
+        description: Canonical learn.publication-request.v1 JSON
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-learn-publication-${{ inputs.operation }}-${{ inputs.request_id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  transport-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    if: inputs.operation == 'test' && github.ref_name == github.event.repository.default_branch
+
+    # To enable this workflow on a fork, comment out:
+    if: github.repository == 'scikit-plots/scikit-plots'
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Verify publication transport only
+        run: |
+          echo 'AI Learn publication workflow dispatch is operational.'
+          echo 'Dry run only: no checkout, branch, commit, or pull request was created.' >> "$GITHUB_STEP_SUMMARY"
+
+  validate-plan-and-open-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    if: inputs.operation == 'publish' && github.ref_name == github.event.repository.default_branch
+
+    # To enable this workflow on a fork, comment out:
+    if: github.repository == 'scikit-plots/scikit-plots'
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      AI_LEARN_ROOT: docs/source/learn-ai
+      AI_LEARN_PREFIX: docs/source/learn-ai
+      AI_LEARN_BASE_BRANCH: ${{ github.ref_name }}
+
+    steps:
+      - name: Check out canonical branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false  # Prevents accidental credential exposure
+          fetch-depth: 0
+          ref: ${{ env.AI_LEARN_BASE_BRANCH }}
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Install deterministic materializer dependency
+        run: python -m pip install --disable-pip-version-check 'Jinja2==3.1.6'
+
+      - name: Reconstruct and authenticate publication request
+        env:
+          AI_LEARN_REQUEST_ID: ${{ inputs.request_id }}
+          AI_LEARN_REQUEST_JSON: ${{ inputs.request_json }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import re
+
+          request_id = os.environ['AI_LEARN_REQUEST_ID'].strip().lower()
+          request_json = os.environ['AI_LEARN_REQUEST_JSON']
+          if not re.fullmatch(r'[0-9a-f]{64}', request_id):
+              raise SystemExit('Invalid publication request identifier.')
+          encoded = request_json.encode('utf-8')
+          if not encoded or len(encoded) > 60_000:
+              raise SystemExit('Publication request exceeds workflow input policy.')
+          if hashlib.sha256(encoded).hexdigest() != request_id:
+              raise SystemExit('Publication request identifier does not match request bytes.')
+          pathlib.Path('/tmp/ai-learn-publication-request.json').write_bytes(encoded)
+          PY
+
+      - name: Build canonical JSON-only publication plan
+        run: |
+          rm -rf /tmp/ai-learn-review
+          PYTHONPATH=docs/source python -m _sphinx_ext._sphinx_ai_learn._publication_request_cli \
+            "$AI_LEARN_ROOT" \
+            /tmp/ai-learn-publication-request.json \
+            /tmp/ai-learn-review \
+            --repo-prefix "$AI_LEARN_PREFIX"
+
+      - name: Apply only planned canonical JSON
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import shutil
+
+          repo = pathlib.Path.cwd().resolve()
+          prefix = pathlib.PurePosixPath('docs/source/learn-ai')
+          bundle = pathlib.Path('/tmp/ai-learn-review')
+          manifest = json.loads((bundle / 'publication-plan.json').read_text(encoding='utf-8'))
+          if manifest.get('contract') != 'learn.publication-review-bundle.v2':
+              raise SystemExit('Unexpected publication review manifest contract.')
+
+          def checked(name):
+              path = pathlib.PurePosixPath(name)
+              if path.is_absolute() or '..' in path.parts or path.suffix != '.json':
+                  raise SystemExit(f'Unsafe/non-JSON planned path: {name}')
+              if tuple(path.parts[:len(prefix.parts)]) != prefix.parts:
+                  raise SystemExit(f'Planned path escapes canonical subtree: {name}')
+              return path
+
+          for name, meta in sorted((manifest.get('files') or {}).items()):
+              rel = checked(name)
+              src = bundle.joinpath(*rel.parts)
+              if not src.is_file():
+                  raise SystemExit(f'Missing planned bundle file: {name}')
+              target = repo.joinpath(*rel.parts)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(src, target)
+
+          for name in manifest.get('deleted') or []:
+              rel = checked(name)
+              target = repo.joinpath(*rel.parts)
+              if target.exists():
+                  target.unlink()
+          PY
+
+      - name: Reject any non-JSON repository mutation
+        run: |
+          python - <<'PY'
+          import subprocess
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', '--diff-filter=ACDMRTUXB'], text=True
+          ).splitlines()
+          bad = [
+              name for name in changed
+              if not (name.startswith('docs/source/learn-ai/') and name.endswith('.json'))
+          ]
+          if bad:
+              raise SystemExit('Publication changed forbidden repository paths: ' + ', '.join(bad))
+          if not changed:
+              raise SystemExit('Publication plan produced no canonical JSON diff.')
+          print('\n'.join(changed))
+          PY
+
+      - name: Validate future JSON tree and materializer idempotence in isolation
+        run: |
+          PYTHONPATH=docs/source python - <<'PY'
+          from pathlib import Path
+          import shutil
+          import tempfile
+          from _sphinx_ext._sphinx_ai_learn import materialize
+
+          source = Path('docs/source/learn-ai')
+          with tempfile.TemporaryDirectory(prefix='ai-learn-publication-') as tmp:
+              root = Path(tmp) / 'learn-ai'
+              for path in source.rglob('*.json'):
+                  rel = path.relative_to(source)
+                  target = root / rel
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copyfile(path, target)
+              tree, first = materialize(root)
+              tree2, second = materialize(root)
+              if second:
+                  raise SystemExit('Second materializer pass changed files: ' + ', '.join(map(str, second[:10])))
+              print('future revision:', tree.catalog['revision'])
+              print('first-pass generated:', len(first))
+              print('second-pass changed:', len(second))
+          PY
+
+      - name: Prepare deterministic branch metadata
+        id: meta
+        env:
+          REQUEST_ID: ${{ inputs.request_id }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import pathlib
+
+          req = json.loads(pathlib.Path('/tmp/ai-learn-publication-request.json').read_text(encoding='utf-8'))
+          draft = req.get('draft') if isinstance(req, dict) else {}
+          title = str((draft or {}).get('title') or req.get('section_title') or 'AI Learn publication').strip()
+          title = ' '.join(title.split())[:120]
+          request_id = os.environ['REQUEST_ID'].strip().lower()
+          print(f'branch=ai-learn/{request_id[:20]}')
+          print('title=' + ('[AI Learn] ' + title).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          print(f'short_id={request_id[:12]}')
+          PY
+
+      - name: Refuse branch collision or replay an existing open review
+        id: replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.meta.outputs.branch }}
+        run: |
+          existing="$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url // ""')"
+          if [ -n "$existing" ]; then
+            echo "existing_pr=$existing" >> "$GITHUB_OUTPUT"
+            echo "replayed=true" >> "$GITHUB_OUTPUT"
+            echo "Existing open AI Learn review: $existing" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Reserved publication branch exists without an open PR; refusing to overwrite it." >&2
+            exit 1
+          fi
+          echo "replayed=false" >> "$GITHUB_OUTPUT"
+
+      - name: Commit canonical JSON proposal
+        if: inputs.operation == 'publish' && steps.replay.outputs.replayed != 'true'
+        env:
+          BRANCH: ${{ steps.meta.outputs.branch }}
+          SHORT_ID: ${{ steps.meta.outputs.short_id }}
+        run: |
+          git switch -c "$BRANCH"
+          git config user.name 'scikit-plots-ai-learn'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "$AI_LEARN_PREFIX"
+          python - <<'PY'
+          import subprocess
+          staged = subprocess.check_output(['git', 'diff', '--cached', '--name-only'], text=True).splitlines()
+          bad = [name for name in staged if not (name.startswith('docs/source/learn-ai/') and name.endswith('.json'))]
+          if bad:
+              raise SystemExit('Non-JSON staged path detected: ' + ', '.join(bad))
+          if not staged:
+              raise SystemExit('No canonical JSON changes were staged.')
+          PY
+          git commit -m "AI Learn reviewed publication ${SHORT_ID}"
+          git push origin HEAD:"$BRANCH"
+
+      - name: Open human-review pull request
+        if: inputs.operation == 'publish' && steps.replay.outputs.replayed != 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.meta.outputs.branch }}
+          PR_TITLE: ${{ steps.meta.outputs.title }}
+          REQUEST_ID: ${{ inputs.request_id }}
+        run: |
+          cat > /tmp/ai-learn-pr-body.md <<EOF
+          ## AI Learn reviewed publication
+
+          This pull request was created from an explicit browser review handoff.
+
+          - Request: \`${REQUEST_ID}\`
+          - Canonical subtree: \`docs/source/learn-ai\`
+          - Durable changes: canonical JSON only
+          - RST/HTML: derived later by the AI Learn materializer and Sphinx
+
+          The repository workflow revalidated the exact base revision, rebuilt the canonical publication plan, rejected non-JSON paths, and ran JSON→RST materialization twice in an isolated tree before opening this review.
+
+          Human review and normal branch protection remain required before merge.
+          EOF
+          url="$(gh pr create --base "$AI_LEARN_BASE_BRANCH" --head "$BRANCH" --title "$PR_TITLE" --body-file /tmp/ai-learn-pr-body.md)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Pull request: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo 'CI note: GitHub may place pull_request workflows created by GITHUB_TOKEN in approval-required state; a repository writer must approve them.' >> "$GITHUB_STEP_SUMMARY"

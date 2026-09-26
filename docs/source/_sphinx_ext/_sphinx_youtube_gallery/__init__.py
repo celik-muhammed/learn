@@ -1,3 +1,10 @@
+# scikitplot/_externals/_sphinx_ext/_sphinx_youtube_gallery/__init__.py
+#
+# flake8: noqa: D213
+#
+# Authors: The scikit-plots developers
+# SPDX-License-Identifier: BSD-3-Clause
+
 """
 Render YouTube catalogs as Sphinx galleries with optional local reader controls.
 

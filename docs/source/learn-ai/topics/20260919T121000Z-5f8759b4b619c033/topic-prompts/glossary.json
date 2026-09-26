@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-nearest-neighbors",
+  "section": {
+    "body": "Neighborhood — the selected set of nearby training samples used for a prediction.\n\nDistance metric — the rule used to quantify closeness between samples.\n\nDistance weighting — giving closer neighbors more influence than farther ones.",
+    "citations": [
+      {
+        "locator": "1.6. Nearest Neighbors",
+        "source_id": "source-sklearn-neighbors"
+      }
+    ],
+    "id": "glossary",
+    "links": [],
+    "title": "Glossary"
+  }
+}

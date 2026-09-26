@@ -1,0 +1,11 @@
+{
+  "author": "scikit-plots",
+  "contract": "learn.topic-prompt.v1",
+  "default_enabled": false,
+  "description": "Explore disciplined analogies and applications outside the topic's primary domain without overstating transferability.",
+  "empty_message": "No one has generated cross-domain applications for this topic yet.",
+  "id": "cross-domain-applications",
+  "instruction": "Explore how the central ideas in this topic could transfer to other domains. For each candidate domain, identify the structural analogy, what maps cleanly, what does not map, and one realistic application or experiment. Prioritize cross-domain connections supported by shared mechanisms rather than superficial vocabulary, and clearly label speculative transfers.",
+  "order": 90,
+  "title": "Cross-Domain Applications"
+}

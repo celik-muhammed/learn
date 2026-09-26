@@ -1,0 +1,20 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-tree-complexity-generalization",
+  "section": {
+    "body": "Use the Decision Trees pruning and practical-use guidance, and keep feature-selection steps inside the same validation workflow if they are added.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-decision-trees"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-feature-selection"
+      }
+    ],
+    "id": "references",
+    "links": [],
+    "title": "References"
+  }
+}

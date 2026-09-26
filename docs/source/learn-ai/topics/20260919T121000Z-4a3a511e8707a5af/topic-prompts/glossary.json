@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-decision-trees",
+  "section": {
+    "body": "Split criterion — the objective used to choose a partition at a tree node.\n\nLeaf — a terminal region that produces a prediction.\n\nCost-complexity pruning — a method for trading tree fit against structural complexity.",
+    "citations": [
+      {
+        "locator": "1.10. Decision Trees",
+        "source_id": "source-sklearn-decision-trees"
+      }
+    ],
+    "id": "glossary",
+    "links": [],
+    "title": "Glossary"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "topic-bayesian-regression",
+  "section": {
+    "body": "Prior — a probability model for parameters before observing the current data.\n\nPosterior — the updated parameter distribution after conditioning on observed data.\n\nARD — automatic relevance determination, which can shrink less-supported coefficients strongly.",
+    "citations": [
+      {
+        "locator": "1.1.10. Bayesian Regression",
+        "source_id": "source-sklearn-linear-models"
+      }
+    ],
+    "id": "glossary",
+    "links": [],
+    "title": "Glossary"
+  }
+}

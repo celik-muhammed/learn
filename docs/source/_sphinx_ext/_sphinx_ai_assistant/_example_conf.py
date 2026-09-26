@@ -1239,24 +1239,24 @@ ai_assistant_panel_api_model = "scikit-plots/Qwen2.5-Coder-7B-Instruct"  # "scik
 # than hitting sys.modules from a module-level binding).
 import os  # noqa: E402 — conf.py files commonly place imports after preamble
 
-# Single proxy base URL resolved once at build time from the environment.
-# ⚠️  PRODUCTION WARNING
+# Single public proxy base URL resolved once at build time.
 # ─────────────────────────────────────────────────────────────────────────────
-# The default fallback "http://localhost:8787" is for LOCAL DEVELOPMENT ONLY.
-# If AI_PROXY_BASE is not set in your CI/CD environment, every model endpoint
-# will silently point at localhost and all panel API calls will fail for
-# readers of your published documentation.
+# AI_PROXY_BASE / PROXY_BASE_URL are PUBLIC routing configuration, not secrets.
+# The production-safe fallback is the scikit-plots AI Space; override it with
+# an ordinary environment/build variable when testing another public proxy.
 #
-# Set the environment variable (or CI/CD secret) to your deployed proxy:
 #   Local dev  : export AI_PROXY_BASE=http://localhost:8787
-#   Staging/CI : export AI_PROXY_BASE=https://<org>-ai-proxy.hf.space  # https://scikit-plots-ai.hf.space
-#   Production : export AI_PROXY_BASE=https://hf-proxy.<subdomain>.workers.dev
+#   Staging/CI : export AI_PROXY_BASE=https://<org>-ai-proxy.hf.space
+#   Production : export AI_PROXY_BASE=https://scikit-plots-ai.hf.space
 #
 # SECURITY: API tokens (HF_TOKEN, ANTHROPIC_API_KEY, …) MUST NEVER appear
 # here. They live only in the proxy's server-side environment / secret store.
 # ─────────────────────────────────────────────────────────────────────────────
-# _AI_PROXY_BASE: str = os.environ.get("AI_PROXY_BASE", "https://scikit-plots-ai.hf.space")
-_AI_PROXY_BASE: str = os.environ.get("AI_PROXY_BASE", "http://localhost:8787")
+_AI_PROXY_BASE: str = (
+    os.environ.get("AI_PROXY_BASE")
+    or os.environ.get("PROXY_BASE_URL")
+    or "https://scikit-plots-ai.hf.space"
+).rstrip("/")
 
 # ════════════════════════════════════════════════════════════════════════════
 #  Phase B — Multi-model panel, Terms of Service, Share sheet, Hamburger menu
@@ -1537,7 +1537,7 @@ ai_assistant_panel_api_models = [
     #
     # IMPORTANT — endpoint resolution (environment-aware):
     #   AI_PROXY_BASE is the single knob that selects which free proxy to use.
-    #   Set it as an environment variable or CI/CD secret:
+    #   Set it as a public environment/build variable (not a secret):
     #
     #   Local development (maintenance dev proxy on port 8787):
     #       export AI_PROXY_BASE=http://localhost:8787
@@ -1550,7 +1550,7 @@ ai_assistant_panel_api_models = [
     #
     # The _PROXY_BASE import at the top of this block reads the env var with
     # a sensible fallback so local builds work without any shell setup, and
-    # CI/CD secrets transparently select the production proxy.
+    # CI/CD/public build configuration selects the production proxy; credentials stay server-side.
     #
     # SECURITY: API tokens (HF_TOKEN, ANTHROPIC_API_KEY, …) MUST NEVER appear
     # here.  They live only in the proxy's environment secret store.
@@ -1841,7 +1841,7 @@ ai_assistant_panel_api_streaming = True
 #       "model": "openai/gpt-oss-20b",
 #       "endpoint": f"{_PROXY}/v1/chat/completions", "default": True },
 # ]
-# Set AI_PROXY_BASE as a GitHub Actions / CI repo secret pointing at
+# Set AI_PROXY_BASE as a GitHub Actions / CI public configuration variable pointing at
 # the deployed HF Space or Cloudflare Worker URL for production builds.
 #
 #
@@ -2764,11 +2764,16 @@ ai_assistant_mcp_tools = {
 #   share      → absolute URL or Base-relative route; blank/null inherits default
 #   feedback   → absolute URL or Base-relative route; blank/null inherits default
 #   training   → absolute URL or Base-relative route; blank/null inherits default
+#   image      → absolute URL or Base-relative route; blank/null inherits default
+#   video      → absolute URL or Base-relative route; blank/null inherits default
+#   audio      → absolute URL or Base-relative route; blank/null inherits default
+#   document   → absolute URL or Base-relative route; blank/null inherits default
+#   publication→ reviewed AI Learn handoff route; blank/null inherits /v1/learn-publication
 #   datasetRepo→ optional HuggingFace owner/repo; otherwise GET {base}/ discovery
 #
 # Relative routes may be written with or without a leading slash. Surrounding
 # whitespace is trimmed. Legacy profiles that explicitly repeat host-only
-# chat/share/feedback/training values continue to work unchanged.
+# chat/share/feedback/training/image/video/audio/document/publication values continue to work unchanged.
 #
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ SECURITY — WHAT GETS BAKED INTO THE HTML                                │
@@ -2826,6 +2831,14 @@ ai_assistant_mcp_tools = {
 #                              inherits base + '/v1/feedback'.
 #   training      (str|None) — absolute URL or Base-relative route; blank/null
 #                              inherits base + '/v1/contribute'.
+#   image         (str|None) — absolute URL or Base-relative route; blank/null
+#                              inherits base + '/v1/image'.
+#   video         (str|None) — absolute URL or Base-relative route; blank/null
+#                              inherits base + '/v1/video'.
+#   audio         (str|None) — absolute URL or Base-relative route; blank/null
+#                              inherits base + '/v1/audio'.
+#   document      (str|None) — absolute URL or Base-relative route; blank/null
+#                              inherits base + '/v1/document'.
 #
 # Optional resource field:
 #   datasetRepo   (str)   — HuggingFace owner/repo. When omitted, the browser
@@ -2848,6 +2861,10 @@ ai_assistant_mcp_tools = {
 #   _EP.resolve('share')          → share override, else active profile base
 #   _EP.resolve('feedback')       → active profile's feedback base URL
 #   _EP.resolve('training')       → active profile's training base URL
+#   _EP.resolve('image')          → image override, else active profile base
+#   _EP.resolve('video')          → video override, else active profile base
+#   _EP.resolve('audio')          → audio override, else active profile base
+#   _EP.resolve('document')       → document override, else active profile base
 #   _EP.resolveToken('shareToken')    → token for share writes
 #   _EP.resolveToken('feedbackToken') → token for feedback writes
 #   _EP.getActive()               → active profile key (string)
@@ -2873,10 +2890,10 @@ ai_assistant_mcp_tools = {
 #
 #   §1 Profile selector  — radio cards with "Active" badge on the current
 #                          profile; capability pills (Chat / Share / Feedback
-#                          / Training) show which features each profile covers.
+#                          / Training / Video) show which features each profile covers.
 #
 #   §2 Active Endpoints  — Simple mode: one representative base URL (chat).
-#                          Advanced mode: all four feature URLs + resolved full
+#                          Advanced mode: all five feature URLs + resolved full
 #                          URLs with copy-to-clipboard buttons.
 #                          Health-check button pings each endpoint and shows
 #                          latency / status inline.
@@ -2911,7 +2928,9 @@ ai_assistant_mcp_tools = {
 # ── Recommended minimal profile — one service + auto-discovery ─────────────
 #
 # The browser talks only to the service base. Chat / Share / Feedback /
-# Training inherit that base, and GET {base}/ discovers the backing dataset.
+# Training / Video inherit that base, and GET {base}/ discovers service
+# capabilities plus the backing dataset. Video execution remains capability-
+# gated even when its URL can be derived from the base.
 #
 # SECURITY — endpoint profile credentials
 # ---------------------------------------

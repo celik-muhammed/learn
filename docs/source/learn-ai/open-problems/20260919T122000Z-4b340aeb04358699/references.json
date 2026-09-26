@@ -1,0 +1,24 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "problem-local-kernel-scalability",
+  "section": {
+    "body": "Use each method’s complexity and practical-use sections as the baseline, then benchmark with the actual sample count, feature representation, hardware, and latency objective.",
+    "citations": [
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-svm"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-neighbors"
+      },
+      {
+        "locator": "Relevant scikit-learn 1.9 User Guide section",
+        "source_id": "source-sklearn-gaussian-processes"
+      }
+    ],
+    "id": "references",
+    "links": [],
+    "title": "References"
+  }
+}

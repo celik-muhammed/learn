@@ -1,0 +1,7 @@
+{
+  "contract": "learn.page.v1",
+  "create_label": "Create a Topic",
+  "kind": "topic",
+  "title": "Topics",
+  "view": "explorer"
+}

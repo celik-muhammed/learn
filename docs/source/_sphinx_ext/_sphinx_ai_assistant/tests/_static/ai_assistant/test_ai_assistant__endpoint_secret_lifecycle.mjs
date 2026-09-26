@@ -23,18 +23,18 @@ const persistBody = chunk.slice(persistStart, persistEnd);
 ok(persistStart >= 0 && persistEnd > persistStart, 'persistence function is extractable');
 ok(!/shareToken\s*:/.test(persistBody), 'shareToken field absent from persistent payload');
 ok(!/feedbackToken\s*:/.test(persistBody), 'feedbackToken field absent from persistent payload');
-ok(/var _SCHEMA_VER\s*=\s*3;/.test(chunk), 'endpoint storage schema is v3');
+ok(/var _SCHEMA_VER\s*=\s*7;/.test(chunk), 'endpoint storage schema is v7');
 ok(/if \(needsRewrite\) _persistCustom\(\);/.test(chunk), 'legacy storage is actively rewritten');
 
 const storage = new Map();
 const customKey = 'ai-assistant-ep-custom';
 storage.set(customKey, JSON.stringify({
-  _v: 2,
+  _v: 3,
   profiles: {
     legacy: {
       label: 'Legacy',
       base: 'https://example.com',
-      chat: '', share: '', feedback: '', training: '', datasetRepo: '',
+      chat: '', share: '', feedback: '', training: '', video: '', datasetRepo: '',
       shareToken: 'legacy-share-secret',
       feedbackToken: 'legacy-feedback-secret',
       ttlDays: 30,
@@ -72,12 +72,12 @@ ok(!migratedRaw.includes('legacy-share-secret'), 'legacy share token value remov
 ok(!migratedRaw.includes('legacy-feedback-secret'), 'legacy feedback token value removed from raw localStorage');
 ok(!/"shareToken"\s*:/.test(migratedRaw), 'legacy shareToken field removed from raw localStorage');
 ok(!/"feedbackToken"\s*:/.test(migratedRaw), 'legacy feedbackToken field removed from raw localStorage');
-ok(JSON.parse(migratedRaw)._v === 3, 'legacy storage rewritten as v3');
+ok(JSON.parse(migratedRaw)._v === 7, 'legacy storage rewritten as v7');
 
 const added = context._EP.addProfile('fresh', {
   label: 'Fresh',
   base: 'https://fresh.example.com',
-  chat: '', share: '', feedback: '', training: '', datasetRepo: '',
+  chat: '', share: '', feedback: '', training: '', video: '', datasetRepo: '',
   shareToken: 'runtime-share-secret',
   feedbackToken: 'runtime-feedback-secret',
   ttlDays: 30,

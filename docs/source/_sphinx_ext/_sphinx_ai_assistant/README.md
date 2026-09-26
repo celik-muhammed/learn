@@ -208,6 +208,7 @@ ai_assistant_endpoint_profiles = {
         "share": "/v1/share",  # relative with leading slash
         "feedback": "",  # inherit default
         "training": None,  # inherit default
+        "publication": "",  # inherit /v1/learn-publication
         # "datasetRepo": "scikit-plots/ai-assistant-contributions",
     },
 }
@@ -217,6 +218,37 @@ ai_assistant_endpoint_default_profile = "hf"
 Absolute provider-specific endpoints are also supported and are used verbatim,
 so heterogeneous deployments can override only the routes that need a different
 host or path. Legacy host-only feature values remain compatible.
+
+The built-in route family also includes generation surfaces for ``image``,
+``video``, ``audio``, ``document``, and reviewed AI Learn ``publication``. Blank
+overrides inherit the canonical short routes ``{base}/v1/image``, ``{base}/v1/video``,
+``{base}/v1/audio``, ``{base}/v1/document``, and ``{base}/v1/learn-publication``. The proxy keeps the previous ``*-generations`` routes
+as compatibility aliases where they existed; new configuration and generated
+snippets use the short routes. Capability discovery at ``GET {base}/`` remains
+the preferred path, because the browser can distinguish disabled, deterministic
+test, and real runtimes before it enables an expensive generation action.
+
+``document`` here is an **output-generation route**. It is separate from the
+Assistant resource-input ``document`` modality used to inspect uploaded PDF or
+other supported document resources in chat.
+
+### Public sibling bridges
+
+Two narrow browser APIs let sibling extensions integrate without scraping the
+Assistant DOM or reading private persistence/token state:
+
+- ``window.AI_ASSISTANT_ENDPOINT_API`` resolves sanitized feature routes and
+  subscribes to endpoint-profile changes.
+- ``window.AI_ASSISTANT_MODEL_API`` exposes non-secret model identity/provider
+  metadata, the current effort state, canonical model selection, the full Model
+  Configuration launcher, and a change subscription. Endpoint URLs and tokens
+  are intentionally absent from model snapshots.
+
+Every user-facing model selector must call the same canonical selection
+transaction (``_selectQuickModel`` internally). Updating only the persisted model
+id is insufficient: it skips the model-change event, effort reconciliation, full
+sheet/inline-picker synchronization, and sibling subscribers. This includes the
+compact **Try a different model** menu beside the footer model picker.
 
 ## Feedback and maintainer review
 
@@ -361,7 +393,14 @@ Proxy Variable:
 CONTRIBUTION_REVIEW_MODE=provider-pr
 ```
 
-Provider-neutral storage topology is supplied through `RECORD_STORAGE_TARGETS`:
+Provider-neutral storage topology may be overridden through `RECORD_STORAGE_TARGETS`.
+When it is unset and legacy `TRAINING_DATASET_REPO` is also unset, the proxy uses
+the bundled records projection (`hf-primary` + `github-mirror`) from its code-owned
+`DEFAULT_TARGET_REGISTRY`. The same registry contains a separate
+`github-learn-ai` publication Primary; that entry is never passed to record
+storage.
+
+Example record-only override:
 
 ```json
 [

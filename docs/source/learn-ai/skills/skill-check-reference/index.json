@@ -1,0 +1,18 @@
+{
+  "author": "Scikit-Plots Learn",
+  "contract": "learn.skill.v1",
+  "default_enabled": false,
+  "description": "A reusable provenance check for any technical topic.",
+  "domains": [
+    "research-methods"
+  ],
+  "empty_message": "No one has applied Check a reference before reusing a claim to this topic yet.",
+  "id": "skill-check-reference",
+  "instruction": "1. Open the original source rather than a secondary summary.\n2. Locate the exact section supporting the claim.\n3. Record the source version and a stable locator.\n4. Separate what the source states from your interpretation.\n5. Mark missing or conflicting evidence explicitly.\n6. Re-run the check when the source version or claim changes; replace stale notes instead of appending contradictory copies.",
+  "order": 10,
+  "related": [
+    "topic-lasso",
+    "topic-probability-calibration"
+  ],
+  "title": "Check a reference before reusing a claim"
+}

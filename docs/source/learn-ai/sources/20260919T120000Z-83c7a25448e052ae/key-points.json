@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-lda-qda",
+  "section": {
+    "body": "The distinction between shared covariance in LDA and class-specific covariance in QDA is central to model behavior.",
+    "citations": [],
+    "id": "key-points",
+    "links": [],
+    "title": "Key Points"
+  }
+}

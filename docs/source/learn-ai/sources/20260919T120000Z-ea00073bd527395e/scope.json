@@ -1,0 +1,11 @@
+{
+  "contract": "learn.section.v1",
+  "record_id": "source-sklearn-cross-decomposition",
+  "section": {
+    "body": "Covers PLSCanonical, PLSSVD, PLSRegression, and Canonical Correlation Analysis.",
+    "citations": [],
+    "id": "scope",
+    "links": [],
+    "title": "Scope"
+  }
+}
