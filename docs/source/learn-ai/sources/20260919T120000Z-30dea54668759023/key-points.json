@@ -4,6 +4,9 @@
   "section": {
     "body": "Feature scaling, learning-rate behavior, regularization, and iteration control materially affect SGD performance.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

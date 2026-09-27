@@ -215,7 +215,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ['_static', 'css']
 
 html_css_files = ["styles/custom.css"]
 html_js_files = [
@@ -675,7 +675,12 @@ ai_assistant_pdf_export_url = f"{html_baseurl}"
 # ---------------------------------------------------------------------------
 ai_assistant_search_bar = True
 ai_assistant_search_bar_mini = False
+# Host-aware presentation: full input in the expanded PyData primary sidebar,
+# icon-only launcher in its 4rem ``pst-squeeze`` rail.  The extension also has
+# a width-based fallback, so custom/navbar hosts remain portable.
+ai_assistant_search_bar_adaptive = True
 ai_assistant_search_bar_selector = ".bd-sidebar-primary"
+ai_assistant_search_bar_collapsed_selector = ".bd-sidebar-primary.pst-squeeze"
 ai_assistant_search_bar_position = "top"
 ai_assistant_panel_search_placeholder = "Ask AI about these docs…"
 

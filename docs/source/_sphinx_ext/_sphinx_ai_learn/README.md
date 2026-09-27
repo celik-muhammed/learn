@@ -180,7 +180,17 @@ PYTHONPATH=docs/source python -m _sphinx_ext._sphinx_ai_learn._publication_cli \
 For records add `--created-at 2026-09-24T00:00:00Z`. For reusable interactions,
 `--author`, `--order`, and `--default-enabled` are optional review-owned fields.
 The review bundle contains canonical `.json` changes plus a hashed manifest;
-it never contains generated RST as publication authority.
+it never contains generated RST as publication authority. Browser publication
+handoffs may add an optional public contributor display name; blank credit becomes
+`Anonymous`, is bounded plain text, and is never sent to the generation model.
+Published state and evidence-review state are rendered separately. Record-level
+`authors` describe overall stewardship; accepted section generations carry their own
+`contributors`, provenance, creation time, and reviewed feedback events. Legacy
+`learn.section.v1` content is promoted lazily to the versioned generation ledger only
+when a reviewed update/feedback requires it. Quick feedback is `-1/+1`; detailed
+feedback is the eleven-point `-5..+5` scale with optional text/credit. Scores are
+derived only from merged canonical events, and ambiguous retries reuse the same
+feedback id rather than double-counting.
 
 See `PUBLICATION_LIFECYCLE.md` for the full lifecycle and security boundary.
 
@@ -217,6 +227,11 @@ only selects directives and structural classes.
   remain separate, but presentation must not fork. The nested Prompt/Skill detail
   shell owns the same `--learn-line`, `--learn-soft`, and `--learn-accent` tokens
   as the index libraries so identical `learn-switch` markup renders identically.
+  Switch checkboxes own their accessible name through `aria-label`; do not add
+  theme-owned `sr-only`/visually-hidden text inside the switch because hidden-helper
+  availability is theme-dependent and any unhidden text changes the flex geometry.
+  The visual switch footprint is fixed at 76px so title length never moves cards,
+  topic rows, or detail headings.
 - Every creation index uses `learn-index-actions` plus a page-specific hook such
   as `learn-topic-index-actions` or `learn-video-index-actions`. The shared class
   controls spacing only; the link deliberately keeps the native theme/Sphinx link

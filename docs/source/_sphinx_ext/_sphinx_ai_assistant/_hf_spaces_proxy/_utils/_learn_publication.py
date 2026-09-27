@@ -115,6 +115,19 @@ def _bounded_text(value: Any, *, name: str, limit: int, empty: bool = False) -> 
     return text
 
 
+def _public_display_name(value: Any, *, name: str = "contributor.display_name") -> str:
+    """Validate public credit without allowing layout/control spoofing."""
+    text = _bounded_text(value, name=name, limit=80, empty=True)
+    if any(
+        ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in text
+    ):
+        raise LearnPublicationTransportError(
+            f"{name}: control characters are not allowed"
+        )
+    return text or "Anonymous"
+
+
 def _normalized_prefix(value: str) -> str:
     text = _bounded_text(value, name="canonical prefix", limit=240)
     if "\\" in text or text.startswith("/") or text.endswith("/"):
@@ -226,8 +239,90 @@ def parse_publication_request(  # ruff: ignore[too-many-branches]
         if set(value) != {"contract", "action"}:
             raise LearnPublicationTransportError("publication test: unexpected fields")
         return {"contract": PUBLICATION_REQUEST_CONTRACT, "action": "test"}
-    if action != "publish":
+    if action not in {"publish", "feedback"}:
         raise LearnPublicationTransportError("publication request: unsupported action")
+
+    if action == "feedback":
+        allowed = {
+            "contract",
+            "action",
+            "base_revision",
+            "subject_id",
+            "section_id",
+            "generation_id",
+            "feedback_id",
+            "created_at",
+            "rating",
+            "comment",
+            "contributor",
+            "feedback_mode",
+        }
+        if set(value) - allowed:
+            raise LearnPublicationTransportError("feedback request: unexpected fields")
+        required = allowed - {"comment", "contributor", "created_at", "feedback_mode"}
+        if not required.issubset(value):
+            raise LearnPublicationTransportError(
+                "feedback request: missing required fields"
+            )
+        out: dict[str, Any] = {
+            "contract": PUBLICATION_REQUEST_CONTRACT,
+            "action": "feedback",
+            "base_revision": _bounded_text(
+                value["base_revision"], name="base_revision", limit=128
+            ),
+        }
+        for key, regex in (
+            ("subject_id", _SAFE_SUBJECT_ID_RE),
+            ("section_id", _SAFE_SECTION_ID_RE),
+            ("generation_id", _SAFE_ID_RE),
+            ("feedback_id", _SAFE_ID_RE),
+        ):
+            item = _bounded_text(
+                value[key],
+                name=key,
+                limit=128 if key in {"subject_id", "section_id"} else 64,
+            )
+            if not regex.fullmatch(item):
+                raise LearnPublicationTransportError(f"{key}: invalid identifier")
+            out[key] = item
+        rating = value["rating"]
+        if (
+            isinstance(rating, bool)
+            or not isinstance(rating, int)
+            or not -5 <= rating <= 5  # ruff: ignore[magic-value-comparison]
+        ):
+            raise LearnPublicationTransportError(
+                "rating: expected integer from -5 to 5"
+            )
+        out["rating"] = rating
+        if "comment" in value:
+            out["comment"] = _bounded_text(
+                value["comment"], name="comment", limit=2000, empty=True
+            )
+        if "feedback_mode" in value:
+            mode = _bounded_text(value["feedback_mode"], name="feedback_mode", limit=16)
+            if mode not in {"quick", "detailed"}:
+                raise LearnPublicationTransportError(
+                    "feedback_mode: expected quick or detailed"
+                )
+            if mode == "quick" and rating not in {-1, 1}:
+                raise LearnPublicationTransportError(
+                    "rating: quick feedback must be -1 or 1"
+                )
+            out["feedback_mode"] = mode
+        if "created_at" in value:
+            # Backward-compatible transport field only. The repository planner
+            # validates it but does not persist browser-authored time as
+            # canonical feedback metadata.
+            out["created_at"] = _bounded_text(
+                value["created_at"], name="created_at", limit=64
+            )
+        contributor = value.get("contributor", {"display_name": "Anonymous"})
+        if not isinstance(contributor, dict) or set(contributor) - {"display_name"}:
+            raise LearnPublicationTransportError("contributor: expected {display_name}")
+        display_name = _public_display_name(contributor.get("display_name", ""))
+        out["contributor"] = {"display_name": display_name}
+        return out
 
     allowed = {
         "contract",
@@ -243,6 +338,7 @@ def parse_publication_request(  # ruff: ignore[too-many-branches]
         "subject_id",
         "section_id",
         "section_title",
+        "contributor",
     }
     if set(value) - allowed:
         raise LearnPublicationTransportError("publication request: unexpected fields")
@@ -306,6 +402,12 @@ def parse_publication_request(  # ruff: ignore[too-many-branches]
         out["artifact_id"] = artifact_id
     if "author" in value:
         out["author"] = _bounded_text(value["author"], name="author", limit=200)
+    if "contributor" in value:
+        contributor = value["contributor"]
+        if not isinstance(contributor, dict) or set(contributor) - {"display_name"}:
+            raise LearnPublicationTransportError("contributor: expected {display_name}")
+        display_name = _public_display_name(contributor.get("display_name", ""))
+        out["contributor"] = {"display_name": display_name}
     if "order" in value:
         if isinstance(value["order"], bool) or not isinstance(value["order"], int):
             raise LearnPublicationTransportError("order: expected integer")

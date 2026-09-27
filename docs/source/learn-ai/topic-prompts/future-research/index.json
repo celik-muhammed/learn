@@ -1,5 +1,8 @@
 {
   "author": "scikit-plots",
+  "authors": [
+    "scikit-plots"
+  ],
   "contract": "learn.topic-prompt.v1",
   "default_enabled": false,
   "description": "Turn unresolved evidence and limitations into concrete experiments, extensions, datasets, or validation work.",

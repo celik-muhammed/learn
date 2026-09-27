@@ -4,6 +4,9 @@
   "section": {
     "body": "Official scikit-learn 1.9 guidance for PLS and canonical-correlation methods that model relationships between two multivariate datasets.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "overview",
     "links": [],
     "title": "Overview"

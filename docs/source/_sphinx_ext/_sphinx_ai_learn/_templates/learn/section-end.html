@@ -1,7 +1,9 @@
 </div>
 {% if citations %}<details class="learn-evidence"><summary>Evidence · {{ citations|length }} references</summary><ol>{% for citation in citations %}<li><a href="{{ citation.url|e }}" target="_blank" rel="noopener noreferrer">{{ citation.title|e }}</a> — {{ citation.locator|e }}</li>{% endfor %}</ol></details>{% endif %}
 {% if citations %}{% include "learn/evidence-review.html" %}{% endif %}
-{% if review %}<p class="learn-meta" data-review>Reviewed by {{ review.by|e }} · {{ review.at|e }} · catalog revision {{ review.revision|e }}{% if state == 'stale' %} · Catalog changed; review again.{% endif %}</p>{% else %}<p class="learn-meta" data-review>{{ 'References attached; review pending.' if citations else 'No evidence review recorded.' }}</p>{% endif %}
+{% if content.contributors|default([]) %}<p class="learn-meta" data-contributors>Contributed by {% for contributor in content.contributors %}{% if not loop.first %}, {% endif %}{{ contributor|e }}{% endfor %}</p>{% endif %}
+{% if review %}<p class="learn-meta" data-review>Evidence reviewed by {{ review.by|e }} · {{ review.at|e }} · catalog revision {{ review.revision|e }}{% if state == 'stale' %} · Catalog changed; review again.{% endif %}</p>{% elif citations %}<p class="learn-meta" data-review>Evidence review pending · {{ citations|length }} reference{{ '' if citations|length == 1 else 's' }} attached.</p>{% else %}<p class="learn-meta" data-review>No references attached · evidence review not applicable.</p>{% endif %}
+{% if filled and generation_id|default('') %}{% include "learn/generation-feedback.html" %}{% endif %}
 <div class="learn-actions next-steps-container learn-primary-actions">
 {% if spec.id == 'video' %}
 <a class="learn-button learn-primary next-step-button" href="{{ video_generation_href|e }}">{{ 'Generate Another' if filled else 'Generate Now' }}</a>

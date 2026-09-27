@@ -120,3 +120,71 @@ def test_record_transport_requires_stable_created_at_field():
     request.pop("subject_id")
     with pytest.raises(LearnPublicationTransportError, match="created_at"):
         parse_publication_request(json.dumps(request).encode(), p)
+
+
+def test_publication_transport_preserves_bounded_public_contributor_credit():
+    p = policy()
+    request = overview_request()
+    request["contributor"] = {"display_name": "DataFox"}
+    parsed = parse_publication_request(json.dumps(request).encode(), p)
+    assert parsed["contributor"] == {"display_name": "DataFox"}
+
+    request["contributor"] = {"display_name": "Ada", "email": "private@example.org"}
+    with pytest.raises(LearnPublicationTransportError, match=r"expected \{display_name\}"):
+        parse_publication_request(json.dumps(request).encode(), p)
+
+    request["contributor"] = {"display_name": "Ada\nInjected"}
+    with pytest.raises(LearnPublicationTransportError, match="control characters"):
+        parse_publication_request(json.dumps(request).encode(), p)
+
+
+def test_feedback_transport_accepts_quick_and_full_scale_without_repository_authority():
+    p = policy("github")
+    base = {
+        "contract": "learn.publication-request.v1",
+        "action": "feedback",
+        "base_revision": "tree-abc",
+        "subject_id": "topic-example",
+        "section_id": "summary",
+        "generation_id": "generation-0123456789abcdef",
+        "feedback_id": "feedback-0123456789abcdef",
+        "rating": 1,
+        "feedback_mode": "quick",
+        "contributor": {"display_name": ""},
+    }
+    parsed = parse_publication_request(json.dumps(base).encode(), p)
+    assert parsed["action"] == "feedback"
+    assert parsed["rating"] == 1
+    assert parsed["feedback_mode"] == "quick"
+    assert "created_at" not in parsed
+    assert parsed["contributor"] == {"display_name": "Anonymous"}
+    _, dispatch = workflow_dispatch_body(p, parsed)
+    assert dispatch["inputs"]["operation"] == "publish"
+    transported = json.loads(dispatch["inputs"]["request_json"])
+    assert transported["action"] == "feedback"
+    assert "repository" not in transported
+    assert "token" not in transported
+
+    for rating in range(-5, 6):
+        candidate = dict(
+            base,
+            rating=rating,
+            feedback_id=f"feedback-{rating + 5:016x}",
+            feedback_mode="detailed",
+        )
+        assert parse_publication_request(json.dumps(candidate).encode(), p)["rating"] == rating
+
+    invalid_quick = dict(base, rating=5, feedback_id="feedback-invalid-quick")
+    with pytest.raises(LearnPublicationTransportError, match="quick feedback"):
+        parse_publication_request(json.dumps(invalid_quick).encode(), p)
+
+    legacy = dict(base, created_at="2026-09-27T03:30:00Z")
+    assert parse_publication_request(json.dumps(legacy).encode(), p)["created_at"] == legacy["created_at"]
+    bad_mode = dict(base, feedback_mode="instant")
+    with pytest.raises(LearnPublicationTransportError, match="feedback_mode"):
+        parse_publication_request(json.dumps(bad_mode).encode(), p)
+
+    for rating in (-6, 6, True, 1.5):
+        candidate = dict(base, rating=rating)
+        with pytest.raises(LearnPublicationTransportError, match="rating"):
+            parse_publication_request(json.dumps(candidate).encode(), p)

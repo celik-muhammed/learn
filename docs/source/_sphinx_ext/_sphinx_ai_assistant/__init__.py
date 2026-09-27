@@ -274,7 +274,7 @@ __all__ = [
 # Version
 # ---------------------------------------------------------------------------
 
-_VERSION: str = "0.5.0"
+_VERSION: str = "0.5.1"
 
 # ---------------------------------------------------------------------------
 # Module-level cached singletons (lazy, private)
@@ -7065,6 +7065,17 @@ def add_ai_assistant_context(
             _cfg_str(app.config, "ai_assistant_search_bar_selector") or ""
         ),
         "searchBarMini": _cfg_bool(app.config, "ai_assistant_search_bar_mini", False),
+        # Responsive presentation is separate from the author-selected base
+        # size.  When adaptive mode is enabled the bar may degrade to a
+        # one-button launcher if its host collapses/narrows.  A site/theme can
+        # provide an explicit collapsed-state selector; width observation is
+        # the theme-neutral fallback.
+        "searchBarAdaptive": _cfg_bool(
+            app.config, "ai_assistant_search_bar_adaptive", True
+        ),
+        "searchBarCollapsedSelector": (
+            _cfg_str(app.config, "ai_assistant_search_bar_collapsed_selector") or ""
+        ),
         # Insertion point inside the host element: "top" → prepend (sidebar
         # top, above navigation links), "bottom" → append (default, current
         # behaviour).  Any value other than "top" is treated as "bottom" so
@@ -7162,7 +7173,7 @@ def setup(app: Sphinx) -> dict[str, Any]:
         Sphinx extension metadata::
 
             {
-                "version": "0.5.0",
+                "version": "0.5.1",
                 "parallel_read_safe": True,
                 "parallel_write_safe": True,
             }
@@ -8097,8 +8108,25 @@ def setup(app: Sphinx) -> dict[str, Any]:
     app.add_config_value("ai_assistant_search_bar_position", "top", "html")
 
     # ``ai_assistant_search_bar_mini`` (bool, default False)
-    #     Compact inline variant when True; full-width block when False.
+    #     Compact inline INPUT variant when True; full-width input when False.
+    #     This is the base author preference.  Adaptive icon-only collapse is
+    #     controlled independently below so an expanded sidebar can stay full
+    #     while a collapsed rail becomes a one-button launcher.
     app.add_config_value("ai_assistant_search_bar_mini", False, "html")
+
+    # ``ai_assistant_search_bar_adaptive`` (bool, default True)
+    #     When True, observe the host and switch to an icon-only launcher when
+    #     the host is explicitly in a configured collapsed state or is narrow
+    #     enough to behave as an icon rail.  The launcher opens the AI panel
+    #     and focuses its composer.  Set False to pin the base full/mini input.
+    app.add_config_value("ai_assistant_search_bar_adaptive", True, "html")
+
+    # ``ai_assistant_search_bar_collapsed_selector`` (str, default "")
+    #     Optional theme/site selector that matches the configured host (or an
+    #     ancestor) while it is collapsed.  Example for current PyData Sphinx
+    #     Theme: ".bd-sidebar-primary.pst-squeeze".  Empty remains portable:
+    #     ResizeObserver host-width detection still provides the fallback.
+    app.add_config_value("ai_assistant_search_bar_collapsed_selector", "", "html")
 
     # ``ai_assistant_panel_search_placeholder`` (str)
     #     Placeholder for the standalone search-bar input.

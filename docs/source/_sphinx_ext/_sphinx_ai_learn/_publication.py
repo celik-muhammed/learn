@@ -20,12 +20,19 @@ import hashlib
 import re
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
+from ._generation import (
+    generation_identifier,
+    legacy_generation,
+    section_generation_id,
+)
 from ._materialize import (
+    FEEDBACK_CONTRACT,
     canonical_prompt_json_files,
     canonical_record_json_files,
     canonical_skill_json_files,
+    json_source_bytes,
     load_content_tree,
     skill_subject,
     validate_interaction_registry,
@@ -45,6 +52,8 @@ PAGE_OVERVIEW_DRAFT_CONTRACT = "learn.page-overview-draft.v1"
 TOPIC_PROMPT_DRAFT_CONTRACT = "learn.topic-prompt-draft.v1"
 SKILL_DRAFT_CONTRACT = "learn.skill-draft.v1"
 MAX_OPERATIONS = 32
+MAX_SECTION_GENERATIONS = 32
+MAX_GENERATION_FEEDBACK = 256
 _ID_SAFE = re.compile(r"[^a-z0-9-]+")
 
 
@@ -63,6 +72,16 @@ def _bounded_text(value, *, path, limit, empty=False):
     return value
 
 
+def _public_credit(value, *, path="contributor"):
+    text = _bounded_text(value, path=path, limit=80)
+    if any(
+        ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in text
+    ):
+        raise LearnValidationError(f"{path}: control characters are not allowed")
+    return text
+
+
 def _bounded_string_list(value, *, path, maximum=20, limit=1000):
     if value is None:
         return []
@@ -72,6 +91,72 @@ def _bounded_string_list(value, *, path, maximum=20, limit=1000):
     for index, item in enumerate(value):
         result.append(_bounded_text(item, path=f"{path}[{index}]", limit=limit))
     return result
+
+
+def _generation_provenance(value, *, path="provenance"):
+    if value is None:
+        return {}
+    value = _require_object(value, path=path)
+    allowed = {
+        "authorship",
+        "model",
+        "workflow_id",
+        "agent",
+        "skill",
+        "request_id",
+    }
+    if set(value) - allowed:
+        raise LearnValidationError(f"{path}: unexpected fields")
+    result = {}
+    for key, limit in (
+        ("authorship", 40),
+        ("model", 200),
+        ("workflow_id", 120),
+        ("agent", 120),
+        ("skill", 120),
+        ("request_id", 200),
+    ):
+        if key in value:
+            result[key] = _bounded_text(
+                value[key], path=f"{path}.{key}", limit=limit, empty=True
+            )
+    return result
+
+
+def _sync_active_generation(section):
+    generations = section.get("generations", [])
+    active = next(
+        (
+            row
+            for row in generations
+            if row["id"] == section.get("active_generation_id")
+        ),
+        None,
+    )
+    if active is None:
+        raise LearnValidationError("section.active_generation_id: unknown generation")
+    section["body"] = active["body"]
+    section["citations"] = copy.deepcopy(active.get("citations", []))
+    section["links"] = copy.deepcopy(active.get("links", []))
+    section["contributors"] = list(active.get("contributors", []))
+    if active.get("review"):
+        section["review"] = copy.deepcopy(active["review"])
+    else:
+        section.pop("review", None)
+
+
+def _ensure_generation_ledger(subject, section):
+    if section.get("generations"):
+        _sync_active_generation(section)
+        return
+    generation = legacy_generation(subject, section)
+    if generation is None:
+        raise LearnValidationError(
+            "publication: empty section has no accepted generation"
+        )
+    section["generations"] = [generation]
+    section["active_generation_id"] = generation["id"]
+    _sync_active_generation(section)
 
 
 def _slug(value):
@@ -172,6 +257,7 @@ def record_from_draft(  # ruff: ignore[too-many-branches]
     record_id,
     created_at,
     metadata_reviewed=False,
+    contributor="Anonymous",
 ):
     """Convert a browser creation draft into one validated catalog subject.
 
@@ -251,6 +337,7 @@ def record_from_draft(  # ruff: ignore[too-many-branches]
         "related": [],
         "sections": sections,
         "created_at": timestamp(created_at, "created_at"),
+        "authors": [_public_credit(contributor, path="contributor")],
     }
 
     if kind == "topic":
@@ -314,6 +401,13 @@ def record_from_draft(  # ruff: ignore[too-many-branches]
             ),
         )
 
+    # A reviewed record publication is one contribution spanning the record and
+    # the sections it introduces.  Keep record-level authorship for discovery,
+    # while also seeding per-section participation so future generations can
+    # preserve who contributed which accepted section.
+    for section in subject["sections"]:
+        section.setdefault("contributors", [subject["authors"][0]])
+
     probe = validate_catalog(
         {"contract": CATALOG_CONTRACT, "revision": "draft-probe", "subjects": [subject]}
     )
@@ -355,7 +449,8 @@ def prompt_from_draft(
     return {
         "id": prompt_id,
         "title": title,
-        "author": _bounded_text(author, path="author", limit=200),
+        "author": _public_credit(author, path="author"),
+        "authors": [_public_credit(author, path="author")],
         "description": _bounded_text(
             draft.get("description", ""), path="draft.description", limit=2000
         ),
@@ -400,7 +495,8 @@ def skill_from_draft(
     return {
         "id": skill_id,
         "title": title,
-        "author": _bounded_text(author, path="author", limit=200),
+        "author": _public_credit(author, path="author"),
+        "authors": [_public_credit(author, path="author")],
         "description": _bounded_text(
             draft.get("description", ""), path="draft.description", limit=2000
         ),
@@ -443,7 +539,14 @@ def validate_publication(value):  # noqa: PLR0912 -- explicit contract validatio
         raw = _require_object(raw, path=path)  # ruff: ignore[redefined-loop-name]
         op = raw.get("op")
         if op == "create-record":
-            allowed = {"op", "record_id", "created_at", "draft", "metadata_reviewed"}
+            allowed = {
+                "op",
+                "record_id",
+                "created_at",
+                "draft",
+                "metadata_reviewed",
+                "contributor",
+            }
             if set(raw) - allowed or not {
                 "op",
                 "record_id",
@@ -457,6 +560,9 @@ def validate_publication(value):  # noqa: PLR0912 -- explicit contract validatio
                     raw["record_id"], path=f"{path}.record_id", limit=64
                 ),
                 "created_at": timestamp(raw["created_at"], f"{path}.created_at"),
+                "contributor": _public_credit(
+                    raw.get("contributor", "Anonymous"), path=f"{path}.contributor"
+                ),
                 "draft": copy.deepcopy(
                     _require_object(raw["draft"], path=f"{path}.draft"),
                 ),
@@ -489,9 +595,7 @@ def validate_publication(value):  # noqa: PLR0912 -- explicit contract validatio
                     "prompt_id": _bounded_text(
                         raw["prompt_id"], path=f"{path}.prompt_id", limit=64
                     ),
-                    "author": _bounded_text(
-                        raw["author"], path=f"{path}.author", limit=200
-                    ),
+                    "author": _public_credit(raw["author"], path=f"{path}.author"),
                     "order": raw["order"],
                     "default_enabled": raw["default_enabled"],
                     "draft": copy.deepcopy(
@@ -520,9 +624,7 @@ def validate_publication(value):  # noqa: PLR0912 -- explicit contract validatio
                     "skill_id": _bounded_text(
                         raw["skill_id"], path=f"{path}.skill_id", limit=64
                     ),
-                    "author": _bounded_text(
-                        raw["author"], path=f"{path}.author", limit=200
-                    ),
+                    "author": _public_credit(raw["author"], path=f"{path}.author"),
                     "order": raw["order"],
                     "default_enabled": raw["default_enabled"],
                     "draft": copy.deepcopy(
@@ -531,26 +633,120 @@ def validate_publication(value):  # noqa: PLR0912 -- explicit contract validatio
                 }
             )
         elif op == "upsert-section":
-            allowed = {"op", "subject_id", "section_id", "title", "body"}
-            if set(raw) != allowed:
+            required = {"op", "subject_id", "section_id", "title", "body"}
+            allowed = required | {
+                "contributor",
+                "generation_id",
+                "created_at",
+                "provenance",
+            }
+            if set(raw) - allowed or not required.issubset(raw):
                 raise LearnValidationError(f"{path}: unexpected or missing fields")
-            operations.append(
-                {
-                    "op": op,
-                    "subject_id": _bounded_text(
-                        raw["subject_id"], path=f"{path}.subject_id", limit=64
-                    ),
-                    "section_id": _bounded_text(
-                        raw["section_id"], path=f"{path}.section_id", limit=64
-                    ),
-                    "title": _bounded_text(
-                        raw["title"], path=f"{path}.title", limit=200
-                    ),
-                    "body": _bounded_text(
-                        raw["body"], path=f"{path}.body", limit=50000, empty=True
-                    ),
-                }
+            item = {
+                "op": op,
+                "subject_id": _bounded_text(
+                    raw["subject_id"], path=f"{path}.subject_id", limit=64
+                ),
+                "section_id": _bounded_text(
+                    raw["section_id"], path=f"{path}.section_id", limit=64
+                ),
+                "title": _bounded_text(raw["title"], path=f"{path}.title", limit=200),
+                "body": _bounded_text(
+                    raw["body"], path=f"{path}.body", limit=50000, empty=True
+                ),
+                "contributor": _public_credit(
+                    raw.get("contributor", "Anonymous"), path=f"{path}.contributor"
+                ),
+            }
+            if "generation_id" in raw:
+                generation_id = _bounded_text(
+                    raw["generation_id"], path=f"{path}.generation_id", limit=64
+                )
+                if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", generation_id):
+                    raise LearnValidationError(
+                        f"{path}.generation_id: invalid identifier"
+                    )
+                item["generation_id"] = generation_id
+            if "created_at" in raw:
+                item["created_at"] = timestamp(raw["created_at"], f"{path}.created_at")
+            if "provenance" in raw:
+                item["provenance"] = _generation_provenance(
+                    raw["provenance"], path=f"{path}.provenance"
+                )
+            operations.append(item)
+        elif op == "rate-section-generation":
+            required = {
+                "op",
+                "subject_id",
+                "section_id",
+                "generation_id",
+                "feedback_id",
+                "rating",
+                "contributor",
+            }
+            allowed = required | {"comment", "feedback_mode", "created_at"}
+            if set(raw) - allowed or not required.issubset(raw):
+                raise LearnValidationError(f"{path}: unexpected or missing fields")
+            rating = raw["rating"]
+            if (
+                isinstance(rating, bool)
+                or not isinstance(rating, int)
+                or not -5 <= rating <= 5  # ruff: ignore[magic-value-comparison]
+            ):
+                raise LearnValidationError(
+                    f"{path}.rating: expected integer from -5 to 5"
+                )
+            generation_id = _bounded_text(
+                raw["generation_id"], path=f"{path}.generation_id", limit=64
             )
+            feedback_id = _bounded_text(
+                raw["feedback_id"], path=f"{path}.feedback_id", limit=64
+            )
+            for key, value in (
+                ("generation_id", generation_id),
+                ("feedback_id", feedback_id),
+            ):
+                if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", value):
+                    raise LearnValidationError(f"{path}.{key}: invalid identifier")
+            item = {
+                "op": op,
+                "subject_id": _bounded_text(
+                    raw["subject_id"], path=f"{path}.subject_id", limit=64
+                ),
+                "section_id": _bounded_text(
+                    raw["section_id"], path=f"{path}.section_id", limit=64
+                ),
+                "generation_id": generation_id,
+                "feedback_id": feedback_id,
+                "rating": rating,
+                "contributor": _public_credit(
+                    raw["contributor"], path=f"{path}.contributor"
+                ),
+            }
+            if "comment" in raw:
+                item["comment"] = _bounded_text(
+                    raw["comment"], path=f"{path}.comment", limit=2000, empty=True
+                )
+            if "feedback_mode" in raw:
+                mode = _bounded_text(
+                    raw["feedback_mode"], path=f"{path}.feedback_mode", limit=16
+                )
+                if mode not in {"quick", "detailed"}:
+                    raise LearnValidationError(
+                        f"{path}.feedback_mode: expected quick or detailed"
+                    )
+                if mode == "quick" and rating not in {-1, 1}:
+                    raise LearnValidationError(
+                        f"{path}.rating: quick feedback must be -1 or 1"
+                    )
+                item["feedback_mode"] = mode
+            # ``created_at`` was browser-authored in V62. Retain acceptance for
+            # transport compatibility, but it is deliberately not canonicalized
+            # into new feedback sidecars because the browser is not timestamp
+            # authority. Git history records review/acceptance chronology.
+            if "created_at" in raw:
+                timestamp(raw["created_at"], f"{path}.created_at")
+            operations.append(item)
         elif op == "attach-source":
             allowed = {
                 "op",
@@ -624,6 +820,7 @@ def apply_publication(  # ruff: ignore[too-many-branches]
                 record_id=operation["record_id"],
                 created_at=operation["created_at"],
                 metadata_reviewed=operation.get("metadata_reviewed", False),
+                contributor=operation.get("contributor", "Anonymous"),
             )
             existing = next(
                 (row for row in proposed["subjects"] if row["id"] == subject["id"]),
@@ -655,20 +852,158 @@ def apply_publication(  # ruff: ignore[too-many-branches]
         )
 
         if operation["op"] == "upsert-section":
+            contributor = operation.get("contributor", "Anonymous")
+            created_at = (
+                operation.get("created_at")
+                or target.get("created_at")
+                or "1970-01-01T00:00:00Z"
+            )
+            provenance = operation.get("provenance", {})
+            generation_id = operation.get("generation_id") or generation_identifier(
+                section_id=wanted,
+                created_at=created_at,
+                body=operation["body"],
+                provenance=provenance,
+            )
             if section is None:
-                target["sections"].append(
-                    {
-                        "id": wanted,
-                        "title": operation["title"],
-                        "body": operation["body"],
-                        "citations": [],
-                        "links": [],
-                    }
-                )
+                generation = {
+                    "id": generation_id,
+                    "created_at": created_at,
+                    "body": operation["body"],
+                    "citations": [],
+                    "links": [],
+                    "contributors": [contributor],
+                    "feedback": [],
+                }
+                if provenance:
+                    generation["provenance"] = provenance
+                section = {
+                    "id": wanted,
+                    "title": operation["title"],
+                    "body": operation["body"],
+                    "citations": [],
+                    "links": [],
+                    "contributors": [contributor],
+                    "active_generation_id": generation_id,
+                    "generations": [generation],
+                }
+                target["sections"].append(section)
             else:
+                if section.get("generations"):
+                    _sync_active_generation(section)
+                elif section.get("body", "").strip():
+                    _ensure_generation_ledger(target, section)
+                else:
+                    # Empty v1 placeholders are scaffolding, not historical
+                    # accepted generations. The first real publication starts
+                    # generation history without fabricating an empty ancestor.
+                    section["generations"] = []
+                    section.pop("active_generation_id", None)
                 section["title"] = operation["title"]
-                section["body"] = operation["body"]
-                section.pop("review", None)
+                existing = next(
+                    (
+                        row
+                        for row in section["generations"]
+                        if row["id"] == generation_id
+                    ),
+                    None,
+                )
+                generation = {
+                    "id": generation_id,
+                    "created_at": created_at,
+                    "body": operation["body"],
+                    "citations": copy.deepcopy(section.get("citations", [])),
+                    "links": copy.deepcopy(section.get("links", [])),
+                    "contributors": [contributor],
+                    "feedback": [],
+                }
+                if provenance:
+                    generation["provenance"] = provenance
+                if existing is not None:
+                    # Participant credit is not generation identity. Replaying the
+                    # same accepted content under another public nickname appends
+                    # that participant rather than duplicating the generation.
+                    immutable_keys = (
+                        "id",
+                        "created_at",
+                        "body",
+                        "citations",
+                        "links",
+                        "provenance",
+                    )
+                    if any(
+                        existing.get(key, {} if key == "provenance" else None)
+                        != generation.get(key, {} if key == "provenance" else None)
+                        for key in immutable_keys
+                    ):
+                        raise LearnValidationError(
+                            "publication.upsert-section: generation identifier collision"
+                        )
+                    credits = existing.setdefault("contributors", [])
+                    folded = {value.casefold() for value in credits}
+                    if contributor.casefold() not in folded:
+                        if len(credits) >= 32:  # ruff: ignore[magic-value-comparison]
+                            raise LearnValidationError(
+                                "publication.upsert-section: contributor limit reached"
+                            )
+                        credits.append(contributor)
+                else:
+                    if len(section["generations"]) >= MAX_SECTION_GENERATIONS:
+                        raise LearnValidationError(
+                            "publication.upsert-section: generation limit reached"
+                        )
+                    section["generations"].append(generation)
+                section["active_generation_id"] = generation_id
+                _sync_active_generation(section)
+            continue
+
+        if operation["op"] == "rate-section-generation":
+            if section is None:
+                raise LearnValidationError(
+                    "publication.rate-section-generation: target section does not exist"
+                )
+            target_generation = operation["generation_id"]
+            if section.get("generations"):
+                generation = next(
+                    (
+                        row
+                        for row in section["generations"]
+                        if row["id"] == target_generation
+                    ),
+                    None,
+                )
+                if generation is None:
+                    raise LearnValidationError(
+                        "publication.rate-section-generation: generation does not exist"
+                    )
+                embedded = generation.get("feedback", [])
+            else:
+                if section_generation_id(target, section) != target_generation:
+                    raise LearnValidationError(
+                        "publication.rate-section-generation: generation does not exist"
+                    )
+                embedded = []
+            # V62 embedded events remain readable. A replay using an old
+            # feedback id is idempotent only when its public semantics match.
+            existing = next(
+                (row for row in embedded if row.get("id") == operation["feedback_id"]),
+                None,
+            )
+            if existing is not None:
+                expected = {
+                    "rating": operation["rating"],
+                    "contributor": operation["contributor"],
+                }
+                if "comment" in operation:
+                    expected["comment"] = operation["comment"]
+                if "feedback_mode" in operation:
+                    expected["mode"] = operation["feedback_mode"]
+                if any(
+                    existing.get(key, "") != value for key, value in expected.items()
+                ):
+                    raise LearnValidationError(
+                        "publication.rate-section-generation: feedback identifier collision"
+                    )
             continue
 
         if operation["op"] == "attach-source":
@@ -700,6 +1035,16 @@ def apply_publication(  # ruff: ignore[too-many-branches]
             if citation not in section["citations"]:
                 section["citations"].append(citation)
             section.pop("review", None)
+            if section.get("generations"):
+                active = next(
+                    row
+                    for row in section["generations"]
+                    if row["id"] == section["active_generation_id"]
+                )
+                if citation not in active["citations"]:
+                    active["citations"].append(copy.deepcopy(citation))
+                active.pop("review", None)
+                _sync_active_generation(section)
 
     if proposed["subjects"] == current["subjects"]:
         return current
@@ -798,6 +1143,9 @@ def _project_json_tree(
     # record subtrees are projected from normalized state through the same layout
     # helpers used by the build materializer.
     files = {rel: (tree.root / rel).read_bytes() for rel in tree.pages}
+    # Feedback sidecars are canonical metadata inputs but do not own RST pages.
+    # Preserve them byte-for-byte across unrelated publication transactions.
+    files.update({rel: (tree.root / rel).read_bytes() for rel in tree.feedback_events})
     files.update(canonical_prompt_json_files(prompts))
     files.update(canonical_skill_json_files(skills))
     add_toctree = {
@@ -834,7 +1182,63 @@ def _validate_projected_tree(files):
         return load_content_tree(root)
 
 
-def publication_plan(content_root, publication):
+def _feedback_sidecar_path(tree, operation):
+    route = tree.routes.get(operation["subject_id"], "")
+    if not route:
+        raise LearnValidationError(
+            "publication.rate-section-generation: target record route does not exist"
+        )
+    folder = Path(PurePosixPath(route).parent)
+    return (
+        folder
+        / "feedback"
+        / operation["section_id"]
+        / operation["generation_id"]
+        / f"{operation['feedback_id']}.json"
+    )
+
+
+def _feedback_sidecar_payload(operation):
+    feedback = {
+        "id": operation["feedback_id"],
+        "rating": operation["rating"],
+        "contributor": operation["contributor"],
+    }
+    if "comment" in operation:
+        feedback["comment"] = operation["comment"]
+    if "feedback_mode" in operation:
+        feedback["mode"] = operation["feedback_mode"]
+    return {
+        "contract": FEEDBACK_CONTRACT,
+        "record_id": operation["subject_id"],
+        "section_id": operation["section_id"],
+        "generation_id": operation["generation_id"],
+        "feedback": feedback,
+    }
+
+
+def _embedded_feedback_by_id(catalog, feedback_id):
+    matches = []
+    for subject in catalog["subjects"]:
+        for section in subject.get("sections", []):
+            for generation in section.get("generations", []):
+                matches.extend(
+                    (
+                        subject,
+                        section,
+                        generation,
+                        event,
+                    )
+                    for event in generation.get("feedback", [])
+                    if event.get("id") == feedback_id
+                )
+    return matches
+
+
+def publication_plan(  # ruff: ignore[too-many-branches]
+    content_root,
+    publication,
+):
     """Return an exact canonical-JSON repository diff for one transaction.
 
     The plan never contains RST. Accepted JSON is later compiled by
@@ -854,6 +1258,52 @@ def publication_plan(content_root, publication):
     proposed_files = _project_json_tree(
         tree, proposed_catalog, proposed_prompts, proposed_skills
     )
+    for operation in publication["operations"]:
+        if operation["op"] != "rate-section-generation":
+            continue
+        payload = _feedback_sidecar_payload(operation)
+        relative = _feedback_sidecar_path(tree, operation)
+        raw = json_source_bytes(payload)
+
+        # A feedback id is an idempotency key, not a mutable record identifier.
+        # Replays with identical semantics are no-ops; any other reuse fails.
+        existing_sidecars = [
+            wrapper
+            for wrapper in tree.feedback_events.values()
+            if wrapper["feedback"]["id"] == operation["feedback_id"]
+        ]
+        embedded = _embedded_feedback_by_id(tree.catalog, operation["feedback_id"])
+        if existing_sidecars:
+            if len(existing_sidecars) != 1 or existing_sidecars[0] != payload:
+                raise LearnValidationError(
+                    "publication.rate-section-generation: feedback identifier collision"
+                )
+            continue
+        if embedded:
+            if len(embedded) != 1:
+                raise LearnValidationError(
+                    "publication.rate-section-generation: feedback identifier collision"
+                )
+            _subject, _section, _generation, event = embedded[0]
+            expected = payload["feedback"]
+            comparable = {
+                key: event.get(key, "")
+                for key in ("id", "rating", "contributor", "comment", "mode")
+                if key in expected or key in event
+            }
+            expected_comparable = {key: expected.get(key, "") for key in comparable}
+            if comparable != expected_comparable:
+                raise LearnValidationError(
+                    "publication.rate-section-generation: feedback identifier collision"
+                )
+            continue
+        current = proposed_files.get(relative)
+        if current is not None and current != raw:
+            raise LearnValidationError(
+                "publication.rate-section-generation: feedback sidecar path collision"
+            )
+        proposed_files[relative] = raw
+
     projected_tree = _validate_projected_tree(proposed_files)
 
     files = {

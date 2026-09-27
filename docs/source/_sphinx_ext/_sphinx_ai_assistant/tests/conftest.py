@@ -303,6 +303,8 @@ def _make_config(**overrides: Any) -> MagicMock:
     cfg.ai_assistant_search_bar_selector = ""
     cfg.ai_assistant_search_bar_position = "top"
     cfg.ai_assistant_search_bar_mini = False
+    cfg.ai_assistant_search_bar_adaptive = True
+    cfg.ai_assistant_search_bar_collapsed_selector = ""
     cfg.ai_assistant_panel_search_placeholder = "Ask AI about these docs…"
 
     # Standard Sphinx values

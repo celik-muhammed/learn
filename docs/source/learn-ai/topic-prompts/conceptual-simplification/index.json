@@ -1,5 +1,8 @@
 {
   "author": "scikit-plots",
+  "authors": [
+    "scikit-plots"
+  ],
   "contract": "learn.topic-prompt.v1",
   "default_enabled": true,
   "description": "Rewrite the core ideas for an informed non-expert while preserving the important distinctions and intuition.",

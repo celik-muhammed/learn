@@ -158,8 +158,8 @@ The browser sends a reviewed ``learn.publication-request.v1`` envelope to the
 active ``publication`` endpoint only after an explicit **Open pull request**
 action. ``Generate`` itself never performs a repository write.
 
-The proxy has three fail-closed modes: ``disabled`` (default), ``stub`` (full
-validation with zero GitHub writes), and ``github``. Repository identity, default
+The proxy has three fail-closed modes: ``disabled``, ``stub`` (full validation
+with zero GitHub writes), and ``github`` (the Scikit-plots deployment default). Repository identity, default
 branch, canonical subtree, workflow file, and GitHub credential are server-owned
 policy and cannot be overridden by a browser request. ``POST /v1/learn-publication``
 with ``action=test`` verifies this policy without dispatching a publication.
@@ -170,7 +170,9 @@ content/pull-request mutation logic. The checked-out repository workflow is the
 second trust boundary and must:
 
 1. reconstruct and hash-bind the exact reviewed request;
-2. reject a stale semantic revision;
+2. reject a stale semantic revision for content publication; append-only feedback
+   may cross an older page revision only when its immutable generation target still
+   exists in the current tree;
 3. rerun ``_publication.py`` against the current canonical JSON tree;
 4. apply only planner-owned ``docs/source/learn-ai/**/*.json`` paths;
 5. reject every non-JSON repository mutation;
@@ -185,6 +187,104 @@ the fixed workflow. Repository ``contents`` and ``pull-requests`` write authorit
 belongs to the repository workflow's short-lived ``GITHUB_TOKEN``. Secrets are
 never serialized into Sphinx HTML, endpoint profiles, browser storage, publication
 receipts, or review bundles.
+
+### Publication state, evidence review, and contributor credit
+
+These are intentionally separate trust domains:
+
+- **Publication** is complete when reviewed canonical JSON is merged and therefore
+  present in the repository revision used for the site build. A rendered canonical
+  section reports ``Published``; it does not infer GitHub PR state from browser
+  storage.
+- ``section.review`` is **evidence/citation review metadata**, not repository PR
+  review. Its UI state is independently ``reviewed``, ``pending``, ``stale``, or
+  ``not-applicable``.
+- ``learn.publication-request.v1`` may contain a bounded public ``contributor``
+  object with only ``display_name``. This is self-declared credit, never verified
+  identity. Empty credit normalizes to ``Anonymous``; email/account identifiers or
+  other fields are not accepted by the contract.
+- Contributor credit is publication metadata only. It is not included in model
+  generation context. Section edits accumulate unique bounded display names, new
+  records project credit into ``authors``, and Prompt/Skill definitions use their
+  existing ``author`` field.
+
+This separation prevents a merged PR from appearing "review pending" merely
+because no evidence assessment exists, while also preventing evidence review from
+being misrepresented as repository approval.
+
+### Authorship, accepted generations, and community feedback
+
+Authorship and participation are intentionally different metadata layers:
+
+- ``record.authors`` is the ordered bounded public credit list for stewardship of
+  the overall Topic/Source/Open Problem/Media record. It is not duplicated into
+  every section file, which avoids drift when record stewardship changes.
+- Topic Prompt and Skill definitions expose plural ``authors`` while retaining the
+  historical singular ``author`` field as a compatibility projection.
+- A section generation owns its own ``contributors`` list. Different accepted
+  generations can therefore credit different participants without rewriting the
+  record-level authorship history.
+
+``learn.section.v1`` remains a valid legacy contract. A reviewed *content update*
+projects its previously accepted non-empty content into a deterministic legacy
+generation and writes ``learn.section.v2`` with an explicit ``active_generation_id``
+plus a bounded append-only ``generations`` ledger. Empty placeholders are scaffolding
+and are never fabricated into generation history. New accepted generations are
+appended; older accepted generations are not overwritten. Promotion of the
+published/active generation remains a reviewed repository decision and is never
+performed automatically by ratings.
+
+New reviewed feedback is stored as an immutable metadata sidecar rather than by
+rewriting the section file::
+
+    <record>/feedback/<section-id>/<generation-id>/<feedback-id>.json
+
+The sidecar contract is ``learn.generation-feedback.v1``. V62 embedded generation
+feedback remains readable for compatibility, but new events are written only as
+sidecars. A feedback identifier is globally unique across both storage forms, so an
+event cannot be represented twice and accidentally double-counted. Metadata
+sidecars participate in canonical validation and the full tree/event digest but
+intentionally do **not** change the authored-content catalog revision and own no RST
+page. This lets independent feedback PRs touch independent files, avoids a popular
+section becoming a permanent Git hot file, and prevents a community vote from
+invalidating unrelated authored drafts or evidence-review freshness.
+
+Quick feedback submits only ``-1`` or ``+1``. Detailed feedback uses the same
+eleven-value scale as the Assistant, from ``-5`` through ``+5`` inclusive, with
+optional bounded plain-text details and self-declared public credit. The displayed
+community score is derived from merged canonical events; browsers never increment it
+optimistically. A neutral ``0`` still counts as one reviewed rating event. Generation
+history can be viewed with published first, highest-score, or newest-generated
+ordering without changing canonical order.
+
+Feedback is append-only and generation-bound, so it has a narrower concurrency
+contract than authored content. A static page may submit feedback using an older
+catalog revision if the exact ``generation_id`` still exists in the current tree.
+If the generation does not exist, the repository boundary fails closed. Browser
+retries reuse the same ``feedback_id`` after an ambiguous transport failure; the
+browser keeps that pending envelope in session-scoped storage so a same-tab reload can
+continue the same idempotent request. The repository treats that ID as an idempotency
+key, preventing a dispatch whose response was lost from being counted twice.
+Browser-authored timestamps are accepted only for legacy transport compatibility and
+are not persisted as canonical review time; Git history/PR review remains the
+acceptance chronology.
+
+Contributor display names are self-declared public credit, not authenticated voter
+identity. Therefore ``score`` and ``rating count`` describe merged/reviewed feedback
+events, not a one-person-one-vote ballot. Duplicate/spam review remains a repository
+moderation responsibility, with transport rate limits as an additional abuse bound.
+Unlike the private Assistant feedback store, AI Learn does not claim a secure
+client-side retract/supersede identity for public repository events: a correction is
+another reviewed immutable event, and maintainers decide whether contradictory or
+duplicate proposals should merge. This avoids letting a browser forge a retraction of
+somebody else's public event merely by naming its visible ``feedback_id``.
+
+Feedback-only metadata also has a narrower Sphinx invalidation boundary. Authored
+JSON remains a global Learn dependency and defines the catalog/content revision.
+Feedback sidecars are fingerprinted per record; only the owning record's pages (and
+external documents that explicitly consumed that record's feedback) are reparsed when
+its feedback digest changes. The V63 environment-schema revision forces one upgrade
+reparse so incremental-build caches register those record-scoped consumers safely.
 
 ## Sphinx build boundary
 

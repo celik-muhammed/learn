@@ -5,7 +5,7 @@
 # Authors: The scikit-plots developers
 # SPDX-License-Identifier: BSD-3-Clause
 
-# _shared_logic.py  v7.7.0
+# _shared_logic.py  v7.8.0
 #
 # Single source of truth for shared constants, pure helper functions, and
 # type aliases used by the deployed proxy (_hf_spaces_proxy/app.py) and the
@@ -243,7 +243,7 @@ __all__ = [  # noqa: RUF022
 # ─────────────────────────────────────────────────────────────────────────────
 
 #: Proxy release version — bump on every breaking change.
-PROXY_VERSION: str = "7.7.0"
+PROXY_VERSION: str = "7.8.0"
 
 #: HuggingFace Inference Providers router base URL (no trailing slash).
 #: Only used for Path 3 (standard provider models) when ``BACKEND_URL`` is

@@ -9,6 +9,9 @@
         "source_id": "source-sklearn-sgd"
       }
     ],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "statement",
     "links": [],
     "title": "Statement"

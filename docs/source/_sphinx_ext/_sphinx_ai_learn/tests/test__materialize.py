@@ -42,11 +42,23 @@ def _first_topic(tree):
 def test_production_tree_is_one_json_to_one_rst_and_projection_is_canonical():
     tree = load_content_tree(SOURCE)
     rendered = render_materialized(tree)
-    assert len(tree.catalog["subjects"]) == 50
-    assert len(tree.prompts) == 13
-    assert len(tree.skills) == 5
-    assert len(tree.source_digests) == 677
-    assert len(rendered) == len(tree.source_digests)
+    # Preserve the known baseline without freezing a publication-driven corpus.
+    # New reviewed records/prompts/skills and feedback sidecars are expected to
+    # grow these collections over time.
+    assert len(tree.catalog["subjects"]) >= 50
+    assert len(tree.prompts) >= 13
+    assert len(tree.skills) >= 5
+    assert len(tree.source_digests) - len(tree.feedback_events) >= 677
+    assert all(subject.get("authors") for subject in tree.catalog["subjects"] if subject["kind"] != "skill")
+    assert all(prompt.get("authors") for prompt in tree.prompts)
+    assert all(skill.get("authors") for skill in tree.skills)
+    assert all(
+        section.get("contributors")
+        for subject in tree.catalog["subjects"]
+        for section in subject.get("sections", [])
+        if section.get("body") or section.get("citations") or section.get("links")
+    )
+    assert len(rendered) == len(tree.source_digests) - len(tree.feedback_events)
     assert all((SOURCE / rel).is_file() for rel in rendered)
     assert all((SOURCE / rel).read_bytes() == raw for rel, raw in rendered.items())
 
@@ -70,14 +82,233 @@ def test_production_tree_is_one_json_to_one_rst_and_projection_is_canonical():
 
 def test_materialize_is_idempotent_and_preserves_unchanged_mtime(tmp_path):
     root = _json_only_copy(tmp_path)
+    expected = load_content_tree(root)
+    expected_renderable = len(expected.source_digests) - len(expected.feedback_events)
     _, first = materialize(root)
-    assert len(first) == 677
+    assert len(first) == expected_renderable
     tracked = root / first[0]
     before = tracked.stat().st_mtime_ns
     _, second = materialize(root)
     assert second == ()
     assert tracked.stat().st_mtime_ns == before
 
+
+
+
+def test_feedback_sidecar_is_validated_scored_and_never_materialized_as_rst(tmp_path):
+    from _sphinx_ext._sphinx_ai_learn._generation import section_generation_id
+
+    root = _json_only_copy(tmp_path)
+    tree = load_content_tree(root)
+    content_revision = tree.catalog["revision"]
+    content_digest = tree.content_digest
+    full_digest = tree.digest
+    _, baseline_changed = materialize(root)
+    assert baseline_changed
+    rel, record = next(
+        (rel, record)
+        for rel, record in tree.records.items()
+        if record["subject"]["kind"] == "topic"
+        and any(section["id"] == "summary" and section["body"] for section in record["subject"]["sections"])
+    )
+    subject = record["subject"]
+    section = next(row for row in subject["sections"] if row["id"] == "summary")
+    generation_id = section_generation_id(subject, section)
+    feedback_id = "feedback-sidecar-0001"
+    sidecar = rel.parent / "feedback" / section["id"] / generation_id / f"{feedback_id}.json"
+    target = root / sidecar
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(
+            {
+                "contract": "learn.generation-feedback.v1",
+                "record_id": subject["id"],
+                "section_id": "summary",
+                "generation_id": generation_id,
+                "feedback": {
+                    "id": feedback_id,
+                    "rating": 4,
+                    "contributor": "DataFox",
+                    "mode": "detailed",
+                    "comment": "Useful explanation.",
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    loaded = load_content_tree(root)
+    assert loaded.catalog["revision"] == content_revision
+    assert loaded.content_digest == content_digest
+    assert loaded.digest != full_digest
+    assert str(root / sidecar) not in loaded.dependencies
+    assert loaded.feedback_dependencies[subject["id"]] == (str(root / sidecar),)
+    assert subject["id"] in loaded.feedback_digests
+    assert loaded.generation_feedback[(subject["id"], "summary", generation_id)] == (
+        {
+            "id": feedback_id,
+            "rating": 4,
+            "contributor": "DataFox",
+            "mode": "detailed",
+            "comment": "Useful explanation.",
+        },
+    )
+    rendered = render_materialized(loaded)
+    assert sidecar.with_suffix(".rst") not in rendered
+    _, changed = materialize(root)
+    assert changed == ()
+    assert not (root / sidecar.with_suffix(".rst")).exists()
+
+
+    invalid = json.loads(target.read_text(encoding="utf-8"))
+    invalid["feedback"]["mode"] = "quick"
+    invalid["feedback"]["rating"] = 4
+    target.write_text(json.dumps(invalid, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(LearnValidationError, match="quick mode"):
+        load_content_tree(root)
+
+
+
+def test_feedback_identifier_is_globally_unique_across_embedded_and_sidecar_stores(tmp_path):
+    from _sphinx_ext._sphinx_ai_learn._generation import generation_identifier
+
+    root = _json_only_copy(tmp_path)
+    tree = load_content_tree(root)
+    section_rel, row = next(
+        (rel, row)
+        for rel, row in tree.sections.items()
+        if row["subject"]["kind"] == "topic"
+        and row["section"]["id"] == "summary"
+        and row["section"].get("body")
+    )
+    subject = row["subject"]
+    section = row["section"]
+    created_at = subject.get("created_at") or "1970-01-01T00:00:00Z"
+    provenance = {"authorship": "legacy-import"}
+    generation_id = generation_identifier(
+        section_id="summary",
+        created_at=created_at,
+        body=section["body"],
+        provenance=provenance,
+    )
+    feedback_id = "feedback-global-duplicate"
+    generation = {
+        "id": generation_id,
+        "created_at": created_at,
+        "body": section["body"],
+        "citations": section.get("citations", []),
+        "links": section.get("links", []),
+        "contributors": section.get("contributors", ["Anonymous"]),
+        "provenance": provenance,
+        "feedback": [
+            {
+                "id": feedback_id,
+                "created_at": "2026-09-27T10:00:00Z",
+                "rating": 1,
+                "contributor": "DataFox",
+                "mode": "quick",
+            }
+        ],
+    }
+    source = root / section_rel
+    source.write_text(
+        json.dumps(
+            {
+                "contract": "learn.section.v2",
+                "record_id": subject["id"],
+                "section": {
+                    "id": "summary",
+                    "title": section["title"],
+                    "active_generation_id": generation_id,
+                    "generations": [generation],
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    sidecar = (
+        section_rel.parent
+        / "feedback"
+        / "summary"
+        / generation_id
+        / f"{feedback_id}.json"
+    )
+    target = root / sidecar
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(
+            {
+                "contract": "learn.generation-feedback.v1",
+                "record_id": subject["id"],
+                "section_id": "summary",
+                "generation_id": generation_id,
+                "feedback": {
+                    "id": feedback_id,
+                    "rating": 1,
+                    "contributor": "DataFox",
+                    "mode": "quick",
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        LearnValidationError,
+        match="duplicate feedback identifier across canonical stores",
+    ):
+        load_content_tree(root)
+
+
+def test_feedback_sidecar_path_is_section_scoped(tmp_path):
+    from _sphinx_ext._sphinx_ai_learn._generation import section_generation_id
+
+    root = _json_only_copy(tmp_path)
+    tree = load_content_tree(root)
+    rel, record = next(
+        (rel, record)
+        for rel, record in tree.records.items()
+        if record["subject"]["kind"] == "topic"
+        and any(section["id"] == "summary" and section["body"] for section in record["subject"]["sections"])
+    )
+    subject = record["subject"]
+    section = next(row for row in subject["sections"] if row["id"] == "summary")
+    generation_id = section_generation_id(subject, section)
+    feedback_id = "feedback-wrong-section-path"
+    wrong = rel.parent / "feedback" / generation_id / f"{feedback_id}.json"
+    target = root / wrong
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(
+            {
+                "contract": "learn.generation-feedback.v1",
+                "record_id": subject["id"],
+                "section_id": "summary",
+                "generation_id": generation_id,
+                "feedback": {
+                    "id": feedback_id,
+                    "rating": 1,
+                    "contributor": "Anonymous",
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(LearnValidationError, match="feedback sidecar path"):
+        load_content_tree(root)
 
 def test_default_include_mode_uses_orphan_fragments_and_nested_prompt_paths(tmp_path):
     root = _json_only_copy(tmp_path)
@@ -130,10 +361,11 @@ def test_toctree_mode_makes_children_navigable_without_orphan(tmp_path):
 
 def test_regeneration_from_json_only_is_byte_identical(tmp_path):
     root = _json_only_copy(tmp_path)
+    source_tree = load_content_tree(SOURCE)
+    expected = render_materialized(source_tree)
     _, changed = materialize(root)
-    assert len(changed) == 677
+    assert len(changed) == len(expected)
     generated = {p.relative_to(root): p.read_bytes() for p in root.rglob("*.rst")}
-    expected = render_materialized(load_content_tree(SOURCE))
     assert generated == expected
 
 
@@ -274,3 +506,44 @@ def test_rst_heading_inputs_reject_control_newlines(tmp_path):
     target.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     with pytest.raises(LearnValidationError, match="control characters"):
         load_content_tree(root)
+
+
+def test_feedback_outdated_documents_is_record_scoped_and_tracks_external_consumers():
+    from _sphinx_ext._sphinx_ai_learn._generation import feedback_outdated_documents
+
+    found = {
+        "index",
+        "examples/embed",
+        "learn-ai/index",
+        "learn-ai/topics/example/index",
+        "learn-ai/topics/example/topic-prompts/eli14",
+        "learn-ai/topics/other/index",
+    }
+    routes = {
+        "topic-example": "topics/example/index",
+        "topic-other": "topics/other/index",
+    }
+    previous = {"topic-example": "a", "topic-other": "z"}
+    current = {"topic-example": "b", "topic-other": "z"}
+    consumers = {"topic-example": {"examples/embed"}}
+
+    assert feedback_outdated_documents(
+        root="learn-ai",
+        routes=routes,
+        found_docs=found,
+        consumers=consumers,
+        previous=previous,
+        current=current,
+    ) == [
+        "examples/embed",
+        "learn-ai/topics/example/index",
+        "learn-ai/topics/example/topic-prompts/eli14",
+    ]
+    assert feedback_outdated_documents(
+        root="learn-ai",
+        routes=routes,
+        found_docs=found,
+        consumers=consumers,
+        previous=current,
+        current=current,
+    ) == []

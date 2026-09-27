@@ -4,6 +4,9 @@
   "section": {
     "body": "These methods construct latent directions from joint X/Y structure rather than treating predictors independently.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

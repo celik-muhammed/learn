@@ -4,6 +4,9 @@
   "section": {
     "body": "Calibration quality is distinct from ranking or classification accuracy and should be evaluated on data not used to fit the calibrator.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

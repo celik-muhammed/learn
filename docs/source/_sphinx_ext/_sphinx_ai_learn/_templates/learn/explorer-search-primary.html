@@ -3,7 +3,7 @@
 <div class="learn-search-primary-row{% if use_overflow %} learn-search-primary-row--pill-overflow{% else %} learn-search-primary-row--classic{% endif %}"
      data-explorer-search-variant="{{ 'pill-overflow' if use_overflow else 'classic' }}">
   <div class="learn-trending-search">
-    <label class="sr-only" for="{{ search_input_id|e }}">Search</label>
+    <label class="learn-visually-hidden" for="{{ search_input_id|e }}">Search</label>
     <div class="learn-search-field{% if use_overflow %} learn-search-field--pill{% endif %}">
       <input id="{{ search_input_id|e }}"
              class="learn-search-input"

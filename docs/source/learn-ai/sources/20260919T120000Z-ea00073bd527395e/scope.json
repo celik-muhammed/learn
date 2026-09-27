@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers PLSCanonical, PLSSVD, PLSRegression, and Canonical Correlation Analysis.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

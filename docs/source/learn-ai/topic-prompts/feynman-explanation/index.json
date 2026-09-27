@@ -1,5 +1,8 @@
 {
   "author": "scikit-plots",
+  "authors": [
+    "scikit-plots"
+  ],
   "contract": "learn.topic-prompt.v1",
   "default_enabled": false,
   "description": "Explain the topic from first principles, exposing prerequisites and weak spots instead of hiding them behind jargon.",

@@ -50,6 +50,7 @@
     <textarea name="generation-instructions" data-section-ai-instructions maxlength="4000" rows="4">{{ content.instructions|default('')|e }}</textarea>
   </label>
   <p class="learn-meta">Catalog context and attached Source metadata are sent only to the configured Assistant endpoint. URLs are references; this browser does not fetch them for the model.</p>
+  {% include "learn/publication-credit.html" %}
   <div class="learn-actions learn-section-ai-actions">
     <button type="button" class="learn-primary" data-section-ai-run>Generate Now</button>
     <button type="button" data-section-ai-cancel hidden>Cancel</button>

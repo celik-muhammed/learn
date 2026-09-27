@@ -4,6 +4,9 @@
   "section": {
     "body": "Isotonic regression trades parametric shape assumptions for a monotonicity constraint and can overfit when calibration data is limited.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

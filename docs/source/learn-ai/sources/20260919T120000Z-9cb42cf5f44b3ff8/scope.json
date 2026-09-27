@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers calibration curves, proper scoring context, calibration methods, cross-validation behavior, and CalibratedClassifierCV.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

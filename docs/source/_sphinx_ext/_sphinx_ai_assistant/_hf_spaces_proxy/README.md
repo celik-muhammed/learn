@@ -1198,11 +1198,16 @@ fallback does not gain cross-repository rights merely because both repositories
 share an organization; its GitHub permissions must include the fixed Learn repo.
 
 ``POST`` with ``action=test`` verifies disabled/stub/GitHub workflow readiness
-without writing. ``action=publish`` accepts a bounded reviewed draft envelope; in
-``stub`` mode it returns a simulated receipt with no GitHub write, and in
-``github`` mode it may dispatch only the server-configured repository workflow.
-Repository projection remains inside ``_sphinx_ai_learn`` in the checked-out
-repository.
+without writing. ``action=publish`` accepts a bounded reviewed draft envelope.
+``action=feedback`` accepts a bounded generation-bound rating event: quick AI Learn
+feedback uses ``-1/+1`` while the detailed panel may submit any integer from ``-5``
+through ``+5`` plus optional bounded public comment/credit. Both actions use the same
+reviewed JSON-only workflow; in ``stub`` mode they return simulated receipts with no
+GitHub write, and in ``github`` mode they may dispatch only the server-configured
+repository workflow. Feedback is append-only and targets an immutable generation id,
+so the repository may accept it from an older static page revision only when that
+exact generation still exists. Repository projection remains inside
+``_sphinx_ai_learn`` in the checked-out repository.
 
 The repository workflow uses two separate GitHub authorities. The server-side
 ``AI_LEARN_GITHUB_TOKEN`` (or its documented fallback) only dispatches the fixed
@@ -1322,7 +1327,7 @@ BASE=https://scikit-plots-ai.hf.space
 
 # 1. Liveness probe
 curl $BASE/health
-# {"status":"ok","version":"7.7.0"}
+# {"status":"ok","version":"7.8.0"}
 
 # Optional deterministic stub rig status
 curl -s $BASE/health | python3 -m json.tool

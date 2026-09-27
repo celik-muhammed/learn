@@ -4,6 +4,9 @@
   "section": {
     "body": "Naive Bayes is simple and often effective, but the conditional-independence model is an important interpretive limitation.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers splitting criteria, controlling tree size, minimal cost-complexity pruning, interpretation, and practical limitations.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

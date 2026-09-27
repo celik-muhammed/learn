@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers GPR, GPC, kernel composition, probabilistic prediction, hyperparameter optimization, and computational characteristics.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

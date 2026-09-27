@@ -24,6 +24,7 @@ from docutils.parsers.rst import directives
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
 
+from ._generation import section_generation_feedback, section_generation_id
 from ._materialize import DIRECTORIES, LABELS, page_size
 from ._registry import (
     TOPIC_EMPTY_MESSAGES,
@@ -145,6 +146,28 @@ def lookup(directive):
             directive.env.note_dependency(dependency)
         directive.env.temp_data["_ai_learn_dependencies_noted"] = digest
     return {s["id"]: s for s in directive.env.app._ai_learn_catalog["subjects"]}
+
+
+def _note_feedback_dependencies(directive, record_id):
+    """Track reviewed feedback only for documents that consume this record."""
+    record_id = str(record_id or "").strip()
+    if not record_id:
+        return
+    consumers = getattr(directive.env, "_ai_learn_feedback_consumers", None)
+    if consumers is None:
+        consumers = {}
+        directive.env._ai_learn_feedback_consumers = consumers
+    consumers.setdefault(record_id, set()).add(directive.env.docname)
+
+    marker_key = "_ai_learn_feedback_dependencies_noted"
+    marker = directive.env.temp_data.setdefault(marker_key, set())
+    if record_id in marker:
+        return
+    for dependency in getattr(
+        directive.env.app, "_ai_learn_feedback_dependencies", {}
+    ).get(record_id, ()):
+        directive.env.note_dependency(dependency)
+    marker.add(record_id)
 
 
 def find(directive, identity):
@@ -587,6 +610,7 @@ class SectionDirective(SphinxDirective):
 
     def run(self):  # ruff: ignore[too-many-branches]
         subject = find(self, self.options.get("topic-id", ""))
+        _note_feedback_dependencies(self, subject["id"])
         spec = next(
             (
                 s
@@ -655,23 +679,75 @@ class SectionDirective(SphinxDirective):
         )
         review = content.get("review")
         revision = self.env.app._ai_learn_catalog["revision"]
-        state = (
+        evidence_review_state = (
             "stale"
             if review and review["revision"] != revision
+            else (
+                "reviewed" if review else ("pending" if citations else "not-applicable")
+            )
+        )
+        # ``state`` remains the compatibility presentation state used by existing
+        # CSS/JS. Publication and evidence review are independent authorities.
+        state = (
+            "stale"
+            if evidence_review_state == "stale"
             else ("ready" if filled else "empty")
         )
+        publication_state = "published" if filled else "unpublished"
+        # Community feedback belongs only to immutable accepted section text.
+        # Related media/evidence may make a section visually non-empty, but it
+        # must not synthesize a feedback target for an empty canonical section.
+        generation_id = (
+            section_generation_id(subject, content)
+            if content.get("body", "").strip()
+            else ""
+        )
+        feedback_index = getattr(self.env.app, "_ai_learn_generation_feedback", {})
+        sidecar_feedback = (
+            feedback_index.get((subject["id"], content["id"], generation_id), ())
+            if generation_id
+            else ()
+        )
+        feedback_score, feedback_count = section_generation_feedback(
+            content, sidecar_feedback
+        )
+        generation_history = []
+        for generation in content.get("generations", []):
+            rows = [
+                *generation.get("feedback", []),
+                *feedback_index.get(
+                    (subject["id"], content["id"], generation["id"]), ()
+                ),
+            ]
+            generation_history.append(
+                {
+                    "id": generation["id"],
+                    "created_at": generation["created_at"],
+                    "contributors": generation.get("contributors", []),
+                    "score": sum(int(row.get("rating", 0)) for row in rows),
+                    "ratings": len(rows),
+                    "active": generation["id"] == content.get("active_generation_id"),
+                }
+            )
+        # Default presentation order is authority first, then community signal,
+        # then recency.  Client-side controls may re-order the same immutable
+        # accepted generations by rating or generated date; they never change
+        # ``active_generation_id``.
+        generation_history.sort(
+            key=lambda row: (row["score"], row["created_at"], row["id"]),
+            reverse=True,
+        )
+        generation_history.sort(key=lambda row: not row["active"])
         generation_mode = spec.get("generation", {}).get("mode", "none")
-        state_label = {
-            "empty": (
+        state_label = (
+            "Published"
+            if filled
+            else (
                 "AI draft not generated"
                 if generation_mode == "chat"
                 else "Not available"
-            ),
-            "ready": "Published · review pending",
-            "stale": "Published · review stale",
-        }[state]
-        if review and state == "ready":
-            state_label = "Published · reviewed by " + review["by"]
+            )
+        )
         root = component(
             "section-start.html",
             {
@@ -682,6 +758,13 @@ class SectionDirective(SphinxDirective):
                 "citations": citations,
                 "review": review,
                 "state": state,
+                "publication_state": publication_state,
+                "evidence_review_state": evidence_review_state,
+                "generation_id": generation_id,
+                "feedback_section_id": content.get("id", spec["id"]),
+                "feedback_score": feedback_score,
+                "feedback_count": feedback_count,
+                "generation_history": generation_history,
                 "state_label": state_label,
                 "empty_message": (
                     spec.get("empty_message")
@@ -1840,6 +1923,7 @@ def setup_pages(app):
     app.add_js_file("section-generation.js", defer="defer", priority=609)
     app.add_js_file("overview-generation.js", defer="defer", priority=610)
     app.add_js_file("topic.js", defer="defer", priority=611)
+    app.add_js_file("generation-feedback.js", defer="defer", priority=612)
     app.add_js_file("generation-context.js", defer="defer", priority=613)
     app.add_js_file("video-generation.js", defer="defer", priority=615)
     app.add_js_file("audio-generation.js", defer="defer", priority=616)
