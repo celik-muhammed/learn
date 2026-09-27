@@ -1,5 +1,8 @@
 {
   "author": "scikit-plots",
+  "authors": [
+    "scikit-plots"
+  ],
   "contract": "learn.topic-prompt.v1",
   "default_enabled": false,
   "description": "Compare the topic's main approach with established alternatives across assumptions, mechanisms, evidence, and trade-offs.",

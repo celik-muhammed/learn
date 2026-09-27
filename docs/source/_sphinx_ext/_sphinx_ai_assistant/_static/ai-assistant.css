@@ -3305,20 +3305,32 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
 
 /* ─── R8: standalone AI search-bar (opt-in, additive) ───────────────────────
    The extension renders its OWN element — it never hijacks the theme search
-   input. Two size variants: --mini (inline) and default (block). */
+   input.  Presentation has three states over one DOM/behaviour path:
+     default                         full input
+     --mini                          compact input (author preference)
+     --icon-only                     collapsed/narrow host launcher
+   Adaptive state is set by JS from an optional theme selector plus actual host
+   width, so sidebar squeeze, responsive reflow and zoom do not require a second
+   search implementation. */
 
 .ai-assistant-searchbar {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     width: 100%;
+    min-height: 2.5rem;
     box-sizing: border-box;
     padding: 0.35rem 0.5rem;
     margin: 0.5rem 0;
     background: var(--pst-color-surface, var(--color-background-secondary, #f6f7f8));
     border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d6d9dc));
     border-radius: 8px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+        width 0.15s ease,
+        padding 0.15s ease,
+        border-radius 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
 }
 .ai-assistant-searchbar:focus-within {
     border-color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
@@ -3333,9 +3345,39 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
 .ai-assistant-searchbar svg {
     width: 15px;
     height: 15px;
-    stroke: var(--pst-color-text-muted, var(--color-foreground-muted, #6a737d));
+    stroke: currentColor;
     fill: none;
     flex-shrink: 0;
+}
+.ai-assistant-searchbar .ai-assistant-searchbar-launcher {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pst-color-text-muted, var(--color-foreground-muted, #6a737d));
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.ai-assistant-searchbar .ai-assistant-searchbar-launcher:hover {
+    color: var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    background: color-mix(in srgb,
+        var(--pst-color-primary, var(--color-brand-primary, #2980b9)) 10%,
+        transparent);
+}
+.ai-assistant-searchbar .ai-assistant-searchbar-launcher:focus-visible {
+    outline: 2px solid var(--pst-color-primary, var(--color-brand-primary, #2980b9));
+    outline-offset: 1px;
 }
 .ai-assistant-searchbar input {
     flex: 1;
@@ -3358,7 +3400,56 @@ body.ai-assistant-resizing-y .ai-assistant-panel-resizer-top { opacity: 1; }
     padding: 0.2rem 0.45rem;
 }
 .ai-assistant-searchbar--mini input { font-size: 0.78rem; }
+
+/* Collapsed rail state.  The input + shortcut stay in the DOM so expanding the
+   host restores the same value/listeners without rebuilding, but display:none
+   removes them from layout and the accessibility tree while icon-only. */
+.ai-assistant-searchbar--icon-only,
+.ai-assistant-searchbar--mini.ai-assistant-searchbar--icon-only {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    width: 2.5rem;
+    min-width: 2.5rem;
+    max-width: 2.5rem;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    margin: 0.5rem auto;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    overflow: visible;
+}
+.ai-assistant-searchbar--icon-only:focus-within {
+    border-color: transparent;
+    box-shadow: none;
+}
+.ai-assistant-searchbar--icon-only input,
+.ai-assistant-searchbar--icon-only .ai-assistant-searchbar-kbd-hint {
+    display: none;
+}
+.ai-assistant-searchbar--icon-only .ai-assistant-searchbar-launcher {
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    border: 1px solid var(--pst-color-border, var(--color-foreground-border, #d6d9dc));
+    border-radius: 999px;
+    background: var(--pst-color-surface, var(--color-background-secondary, #f6f7f8));
+}
+.ai-assistant-searchbar--icon-only .ai-assistant-searchbar-launcher svg {
+    width: 18px;
+    height: 18px;
+}
 [data-bs-theme="dark"] .ai-assistant-searchbar {
+    background: rgba(255, 255, 255, 0.04);
+}
+[data-bs-theme="dark"] .ai-assistant-searchbar--icon-only {
+    background: transparent;
+}
+[data-bs-theme="dark"] .ai-assistant-searchbar--icon-only .ai-assistant-searchbar-launcher {
     background: rgba(255, 255, 255, 0.04);
 }
 

@@ -1,5 +1,8 @@
 {
   "author": "Scikit-Plots Learn",
+  "authors": [
+    "Scikit-Plots Learn"
+  ],
   "contract": "learn.skill.v1",
   "default_enabled": false,
   "description": "A reusable provenance check for any technical topic.",

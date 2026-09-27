@@ -2301,8 +2301,28 @@ ai_assistant_search_bar_position = "top"
 
 # Type:    bool
 # Default: False
-# Compact inline variant when True; full-width block when False.
-ai_assistant_search_bar_mini = False  # accept full width
+# Base INPUT size only: compact inline input when True; full-width input when
+# False.  This does not disable the adaptive icon-only rail state below.
+ai_assistant_search_bar_mini = False  # expanded host uses full width
+
+# Type:    bool
+# Default: True
+# Responsive host-aware mode.  When the selected host collapses/narrows, the
+# full/compact input becomes one accessible AI-search icon.  Clicking that icon
+# opens the AI panel and focuses its composer so typing can begin immediately.
+# Set False only when the host is guaranteed to keep enough horizontal space.
+ai_assistant_search_bar_adaptive = True
+
+# Type:    str
+# Default: ""
+# Optional selector that identifies the selected host (or an ancestor) in its
+# collapsed state.  This makes theme-specific collapse deterministic while the
+# extension remains theme-neutral.  Empty still works via host-width fallback.
+# Current PyData Sphinx Theme desktop sidebar example:
+#   ai_assistant_search_bar_selector = ".bd-sidebar-primary"
+#   ai_assistant_search_bar_collapsed_selector = ".bd-sidebar-primary.pst-squeeze"
+# For a navbar/body host that never has a collapsed rail, leave this empty.
+ai_assistant_search_bar_collapsed_selector = ""
 
 # Type:    str — placeholder for the standalone search-bar input.
 ai_assistant_panel_search_placeholder = "Ask AI about these docs\u2026"

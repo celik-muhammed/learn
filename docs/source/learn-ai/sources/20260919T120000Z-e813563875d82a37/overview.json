@@ -4,6 +4,9 @@
   "section": {
     "body": "Official scikit-learn 1.9 guidance for Gaussian, multinomial, complement, Bernoulli, categorical, and other Naive Bayes variants.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "overview",
     "links": [],
     "title": "Overview"

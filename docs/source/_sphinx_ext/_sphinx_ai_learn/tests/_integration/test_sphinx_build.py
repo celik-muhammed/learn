@@ -259,12 +259,15 @@ def test_environment_signature_invalidates_only_owned_learn_tree():
 
     from _sphinx_ext._sphinx_ai_learn._sphinx import (
         _outdated_learn_documents,
+        _purge_feedback_consumer,
         _remember_environment_signature,
     )
 
     app = SimpleNamespace(
         config=SimpleNamespace(ai_learn_content_root="learn-ai"),
         _ai_learn_content_digest="abc123",
+        _ai_learn_feedback_digests={"topic-example": "feedback-a"},
+        _ai_learn_routes={"topic-example": "topics/example/index"},
     )
     env = SimpleNamespace(
         found_docs={
@@ -272,11 +275,24 @@ def test_environment_signature_invalidates_only_owned_learn_tree():
             "examples/index",
             "learn-ai/index",
             "learn-ai/topics/example/index",
+            "learn-ai/topics/example/summary",
         }
     )
     assert _outdated_learn_documents(app, env, set(), set(), set()) == [
         "learn-ai/index",
         "learn-ai/topics/example/index",
+        "learn-ai/topics/example/summary",
     ]
+    env._ai_learn_feedback_consumers = {"topic-example": {"examples/index"}}
     _remember_environment_signature(app, env)
     assert _outdated_learn_documents(app, env, set(), set(), set()) == []
+
+    app._ai_learn_feedback_digests = {"topic-example": "feedback-b"}
+    assert _outdated_learn_documents(app, env, set(), set(), set()) == [
+        "examples/index",
+        "learn-ai/topics/example/index",
+        "learn-ai/topics/example/summary",
+    ]
+
+    _purge_feedback_consumer(app, env, "examples/index")
+    assert env._ai_learn_feedback_consumers == {}

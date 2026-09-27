@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys  # ruff: ignore[unused-import]
 from pathlib import Path
 
@@ -86,8 +87,98 @@ def _text(value, *, path, limit, empty=False):
     return value
 
 
+def _public_display_name(value, *, path="contributor.display_name"):
+    value = _text(value, path=path, limit=80, empty=True)
+    if any(
+        ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in value
+    ):
+        raise LearnValidationError(f"{path}: control characters are not allowed")
+    return value or "Anonymous"
+
+
+def _contributor_display_name(request):
+    """Return bounded public credit without treating it as verified identity."""
+    if "contributor" in request:
+        value = request.get("contributor")
+        if not isinstance(value, dict) or set(value) - {"display_name"}:
+            raise LearnValidationError("contributor: expected {display_name}")
+        return _public_display_name(value.get("display_name", ""))
+    if "author" in request:
+        return _text(request.get("author"), path="author", limit=80)
+    return "Anonymous"
+
+
+def _generation_created_at(draft, subject):
+    """Return deterministic accepted-generation time from reviewed draft metadata."""
+    candidates = []
+    provenance = draft.get("provenance") if isinstance(draft, dict) else None
+    if isinstance(provenance, dict):
+        candidates.append(provenance.get("generated_at"))
+    if isinstance(draft, dict):
+        candidates.append(draft.get("generated_at"))
+    for raw in candidates:
+        if not isinstance(raw, str):
+            continue
+        raw = raw.strip()  # ruff: ignore[redefined-loop-name]
+        raw = re.sub(  # ruff: ignore[redefined-loop-name]
+            r"\.\d{1,6}Z$",
+            "Z",
+            raw,
+        )
+        try:
+            return timestamp(raw, "generation.created_at")
+        except LearnValidationError:
+            continue
+    return timestamp(subject.get("created_at"), "subject.created_at")
+
+
+def _generation_provenance(draft):
+    """Project only bounded public model/workflow provenance into canonical JSON."""
+    source = draft.get("provenance") if isinstance(draft, dict) else None
+    if not isinstance(source, dict):
+        source = draft if isinstance(draft, dict) else {}
+    result = {}
+    for key, limit in (
+        ("authorship", 40),
+        ("model", 200),
+        ("workflow_id", 120),
+        ("agent", 120),
+        ("skill", 120),
+        ("request_id", 200),
+    ):
+        if isinstance(source.get(key), str):
+            result[key] = _text(
+                source[key],
+                path="generation.provenance." + key,
+                limit=limit,
+                empty=True,
+            )
+    return result
+
+
 def _request_operation(root, request):  # noqa: PLR0912
-    allowed = {
+    if request.get("contract") != REQUEST_CONTRACT:
+        raise LearnValidationError("publication request: unsupported contract/action")
+    action = request.get("action")
+    if action not in {"publish", "feedback"}:
+        raise LearnValidationError("publication request: unsupported contract/action")
+
+    feedback_allowed = {
+        "contract",
+        "action",
+        "base_revision",
+        "subject_id",
+        "section_id",
+        "generation_id",
+        "feedback_id",
+        "created_at",
+        "rating",
+        "comment",
+        "contributor",
+        "feedback_mode",
+    }
+    publish_allowed = {
         "contract",
         "action",
         "draft",
@@ -96,34 +187,90 @@ def _request_operation(root, request):  # noqa: PLR0912
         "metadata_reviewed",
         "artifact_id",
         "author",
+        "contributor",
         "order",
         "default_enabled",
         "subject_id",
         "section_id",
         "section_title",
     }
+    allowed = feedback_allowed if action == "feedback" else publish_allowed
     if set(request) - allowed:
-        raise LearnValidationError("publication request: unexpected fields")
-    if (
-        request.get("contract") != REQUEST_CONTRACT
-        or request.get("action") != "publish"
-    ):
-        raise LearnValidationError("publication request: unsupported contract/action")
-    if not {"draft", "base_revision"}.issubset(request):
+        raise LearnValidationError(
+            f"{action} request: unexpected fields: "
+            + ", ".join(sorted(set(request) - allowed))
+        )
+    if "base_revision" not in request:
         raise LearnValidationError("publication request: missing required fields")
-    draft = request.get("draft")
-    if not isinstance(draft, dict):
-        raise LearnValidationError("publication request.draft: expected object")
+    contributor = _contributor_display_name(request)
     base_revision = _text(
         request.get("base_revision"),
         path="publication request.base_revision",
         limit=128,
     )
     tree = load_content_tree(root)
-    if tree.catalog["revision"] != base_revision:
+    # Publishing/replacing authored content is revision-bound because the draft
+    # may depend on the exact repository state it reviewed.  Feedback is
+    # different: it targets an immutable generation identifier and is an
+    # append-only event.  Allow a stale page revision for feedback so unrelated
+    # merges (or another accepted feedback event) do not make the static page
+    # unusable; the generation lookup below remains the authority and fails
+    # closed if that target no longer exists.
+    if action != "feedback" and tree.catalog["revision"] != base_revision:
         raise LearnValidationError(
             "publication request.base_revision: catalog changed; regenerate/review the draft"
         )
+
+    if action == "feedback":
+        required = {
+            "subject_id",
+            "section_id",
+            "generation_id",
+            "feedback_id",
+            "rating",
+        }
+        if not required.issubset(request):
+            raise LearnValidationError("feedback request: missing required fields")
+        rating = request.get("rating")
+        if (
+            isinstance(rating, bool)
+            or not isinstance(rating, int)
+            or not -5 <= rating <= 5  # ruff: ignore[magic-value-comparison]
+        ):
+            raise LearnValidationError("rating: expected integer from -5 to 5")
+        op = {
+            "op": "rate-section-generation",
+            "subject_id": _text(request["subject_id"], path="subject_id", limit=64),
+            "section_id": _text(request["section_id"], path="section_id", limit=64),
+            "generation_id": _text(
+                request["generation_id"], path="generation_id", limit=64
+            ),
+            "feedback_id": _text(request["feedback_id"], path="feedback_id", limit=64),
+            "rating": rating,
+            "contributor": contributor,
+        }
+        if "comment" in request:
+            op["comment"] = _text(
+                request.get("comment", ""), path="comment", limit=2000, empty=True
+            )
+        if "feedback_mode" in request:
+            mode = _text(request.get("feedback_mode"), path="feedback_mode", limit=16)
+            if mode not in {"quick", "detailed"}:
+                raise LearnValidationError("feedback_mode: expected quick or detailed")
+            if mode == "quick" and rating not in {-1, 1}:
+                raise LearnValidationError("rating: quick feedback must be -1 or 1")
+            op["feedback_mode"] = mode
+        # V62 browsers supplied created_at. Accept/validate it for transport
+        # compatibility, but do not treat browser clocks as canonical authority.
+        if "created_at" in request:
+            timestamp(request["created_at"], "feedback.created_at")
+        return tree, op
+
+    if "draft" not in request:
+        raise LearnValidationError("publication request: missing required fields")
+    draft = request.get("draft")
+    if not isinstance(draft, dict):
+        raise LearnValidationError("publication request.draft: expected object")
     provenance = draft.get("provenance")
     embedded_revision = ""
     if isinstance(provenance, dict) and isinstance(
@@ -160,11 +307,7 @@ def _request_operation(root, request):  # noqa: PLR0912
             return tree, {
                 "op": "create-topic-prompt",
                 "prompt_id": artifact_id,
-                "author": _text(
-                    request.get("author", "community"),
-                    path="author",
-                    limit=200,
-                ),
+                "author": contributor,
                 "order": order,
                 "default_enabled": bool(request.get("default_enabled", False)),
                 "draft": draft,
@@ -176,11 +319,7 @@ def _request_operation(root, request):  # noqa: PLR0912
             return tree, {
                 "op": "create-skill",
                 "skill_id": artifact_id,
-                "author": _text(
-                    request.get("author", "community"),
-                    path="author",
-                    limit=200,
-                ),
+                "author": contributor,
                 "order": order,
                 "default_enabled": bool(request.get("default_enabled", False)),
                 "draft": draft,
@@ -190,6 +329,7 @@ def _request_operation(root, request):  # noqa: PLR0912
             "op": "create-record",
             "record_id": artifact_id,
             "created_at": created_at,
+            "contributor": contributor,
             "draft": draft,
         }
         if draft.get("kind") == "source":
@@ -222,12 +362,20 @@ def _request_operation(root, request):  # noqa: PLR0912
             limit=50_000,
             empty=True,
         )
+        subject = next(
+            (row for row in tree.catalog["subjects"] if row["id"] == subject_id), None
+        )
+        if subject is None:
+            raise LearnValidationError("subject_id: target subject does not exist")
         return tree, {
             "op": "upsert-section",
             "subject_id": subject_id,
             "section_id": section_id,
             "title": title,
             "body": body,
+            "contributor": contributor,
+            "created_at": _generation_created_at(draft, subject),
+            "provenance": _generation_provenance(draft),
         }
 
     if contract == SECTION_DRAFT_CONTRACT:
@@ -239,12 +387,20 @@ def _request_operation(root, request):  # noqa: PLR0912
             limit=200,
         )
         body = _text(draft.get("body"), path="draft.body", limit=50_000, empty=True)
+        subject = next(
+            (row for row in tree.catalog["subjects"] if row["id"] == subject_id), None
+        )
+        if subject is None:
+            raise LearnValidationError("subject_id: target subject does not exist")
         return tree, {
             "op": "upsert-section",
             "subject_id": subject_id,
             "section_id": section_id,
             "title": title,
             "body": body,
+            "contributor": contributor,
+            "created_at": _generation_created_at(draft, subject),
+            "provenance": _generation_provenance(draft),
         }
 
     raise LearnValidationError("publication request.draft.contract: unsupported")

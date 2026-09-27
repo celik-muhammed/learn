@@ -39759,13 +39759,148 @@
 
     // ── R8: standalone AI search-bar (opt-in, additive) ───────────────────────
 
+    // Theme-neutral safety rail.  Current PyData Sphinx Theme squeezes its
+    // desktop primary sidebar to 4rem; 96px also covers comparable icon rails
+    // without forcing normal compact nav/header hosts into icon-only mode.
+    var _SEARCH_BAR_ICON_ONLY_MAX_PX = 96;
+
     /**
-     * Build a self-contained mini search input that forwards its text into
-     * the AI panel as the first question.  The extension renders its OWN
-     * element and never touches the theme\u2019s search DOM, so PyData / Furo /
-     * RTD search keep working untouched.  Off by default.
+     * Return true when the configured search-bar host is currently acting as
+     * a collapsed/icon rail.
      *
-     * @param {boolean} mini  Compact inline variant when true.
+     * Resolution order intentionally separates site/theme knowledge from the
+     * extension's generic layout logic:
+     *   1. Optional author-supplied collapsed selector (host or ancestor).
+     *   2. Actual rendered host width as a portable fallback.
+     *
+     * Invalid custom selectors fail closed to width detection rather than
+     * breaking page initialisation.
+     */
+    function _searchBarHostIsCollapsed(host, cfg) {
+        if (!host) return false;
+        cfg = cfg || _cfg();
+
+        var collapsedSelector = (typeof cfg.searchBarCollapsedSelector === 'string')
+            ? cfg.searchBarCollapsedSelector.trim()
+            : '';
+        if (collapsedSelector) {
+            try {
+                if (typeof host.matches === 'function' && host.matches(collapsedSelector)) {
+                    return true;
+                }
+                if (typeof host.closest === 'function' && host.closest(collapsedSelector)) {
+                    return true;
+                }
+            } catch (_) {
+                // Invalid site-authored selector: keep the search control alive
+                // and continue with the measured-width fallback.
+            }
+        }
+
+        var width = 0;
+        if (typeof host.getBoundingClientRect === 'function') {
+            try {
+                var rect = host.getBoundingClientRect();
+                width = rect && isFinite(rect.width) ? Number(rect.width) : 0;
+            } catch (_) {}
+        }
+        if (!(width > 0) && typeof host.clientWidth === 'number') {
+            width = Number(host.clientWidth) || 0;
+        }
+        return width > 0 && width <= _SEARCH_BAR_ICON_ONLY_MAX_PX;
+    }
+
+    /** Apply full / compact-input / icon-only presentation without rebuilding. */
+    function _syncSearchBarPresentation(bar, host, cfg) {
+        if (!bar || !host) return 'full';
+        cfg = cfg || _cfg();
+
+        var adaptive = cfg.searchBarAdaptive !== false;
+        var iconOnly = adaptive && _searchBarHostIsCollapsed(host, cfg);
+        var baseMini = cfg.searchBarMini === true;
+        var mode = iconOnly ? 'icon' : (baseMini ? 'mini' : 'full');
+
+        if (bar.classList && typeof bar.classList.toggle === 'function') {
+            bar.classList.toggle('ai-assistant-searchbar--icon-only', iconOnly);
+        }
+        bar.setAttribute('data-presentation', mode);
+
+        var launcher = bar.querySelector('.ai-assistant-searchbar-launcher');
+        if (launcher) {
+            var label = iconOnly
+                ? 'Open AI Assistant and start typing'
+                : 'Ask AI';
+            launcher.setAttribute('aria-label', label);
+            launcher.setAttribute('title', label);
+        }
+        return mode;
+    }
+
+    /**
+     * Keep the search bar in sync with a host whose width/class can change at
+     * runtime (desktop sidebar squeeze/expand, responsive nav reflow, zoom).
+     * Observers are retained on the bar so repeated mounts do not leak them.
+     */
+    function _bindAdaptiveSearchBar(bar, host, cfg) {
+        if (!bar || !host) return;
+        cfg = cfg || _cfg();
+        _syncSearchBarPresentation(bar, host, cfg);
+        if (cfg.searchBarAdaptive === false) return;
+
+        var sync = function () { _syncSearchBarPresentation(bar, host, _cfg()); };
+
+        if (typeof ResizeObserver !== 'undefined') {
+            try {
+                bar._aiSearchResizeObserver = new ResizeObserver(sync);
+                bar._aiSearchResizeObserver.observe(host);
+            } catch (_) {}
+        }
+        if (typeof MutationObserver !== 'undefined') {
+            try {
+                bar._aiSearchMutationObserver = new MutationObserver(sync);
+                var observeNode = host;
+                while (observeNode && observeNode.nodeType === 1) {
+                    bar._aiSearchMutationObserver.observe(observeNode, {
+                        attributes: true,
+                        attributeFilter: ['class', 'style', 'open', 'aria-expanded']
+                    });
+                    observeNode = observeNode.parentElement;
+                }
+            } catch (_) {}
+        }
+
+        // ResizeObserver is the primary geometry source; the window listener is
+        // also the compatibility path for older engines/custom hosts.
+        if (typeof window !== 'undefined' && window.addEventListener) {
+            window.addEventListener('resize', sync, { passive: true });
+            bar._aiSearchWindowResize = sync;
+        }
+        if (host.addEventListener) {
+            host.addEventListener('transitionend', sync);
+        }
+    }
+
+    /** Open the panel and put keyboard focus in its composer. */
+    function _openSearchPanelForTyping() {
+        if (!_aiPanelEl) _aiPanelEl = createAIPanel();
+        _openAIPanel();
+        var panelInput = document.getElementById('ai-assistant-panel-input');
+        if (panelInput && typeof panelInput.focus === 'function') {
+            try { panelInput.focus({ preventScroll: true }); }
+            catch (_) { try { panelInput.focus(); } catch (_) {} }
+        }
+        return panelInput;
+    }
+
+    /**
+     * Build a self-contained AI search input.  The author-selected base state
+     * is full-width or compact-input; adaptive layout can later reduce the SAME
+     * DOM to an icon-only launcher when its host becomes an icon rail.
+     *
+     * The extension renders its OWN element and never touches the theme's
+     * search DOM, so PyData / Furo / RTD search keep working untouched.
+     *
+     * @param {boolean} mini  Compact input base variant when true.
      * @returns {HTMLElement}
      */
     function _buildSearchBar(mini) {
@@ -39776,19 +39911,26 @@
         var bar = document.createElement('div');
         bar.className = 'ai-assistant-searchbar' +
             (mini ? ' ai-assistant-searchbar--mini' : '');
+        bar.setAttribute('role', 'search');
+        bar.setAttribute('aria-label', 'AI Assistant search');
 
-        var icon = document.createElement('span');
-        icon.setAttribute('aria-hidden', 'true');
-        // Primary icon — searchSparkle (search + AI sparkle). searchAI
-        // (plain magnifying glass) stays defined above as a fallback for
-        // future use, not removed.
-        icon.innerHTML = ICONS.searchSparkle;   // ICONS constant — safe.
-        bar.appendChild(icon);
+        // The leading icon is an actual control rather than decorative chrome.
+        // In icon-only rail mode it becomes the entire interaction surface;
+        // when an input query exists it also acts as a submit affordance.
+        var launcher = document.createElement('button');
+        launcher.type = 'button';
+        launcher.className = 'ai-assistant-searchbar-launcher';
+        launcher.setAttribute('aria-label', 'Ask AI');
+        launcher.setAttribute('title', 'Ask AI');
+        launcher.innerHTML = ICONS.searchSparkle;   // ICONS constant — safe.
+        bar.appendChild(launcher);
 
         var inp = document.createElement('input');
-        inp.type = 'text';
+        inp.type = 'search';
+        inp.autocomplete = 'off';
         inp.setAttribute('aria-label', ph);
         inp.placeholder = ph;
+        inp.maxLength = 4096;
         bar.appendChild(inp);
 
         var kbdLabel = _shortcutLabel();
@@ -39810,15 +39952,15 @@
             });
             bar.appendChild(hint);
         } else {
-            bar.appendChild(document.createElement('span')); // spacer
+            var spacer = document.createElement('span');
+            spacer.className = 'ai-assistant-searchbar-kbd-hint';
+            bar.appendChild(spacer);
         }
 
         function _go() {
             var q = inp.value.trim();
+            var panelInput = _openSearchPanelForTyping();
             if (!q) return;
-            if (!_aiPanelEl) _aiPanelEl = createAIPanel();
-            _openAIPanel();
-            var panelInput = document.getElementById('ai-assistant-panel-input');
             if (panelInput) {
                 panelInput.value = q;
                 _updateSendBtnState();
@@ -39829,6 +39971,17 @@
         inp.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); _go(); }
         });
+        launcher.addEventListener('click', function () {
+            // A collapsed rail is a launcher, not a hidden-submit control.
+            // If the expanded input happened to contain an unsent draft before
+            // the host collapsed, do not submit that invisible text by surprise.
+            if (bar.classList &&
+                    bar.classList.contains('ai-assistant-searchbar--icon-only')) {
+                _openSearchPanelForTyping();
+                return;
+            }
+            _go();
+        });
         return bar;
     }
 
@@ -39838,9 +39991,9 @@
      * (safe no-op) so a missing element can never break the page.
      *
      * Position is controlled by cfg.searchBarPosition:
-     *   "top"    → insertBefore(bar, host.firstChild)  — prepend at sidebar top.
-     *   "bottom" → appendChild(bar)                    — append (default).
-     * Any value other than "top" falls back to "bottom" (pre-existing behaviour).
+     *   "top"    → insertBefore(bar, host.firstChild)  — prepend at host top.
+     *   "bottom" → appendChild(bar)                    — append.
+     * Any value other than "top" falls back to "bottom".
      */
     function _mountSearchBar() {
         var cfg = _cfg();
@@ -39848,19 +40001,17 @@
         var sel = (typeof cfg.searchBarSelector === 'string' &&
             cfg.searchBarSelector) || '';
         if (!sel) return;
-        var host = document.querySelector(sel);
+        var host = null;
+        try { host = document.querySelector(sel); } catch (_) { return; }
         if (!host) return;
         if (host.querySelector('.ai-assistant-searchbar')) return;  // idempotent
         var bar = _buildSearchBar(cfg.searchBarMini === true);
         if (cfg.searchBarPosition === 'top') {
-            // Prepend: place before the first existing child so the search bar
-            // appears at the very top of the sidebar — above navigation links.
-            // Default "top"
             host.insertBefore(bar, host.firstChild);
         } else {
-            // "bottom": append after all existing children.
             host.appendChild(bar);
         }
+        _bindAdaptiveSearchBar(bar, host, cfg);
     }
 
     // ── AI Panel ──────────────────────────────────────────────────────────────

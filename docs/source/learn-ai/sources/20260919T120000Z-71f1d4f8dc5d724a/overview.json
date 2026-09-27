@@ -4,6 +4,9 @@
   "section": {
     "body": "Official scikit-learn 1.9 guidance for decision-tree classification, regression, multi-output tasks, complexity, and pruning.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "overview",
     "links": [],
     "title": "Overview"

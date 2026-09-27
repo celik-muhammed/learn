@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers monotonic fitting, prediction behavior, ties, and the estimator interface used independently or inside calibration workflows.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

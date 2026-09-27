@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers Gaussian class-conditional modeling, covariance assumptions, shrinkage, dimensionality reduction, and estimation algorithms.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

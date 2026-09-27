@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers the linear-model family used by the Lasso, Elastic-Net, Bayesian Regression, Logistic Regression, and Generalized Linear Models topics.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

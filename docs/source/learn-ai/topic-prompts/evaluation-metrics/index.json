@@ -1,5 +1,8 @@
 {
   "author": "scikit-plots",
+  "authors": [
+    "scikit-plots"
+  ],
   "contract": "learn.topic-prompt.v1",
   "default_enabled": false,
   "description": "Audit how the topic is evaluated and whether its metrics measure the outcomes that actually matter.",

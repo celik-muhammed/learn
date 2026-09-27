@@ -5,7 +5,7 @@
 # Authors: The scikit-plots developers
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# scikit-plots/ai  ·  _hf_spaces_proxy/app.py  v7.7.0
+# scikit-plots/ai  ·  _hf_spaces_proxy/app.py  v7.8.0
 #
 # Server-authoritative chat proxy for sphinx-ai-assistant.
 #
@@ -6070,10 +6070,11 @@ async def learn_publication_dispatch(  # ruff: ignore[too-many-branches]
 
     request_id = publication_request_id(parsed)
     if AI_LEARN_PUBLICATION_POLICY.mode == "stub":
+        action_label = parsed["action"]
         return JSONResponse(
             {
                 "contract": PUBLICATION_RECEIPT_CONTRACT,
-                "action": "publish",
+                "action": action_label,
                 "mode": "stub",
                 "state": "simulated",
                 "request_id": request_id,
@@ -6082,7 +6083,9 @@ async def learn_publication_dispatch(  # ruff: ignore[too-many-branches]
                 "canonical_prefix": AI_LEARN_PUBLICATION_POLICY.canonical_prefix,
                 "workflow": AI_LEARN_PUBLICATION_POLICY.workflow,
                 "message": (
-                    "Reviewed publication request validated in stub mode. No GitHub write occurred."
+                    "Reviewed feedback request validated in stub mode. No GitHub write occurred."
+                    if action_label == "feedback"
+                    else "Reviewed publication request validated in stub mode. No GitHub write occurred."
                 ),
             },
             headers={
@@ -6148,7 +6151,7 @@ async def learn_publication_dispatch(  # ruff: ignore[too-many-branches]
             doc = {}
     receipt: dict[str, Any] = {
         "contract": PUBLICATION_RECEIPT_CONTRACT,
-        "action": "publish",
+        "action": parsed["action"],
         "mode": "github",
         "state": "queued",
         "request_id": request_id,
@@ -6157,7 +6160,9 @@ async def learn_publication_dispatch(  # ruff: ignore[too-many-branches]
         "canonical_prefix": AI_LEARN_PUBLICATION_POLICY.canonical_prefix,
         "workflow": AI_LEARN_PUBLICATION_POLICY.workflow,
         "message": (
-            "Reviewed publication request queued for repository validation and pull-request creation."
+            "Reviewed feedback request queued for repository validation and pull-request creation."
+            if parsed["action"] == "feedback"
+            else "Reviewed publication request queued for repository validation and pull-request creation."
         ),
     }
     run_id = doc.get("workflow_run_id")

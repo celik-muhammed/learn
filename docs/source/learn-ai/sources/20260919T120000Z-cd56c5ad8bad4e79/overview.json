@@ -4,6 +4,9 @@
   "section": {
     "body": "Official scikit-learn 1.9 guidance for support-vector classification, regression, kernels, complexity, and practical use.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "overview",
     "links": [],
     "title": "Overview"

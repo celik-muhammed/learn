@@ -4,6 +4,9 @@
   "section": {
     "body": "Feature selection must be fitted inside the training workflow to avoid leaking information from evaluation data.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

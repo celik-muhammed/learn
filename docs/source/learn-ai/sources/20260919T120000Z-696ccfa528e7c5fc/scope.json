@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers brute-force and tree-based search, distance metrics, weighting, classification/regression, and dimensionality considerations.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"

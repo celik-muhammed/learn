@@ -1,5 +1,8 @@
 {
   "author": "scikit-plots",
+  "authors": [
+    "scikit-plots"
+  ],
   "contract": "learn.topic-prompt.v1",
   "default_enabled": false,
   "description": "Explore disciplined analogies and applications outside the topic's primary domain without overstating transferability.",

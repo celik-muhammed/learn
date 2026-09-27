@@ -84,6 +84,7 @@
       <div class="learn-section-ai-heading"><div><p class="learn-kicker">Reviewed publication</p><h4>Open pull request</h4></div><span class="learn-section-ai-badge">Explicit handoff</span></div>
       <p class="learn-meta">Generation stays browser-local until you explicitly send this reviewed draft to the configured publication transport. The repository workflow revalidates the current catalog revision and opens a JSON-only review.</p>
       {% if creation_kind == 'source' %}<label class="learn-generation-check"><input type="checkbox" data-record-metadata-reviewed> I reviewed the Source URL, metadata, and supplied notes for repository handoff.</label>{% endif %}
+      {% include "learn/publication-credit.html" %}
       <div class="learn-actions"><button type="button" class="learn-primary" data-record-publish>Open pull request</button></div>
       <p class="learn-meta" data-record-publication-status role="status" aria-live="polite">Local only · publication not requested.</p>
       <p class="learn-meta" data-record-publication-link hidden></p>

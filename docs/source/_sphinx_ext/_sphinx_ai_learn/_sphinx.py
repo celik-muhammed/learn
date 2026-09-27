@@ -22,6 +22,7 @@ from sphinx.errors import ConfigError
 from sphinx.util import logging as sphinx_logging
 from sphinx.util.docutils import SphinxDirective
 
+from ._generation import feedback_outdated_documents
 from ._materialize import materialize
 from ._pages import TEMPLATES, setup_pages
 from ._schema import (
@@ -39,7 +40,7 @@ _MAX_TITLE = 200
 
 _ASSETS = Path(__file__).parent / "_static"
 _LOGGER = sphinx_logging.getLogger(__name__)
-_ENV_SCHEMA_REVISION = "learn-json-materializer-v2"
+_ENV_SCHEMA_REVISION = "learn-json-materializer-v3"
 
 
 class LearnRoot(nodes.General, nodes.Element):
@@ -276,8 +277,12 @@ def _configure(  # ruff: ignore[too-many-branches]
     app._ai_learn_routes = tree.routes
     app._ai_learn_prompts = tree.prompts
     app._ai_learn_skills = tree.skills
+    app._ai_learn_generation_feedback = tree.generation_feedback
     app._ai_learn_dependencies = tree.dependencies
-    app._ai_learn_content_digest = tree.digest
+    app._ai_learn_feedback_dependencies = tree.feedback_dependencies
+    app._ai_learn_feedback_digests = tree.feedback_digests
+    app._ai_learn_content_digest = tree.content_digest
+    app._ai_learn_tree_digest = tree.digest
     _LOGGER.info(
         "AI Learn: materialized %d canonical JSON files into RST (%d changed); revision %s",
         len(tree.source_digests),
@@ -302,10 +307,19 @@ def _outdated_learn_documents(app, env, added, changed, removed):
     even after the catalog is configured correctly. The first build after this
     lifecycle revision therefore reparses the owned Learn tree automatically.
     """
-    if getattr(env, "_ai_learn_environment_signature", None) == _environment_signature(
-        app
-    ):
-        return []
+    current_signature = _environment_signature(app)
+    previous_signature = getattr(env, "_ai_learn_environment_signature", None)
+    if previous_signature == current_signature:
+        previous_feedback = getattr(env, "_ai_learn_feedback_digests", {}) or {}
+        current_feedback = getattr(app, "_ai_learn_feedback_digests", {}) or {}
+        return feedback_outdated_documents(
+            root=app.config.ai_learn_content_root,
+            routes=getattr(app, "_ai_learn_routes", {}),
+            found_docs=env.found_docs,
+            consumers=getattr(env, "_ai_learn_feedback_consumers", {}) or {},
+            previous=previous_feedback,
+            current=current_feedback,
+        )
     root = app.config.ai_learn_content_root.strip("/")
     if not root:
         return []
@@ -319,6 +333,23 @@ def _outdated_learn_documents(app, env, added, changed, removed):
 
 def _remember_environment_signature(app, env):
     env._ai_learn_environment_signature = _environment_signature(app)
+    env._ai_learn_feedback_digests = dict(
+        getattr(app, "_ai_learn_feedback_digests", {}) or {}
+    )
+
+
+def _purge_feedback_consumer(app, env, docname):
+    """Remove stale record->document feedback dependency registrations."""
+    consumers = getattr(env, "_ai_learn_feedback_consumers", None)
+    if not consumers:
+        return
+    empty = []
+    for record_id, docnames in consumers.items():
+        docnames.discard(docname)
+        if not docnames:
+            empty.append(record_id)
+    for record_id in empty:
+        consumers.pop(record_id, None)
 
 
 def _page_assets(app, pagename, templatename, context, doctree):
@@ -331,7 +362,7 @@ def setup_extension(app):
     """Wire public hooks without importing or starting the proxy application."""
     if getattr(app, "_ai_learn_registered", False):
         return {
-            "version": "0.35.0",
+            "version": "0.38.0",
             "parallel_read_safe": True,
             "parallel_write_safe": True,
         }
@@ -368,10 +399,11 @@ def setup_extension(app):
     app.connect("config-inited", _configure)
     app.connect("env-get-outdated", _outdated_learn_documents)
     app.connect("env-updated", _remember_environment_signature)
+    app.connect("env-purge-doc", _purge_feedback_consumer)
     app.connect("html-page-context", _page_assets)
     app.connect("doctree-resolved", _resolve_routes)
     return {
-        "version": "0.35.0",
+        "version": "0.38.0",
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

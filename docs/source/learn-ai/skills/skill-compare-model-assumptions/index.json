@@ -1,5 +1,8 @@
 {
   "author": "Scikit-Plots Learn",
+  "authors": [
+    "Scikit-Plots Learn"
+  ],
   "contract": "learn.skill.v1",
   "default_enabled": false,
   "description": "A generic workflow for comparing methods without reducing the decision to one score.",

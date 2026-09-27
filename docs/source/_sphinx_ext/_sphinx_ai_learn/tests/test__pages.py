@@ -126,6 +126,80 @@ def test_inline_ai_section_generation_policy_is_explicit_and_kind_safe():
         assert owned <= {key for key, row in specs.items() if row["generation"]["mode"] == "none"}
     assert "must not be hallucinated" in detail_sections({"kind": "video", "sections": []})[2]["generation"]["reason"]
 
+
+
+def test_site_custom_css_is_backed_by_a_configured_static_source():
+    conf = (EXT / "conf.py").read_text(encoding="utf-8")
+    assert "html_static_path = ['_static', 'css']" in conf
+    assert 'html_css_files = ["styles/custom.css"]' in conf
+    assert (EXT / "css/styles/custom.css").is_file()
+
+
+def test_publication_credit_is_explicit_public_metadata_not_generation_context():
+    templates = EXT / '_sphinx_ext/_sphinx_ai_learn/_templates/learn'
+    credit = (templates / 'publication-credit.html').read_text(encoding='utf-8')
+    section = (templates / 'section-ai-generation.html').read_text(encoding='utf-8')
+    record = (templates / 'record-generation.html').read_text(encoding='utf-8')
+    overview = (templates / 'overview-actions.html').read_text(encoding='utf-8')
+    shared = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/generation-ui.js').read_text(encoding='utf-8')
+    section_js = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/section-generation.js').read_text(encoding='utf-8')
+    record_js = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/record-generation.js').read_text(encoding='utf-8')
+    assert 'data-publication-credit' in credit and 'maxlength="80"' in credit
+    assert 'autocomplete="off"' in credit
+    assert 'do not enter email addresses or other private contact details' in credit
+    assert 'never sent to the AI model' in credit
+    assert 'learn/publication-credit.html' in section
+    assert 'learn/publication-credit.html' in record
+    assert 'learn/publication-credit.html' in overview
+    assert 'publicationContributor' in shared
+    assert "contributor=ui?.publicationContributor?.(panel)" in section_js
+    assert "publicationContributor?.(root)" in record_js
+    assert "contextFor(data,spec,section,originalBody)" in section_js
+
+
+def test_generation_feedback_reuses_quick_and_eleven_point_reviewed_publication_flow():
+    templates = EXT / '_sphinx_ext/_sphinx_ai_learn/_templates/learn'
+    feedback = (templates / 'generation-feedback.html').read_text(encoding='utf-8')
+    end = (templates / 'section-end.html').read_text(encoding='utf-8')
+    js = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/generation-feedback.js').read_text(encoding='utf-8')
+    pages = (EXT / '_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text(encoding='utf-8')
+    css = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text(encoding='utf-8')
+    assert 'learn/generation-feedback.html' in end
+    assert 'data-learn-feedback-quick="-1"' in feedback
+    assert 'data-learn-feedback-quick="1"' in feedback
+    assert 'data-learn-feedback-rating="{{ value }}"' in feedback
+    assert "(-5,'😡','Terrible')" in feedback and "(5,'🤩','Excellent!')" in feedback
+    assert 'data-learn-feedback-comment' in feedback and 'maxlength="2000"' in feedback
+    assert 'data-learn-feedback-contributor' in feedback and 'maxlength="80"' in feedback
+    assert 'data-learn-generation-order' in feedback
+    assert 'data-feedback-section-id=' in feedback
+    assert 'Published first' in feedback and 'Highest rated' in feedback and 'Newest generated' in feedback
+    assert 'become public canonical metadata' in feedback
+    assert "root.dataset.feedbackSectionId||section?.dataset.section" in js
+    assert "action:'feedback'" in js
+    assert "feedback_mode:mode" in js
+    assert "crypto.randomUUID" in js
+    assert "crypto.getRandomValues" in js
+    assert "Math.random" not in js
+    assert "Secure feedback identity is unavailable" in js
+    assert "rating < -5||rating > 5" in js
+    assert "submitPublication(pending.request)" in js
+    assert "button.getAttribute('aria-pressed')==='true'" in js
+    assert "mode==='quick'" in js and "setAttribute('aria-pressed'" in js
+    assert "feedbackId()" in js
+    assert "pending={fingerprint,request};writePending(pending)" in js
+    assert "sessionStorage.setItem(pendingKey" in js
+    assert "sessionStorage.removeItem(pendingKey)" in js
+    assert "pending=readPending()" in js
+    assert "learn-ai-feedback-quick:v1:" in js
+    assert "const priorQuick=readQuick()" in js
+    assert "writeQuick(rating)" in js
+    assert "Retry will reuse the same feedback id." in js
+    assert "function orderHistory(mode)" in js
+    assert "mode==='rating'" in js and "mode==='newest'" in js
+    assert 'app.add_js_file("generation-feedback.js", defer="defer", priority=612)' in pages
+    assert '.learn-generation-feedback-options' in css
+
 def test_inline_ai_section_drafts_use_chat_authority_and_preserve_published_text():
     pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
     topic_js = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/topic.js').read_text()
@@ -137,13 +211,18 @@ def test_inline_ai_section_drafts_use_chat_authority_and_preserve_published_text
     lenses = env.get_template('learn/ai-lens-profile.html').render(lens_scope='section-ai', lens_variant='section')
     css = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text()
     assert 'app.add_js_file("section-generation.js", defer="defer", priority=609)' in pages
-    assert 'Published · review pending' in pages and 'AI draft not generated' in pages
+    assert 'publication_state = "published" if filled else "unpublished"' in pages and 'AI draft not generated' in pages
+    assert 'generation_id = section_generation_id(subject, content) if content.get("body", "").strip() else ""' in pages
     assert 'data-generation-mode' in start and 'data-discard-ai' in start
+    assert 'data-publication-state' in start and 'data-evidence-review-state' in start
     assert 'data-edit hidden' in start
     assert "spec.generation.mode|default('none') == 'chat'" in end
     assert '>Generate Now</button>' in end and '>Regenerate</button>' not in end
     assert 'data-ai-edit' in end and 'AI-assisted' in end
     assert 'data-section-ai-panel' in panel
+    assert 'learn/publication-credit.html' in panel
+    assert 'data-contributors' in end
+    assert 'No references attached · evidence review not applicable.' in end
     assert "{'label':'Agent role'" in panel and 'learn/generation-request-meta.html' in panel
     assert 'data-section-legacy-note' in end and 'data-copy-legacy-edit' in end
     for value in ('young-learner', 'beginner', 'student', 'practitioner', 'decision-maker', 'educator', 'researcher', 'expert'):
@@ -175,6 +254,27 @@ def test_inline_ai_section_drafts_use_chat_authority_and_preserve_published_text
     assert '.learn-ai-multi-profile' in css and '[data-state="ai-draft"]' in css
 
 
+def test_published_section_renders_contributor_credit_separately_from_evidence_review():
+    template_root = EXT / '_sphinx_ext/_sphinx_ai_learn/_templates'
+    env = Environment(loader=FileSystemLoader(str(template_root)), autoescape=False)
+    rendered = env.get_template('learn/section-end.html').render(
+        citations=[],
+        review=None,
+        state='ready',
+        filled=True,
+        content={
+            'body': 'Published body',
+            'contributors': ['Anonymous', 'DataFox'],
+            'instructions': '',
+            'expanded': True,
+        },
+        spec={'id': 'summary', 'title': 'Summary', 'generation': {'mode': 'chat'}},
+    )
+    assert 'Contributed by Anonymous, DataFox' in rendered
+    assert 'No references attached · evidence review not applicable.' in rendered
+    assert 'review pending' not in rendered.lower()
+
+
 def test_section_action_visibility_follows_ai_provenance_not_published_body():
     template_root = EXT / '_sphinx_ext/_sphinx_ai_learn/_templates'
     env = Environment(loader=FileSystemLoader(str(template_root)), autoescape=False)
@@ -195,7 +295,7 @@ def test_section_action_visibility_follows_ai_provenance_not_published_body():
     start_template = env.get_template('learn/section-start.html')
     start_generated = start_template.render(subject={'id': 'topic-one'}, spec={
         'id': 'summary', 'generation': {'mode': 'chat'},
-    }, state='ready', state_label='Published · review pending')
+    }, state='ready', state_label='Published')
     assert 'data-edit hidden>Edit section</button>' in start_generated
     assert 'data-discard-ai hidden>Discard AI draft</button>' in start_generated
     assert '>Regenerate</button>' not in generated
@@ -344,6 +444,32 @@ def test_problem_source_skill_explorers_share_responsive_table_contract():
     assert '.learn-topic-explorer,.learn-catalog-explorer,.learn-card-explorer' in css
     assert 'min-width:980px' not in css
 
+
+
+def test_prompt_and_skill_switches_use_native_accessible_names_without_theme_hidden_helpers():
+    template_root = EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn'
+    names = (
+        'prompt-group.html', 'prompt-card-start.html', 'prompt-detail-start.html',
+        'skill-group.html', 'skill-card-start.html', 'skill-detail-start.html',
+    )
+    rendered_sources = '\n'.join((template_root/name).read_text() for name in names)
+    assert 'class="sr-only"' not in rendered_sources
+    assert 'aria-label="Show {{ prompt.title|e }} on topic pages"' in rendered_sources
+    assert 'aria-label="Show {{ skill.title|e }} on topic pages"' in rendered_sources
+    assert rendered_sources.count('aria-label="Show ') == 6
+
+    env = Environment(loader=FileSystemLoader(str(template_root.parent)), autoescape=False)
+    rendered = env.get_template('learn/prompt-card-start.html').render(prompt={
+        'id': 'quoted', 'title': 'A & "quoted" <prompt> it\'s', 'author': 'tester',
+        'href': '#', 'default_enabled': True,
+    })
+    assert 'aria-label="Show A &amp; &#34;quoted&#34; &lt;prompt&gt; it&#39;s on topic pages"' in rendered
+
+    css = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text()
+    assert 'label.learn-switch { position:relative;' in css
+    assert 'grid-template-columns:1fr 1fr' in css
+    assert 'width:76px; min-width:76px; max-width:76px' in css and 'flex:0 0 76px' in css
+    assert 'line-height:1.15' in css
 
 
 def test_skill_library_reuses_topic_prompt_card_visual_contract():
@@ -824,6 +950,8 @@ def test_all_catalog_explorers_use_live_compact_shared_controls():
     assert 'learn-search-primary-row' in primary
     assert 'learn-search-field' in primary
     assert 'learn-search-input' in primary
+    assert 'class="learn-visually-hidden"' in primary
+    assert 'class="sr-only"' not in primary
     assert 'aria-label="Search"' in primary
     assert 'maxlength="1024"' in primary
     assert 'aria-haspopup' not in primary
@@ -843,12 +971,14 @@ def test_all_catalog_explorers_use_live_compact_shared_controls():
     assert "form.addEventListener('input',event=>{if(event.target===form.elements.sort||event.isComposing)return;apply(true);})" in js
     assert "form.elements.q?.addEventListener('compositionend',()=>apply(true))" in js
     assert "if(!tbody){" in js
-    assert '.learn-search-primary-row { display:grid; grid-template-columns:minmax(0,1fr) 2.75rem;' in css
+    assert '.learn-search-primary-row { display:grid; grid-template-columns:minmax(0,1fr) 2.75rem; gap:.42rem; align-items:end;' in css
+    assert '.learn-trending-controls .learn-visually-hidden { position:absolute!important;' in css
     assert '.learn-search-primary-row--pill-overflow { grid-template-columns:minmax(0,1fr) 2.5rem; }' in css
     assert '.learn-search-field { display:grid; grid-template-columns:minmax(0,1fr) 2.7rem;' in css
     assert '.learn-search-field--pill { border-radius:999px; }' in css
     assert '.learn-trending-controls .learn-search-submit svg { width:1.12rem; height:1.12rem; fill:currentColor; }' in css
     assert 'height:2.5rem; min-height:2.5rem; box-sizing:border-box;' in css
+    assert 'align-self:end; display:inline-flex;' in css
     assert '.learn-trending-controls .learn-filter-disclosure--overflow { width:2.5rem; min-width:2.5rem; border-radius:999px; }' in css
     assert '.learn-trending-controls .learn-filter-disclosure--chevron[aria-expanded="true"] svg { transform:rotate(180deg); }' in css
     assert '.learn-filter-options[hidden] { display:none!important; }' in css

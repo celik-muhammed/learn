@@ -4,6 +4,9 @@
   "section": {
     "body": "Official scikit-learn 1.9 guidance for LDA and QDA classifiers and LDA dimensionality reduction.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "overview",
     "links": [],
     "title": "Overview"

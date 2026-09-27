@@ -4,6 +4,9 @@
   "section": {
     "body": "The distinction between shared covariance in LDA and class-specific covariance in QDA is central to model behavior.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

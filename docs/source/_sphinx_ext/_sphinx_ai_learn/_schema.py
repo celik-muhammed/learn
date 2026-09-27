@@ -25,6 +25,8 @@ CONTRIBUTION_CONTRACT = "learn.contribution.v1"
 MAX_BYTES = 2 * 1024 * 1024
 MAX_SUBJECTS = 1000
 MAX_SUBJECT_SECTIONS = 256
+MAX_SECTION_GENERATIONS = 32
+MAX_GENERATION_FEEDBACK = 256
 MAX_WHITEBOARD_IMAGES = 100
 _ASCII_SPACE = 32
 _ASCII_DELETE = 127
@@ -154,6 +156,165 @@ def _links(value, path):
             item["meta"] = _text(row["meta"], path + ".meta", 300, empty=True)
         result.append(item)
     return result
+
+
+def _public_credits(value, path, maximum=32):
+    """Validate bounded public display credits without implying identity."""
+    credits = [_text(item, path, 80) for item in _list(value, path, maximum)]
+    folded = [item.casefold() for item in credits]
+    if len(folded) != len(set(folded)):
+        raise LearnValidationError(f"{path}: duplicate display names")
+    return credits
+
+
+def _generation_feedback(value, path):
+    """Validate append-only reviewed feedback events for one generation."""
+    result = []
+    seen = set()
+    for index, event in enumerate(_list(value, path, MAX_GENERATION_FEEDBACK)):
+        where = f"{path}[{index}]"
+        _object(
+            event,
+            ("id", "created_at", "rating", "comment", "contributor", "mode"),
+            ("id", "created_at", "rating", "contributor"),
+            where,
+        )
+        event_id = _id(event["id"], where + ".id")
+        if event_id in seen:
+            raise LearnValidationError(f"{path}: duplicate feedback identifier")
+        seen.add(event_id)
+        rating = event["rating"]
+        if (
+            isinstance(rating, bool)
+            or not isinstance(rating, int)
+            or not -5 <= rating <= 5  # ruff: ignore[magic-value-comparison]
+        ):
+            raise LearnValidationError(f"{where}.rating: expected integer from -5 to 5")
+        item = {
+            "id": event_id,
+            "created_at": timestamp(event["created_at"], where + ".created_at"),
+            "rating": rating,
+            "contributor": _text(event["contributor"], where + ".contributor", 80),
+        }
+        if "comment" in event:
+            item["comment"] = _text(
+                event["comment"],
+                where + ".comment",
+                2000,
+                empty=True,
+                multiline=True,
+            )
+        if "mode" in event:
+            mode = _text(event["mode"], where + ".mode", 16)
+            if mode not in {"quick", "detailed"}:
+                raise LearnValidationError(f"{where}.mode: expected quick or detailed")
+            if mode == "quick" and rating not in {-1, 1}:
+                raise LearnValidationError(
+                    f"{where}.rating: quick feedback must be -1 or 1"
+                )
+            item["mode"] = mode
+        result.append(item)
+    return result
+
+
+def _section_generations(value, path):
+    """Validate immutable accepted section generations plus reviewed feedback."""
+    generations = []
+    seen = set()
+    for index, raw in enumerate(_list(value, path, MAX_SECTION_GENERATIONS)):
+        where = f"{path}[{index}]"
+        _object(
+            raw,
+            (
+                "id",
+                "created_at",
+                "body",
+                "citations",
+                "links",
+                "contributors",
+                "review",
+                "provenance",
+                "feedback",
+            ),
+            ("id", "created_at", "body", "contributors"),
+            where,
+        )
+        generation_id = _id(raw["id"], where + ".id")
+        if generation_id in seen:
+            raise LearnValidationError(f"{path}: duplicate generation identifier")
+        seen.add(generation_id)
+        item = {
+            "id": generation_id,
+            "created_at": timestamp(raw["created_at"], where + ".created_at"),
+            "body": _text(
+                raw["body"], where + ".body", 50000, empty=True, multiline=True
+            ),
+            "citations": _citations(raw.get("citations", []), where + ".citations"),
+            "links": _links(raw.get("links", []), where + ".links"),
+            "contributors": _public_credits(
+                raw.get("contributors", []), where + ".contributors", 32
+            ),
+            "feedback": _generation_feedback(
+                raw.get("feedback", []), where + ".feedback"
+            ),
+        }
+        if not item["contributors"]:
+            raise LearnValidationError(
+                f"{where}.contributors: expected at least one public credit"
+            )
+        if "review" in raw:
+            review = raw["review"]
+            _object(
+                review,
+                ("at", "by", "revision"),
+                ("at", "by", "revision"),
+                where + ".review",
+            )
+            if not item["citations"]:
+                raise LearnValidationError(
+                    f"{where}.review: evidence citations required"
+                )
+            item["review"] = {
+                "at": timestamp(review["at"], where + ".review.at"),
+                "by": _text(review["by"], where + ".review.by", 200),
+                "revision": _text(review["revision"], where + ".review.revision", 128),
+            }
+        if "provenance" in raw:
+            provenance = raw["provenance"]
+            if not isinstance(provenance, dict):
+                raise LearnValidationError(f"{where}.provenance: expected object")
+            allowed = {
+                "authorship",
+                "model",
+                "workflow_id",
+                "agent",
+                "skill",
+                "request_id",
+            }
+            if set(provenance) - allowed:
+                raise LearnValidationError(f"{where}.provenance: unexpected fields")
+            clean = {}
+            for key, limit in (
+                ("authorship", 40),
+                ("model", 200),
+                ("workflow_id", 120),
+                ("agent", 120),
+                ("skill", 120),
+                ("request_id", 200),
+            ):
+                if key in provenance:
+                    clean[key] = _text(
+                        provenance[key],
+                        where + ".provenance." + key,
+                        limit,
+                        empty=True,
+                    )
+            if clean:
+                item["provenance"] = clean
+        generations.append(item)
+    if not generations:
+        raise LearnValidationError(f"{path}: expected at least one generation")
+    return generations
 
 
 def _metrics(value, path="subject.metrics"):
@@ -341,13 +502,7 @@ def validate_subject(  # ruff: ignore[too-many-branches]
         "sections": [],
     }
     if "authors" in value:
-        authors = [
-            _text(author, "subject.authors", 200)
-            for author in _list(value["authors"], "subject.authors", 32)
-        ]
-        if len(authors) != len(set(authors)):
-            raise LearnValidationError("subject.authors: duplicate names")
-        result["authors"] = authors
+        result["authors"] = _public_credits(value["authors"], "subject.authors", 32)
     if "metrics" in value:
         result["metrics"] = _metrics(value["metrics"])
     seen = set()
@@ -367,6 +522,9 @@ def validate_subject(  # ruff: ignore[too-many-branches]
                 "instructions",
                 "expanded",
                 "review",
+                "contributors",
+                "active_generation_id",
+                "generations",
             ),
             ("id", "title", "body"),
             "section",
@@ -401,6 +559,10 @@ def validate_subject(  # ruff: ignore[too-many-branches]
             if not isinstance(section["expanded"], bool):
                 raise LearnValidationError("section.expanded: expected boolean")
             normalized["expanded"] = section["expanded"]
+        if "contributors" in section:
+            normalized["contributors"] = _public_credits(
+                section["contributors"], "section.contributors", 32
+            )
         if "review" in section:
             review = section["review"]
             _object(
@@ -418,6 +580,42 @@ def validate_subject(  # ruff: ignore[too-many-branches]
                 "by": _text(review["by"], "review.by", 200),
                 "revision": _text(review["revision"], "review.revision", 128),
             }
+        if "generations" in section or "active_generation_id" in section:
+            if not {"generations", "active_generation_id"}.issubset(section):
+                raise LearnValidationError(
+                    "section.generations: active_generation_id and generations are required together"
+                )
+            generations = _section_generations(
+                section["generations"], "section.generations"
+            )
+            active_generation_id = _id(
+                section["active_generation_id"], "section.active_generation_id"
+            )
+            active = next(
+                (row for row in generations if row["id"] == active_generation_id),
+                None,
+            )
+            if active is None:
+                raise LearnValidationError(
+                    "section.active_generation_id: unknown generation"
+                )
+            # The flattened fields remain the compatibility projection consumed by
+            # existing directives/templates. They must be byte-semantically equal
+            # to the explicitly active accepted generation so there is one source
+            # of truth rather than two independently editable copies.
+            for key in ("body", "citations", "links", "contributors"):
+                if normalized.get(key, [] if key != "body" else "") != active.get(
+                    key, [] if key != "body" else ""
+                ):
+                    raise LearnValidationError(
+                        f"section.{key}: must match active generation"
+                    )
+            if normalized.get("review") != active.get("review"):
+                raise LearnValidationError(
+                    "section.review: must match active generation"
+                )
+            normalized["active_generation_id"] = active_generation_id
+            normalized["generations"] = generations
     for field in ("format", "publisher"):
         if field in value:
             result[field] = _text(value[field], "subject." + field, 200)

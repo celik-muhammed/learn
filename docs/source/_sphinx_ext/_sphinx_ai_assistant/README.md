@@ -136,7 +136,13 @@ the server-side proxy's secret store.
   ledger, and a deduplicated **Changed files** section is appended after the
   answer. See [`ACTIVITY_AND_FILE_PREVIEW_GUIDE.md`](ACTIVITY_AND_FILE_PREVIEW_GUIDE.md).
 - **Standalone AI search-bar** (opt-in, default off): an additive search input
-  that forwards text into the panel; never touches the theme's own search
+  that forwards text into the panel and never touches the theme's own search.
+  Its base input may be full or compact, and adaptive mode can reduce it to an
+  icon-only launcher when the configured sidebar/host collapses.  The icon
+  opens the panel with the composer focused.  Theme-specific collapse can be
+  declared with ``ai_assistant_search_bar_collapsed_selector`` (for current
+  PyData Sphinx Theme: ``.bd-sidebar-primary.pst-squeeze``), with measured host
+  width as a portable fallback.
 - **API mode now uses a configurable proxy** (`ai_assistant_panel_api_url`).
   A browser cannot call Anthropic directly (no CORS, key would leak), so API
   mode must point at your own proxy that injects the key server-side. With no

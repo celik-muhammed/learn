@@ -495,6 +495,13 @@
     return api;
   }
 
+  function publicationContributor(root) {
+    var input = root && root.querySelector ? root.querySelector('[data-publication-credit]') : null;
+    var value = String(input && input.value || '').replace(/\s+/g, ' ').trim();
+    if (value.length > 80 || /[\u0000-\u001f\u007f]/.test(value)) throw new Error('Contributor credit must be plain text of at most 80 characters.');
+    return {display_name:value || 'Anonymous'};
+  }
+
   function publicationEndpoint() {
     try {
       var api = window.AI_ASSISTANT_ENDPOINT_API;
@@ -569,6 +576,7 @@
     assistantModelState: assistantModelState,
     assistantModelSnapshot: assistantModelSnapshot,
     publicationEndpoint: publicationEndpoint,
+    publicationContributor: publicationContributor,
     submitPublication: submitPublication,
     publicationReceiptMessage: publicationReceiptMessage
   });

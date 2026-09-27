@@ -161,8 +161,82 @@ def test_optional_authors_are_bounded_plain_text_metadata():
     value["subjects"][0]["authors"] = ["Ask Plaat"]
     assert schema.validate_catalog(value)["subjects"][0]["authors"] == ["Ask Plaat"]
     value["subjects"][0]["authors"] = ["Ask Plaat", "Ask Plaat"]
-    with pytest.raises(schema.LearnValidationError, match="duplicate names"):
+    with pytest.raises(schema.LearnValidationError, match="duplicate display names"):
         schema.validate_catalog(value)
+    value["subjects"][0]["authors"] = ["Ask Plaat", "ask plaat"]
+    with pytest.raises(schema.LearnValidationError, match="duplicate display names"):
+        schema.validate_catalog(value)
+    value["subjects"][0]["authors"] = ["x" * 81]
+    with pytest.raises(schema.LearnValidationError, match="invalid text length"):
+        schema.validate_catalog(value)
+
+
+
+
+def test_section_contributors_are_bounded_plain_text_public_credit():
+    value = catalog()
+    section = value["subjects"][0]["sections"][0]
+    section["contributors"] = ["Ada", "DataFox"]
+    normalized = schema.validate_catalog(value)
+    assert normalized["subjects"][0]["sections"][0]["contributors"] == [
+        "Ada",
+        "DataFox",
+    ]
+    bad = deepcopy(value)
+    bad["subjects"][0]["sections"][0]["contributors"] = ["Ada", "ada"]
+    with pytest.raises(schema.LearnValidationError, match="duplicate display names"):
+        schema.validate_catalog(bad)
+    bad = deepcopy(value)
+    bad["subjects"][0]["sections"][0]["contributors"] = ["x" * 81]
+    with pytest.raises(schema.LearnValidationError):
+        schema.validate_catalog(bad)
+
+
+def test_section_generation_ledger_requires_active_projection_and_bounded_feedback():
+    value = catalog()
+    section = value["subjects"][0]["sections"][0]
+    section["contributors"] = ["Ada"]
+    section["active_generation_id"] = "generation-aaaaaaaaaaaaaaaa"
+    section["generations"] = [
+        {
+            "id": "generation-aaaaaaaaaaaaaaaa",
+            "created_at": "2026-09-27T03:00:00Z",
+            "body": section["body"],
+            "citations": deepcopy(section["citations"]),
+            "links": [],
+            "contributors": ["Ada"],
+            "feedback": [
+                {
+                    "id": "feedback-aaaaaaaaaaaaaaaa",
+                    "created_at": "2026-09-27T03:10:00Z",
+                    "rating": 0,
+                    "comment": "Neutral but useful context.",
+                    "contributor": "Anonymous",
+                }
+            ],
+        }
+    ]
+    normalized = schema.validate_catalog(value)["subjects"][0]["sections"][0]
+    assert normalized["active_generation_id"] == "generation-aaaaaaaaaaaaaaaa"
+    assert normalized["generations"][0]["feedback"][0]["rating"] == 0
+
+    for rating in (-6, 6, True, 1.5):
+        bad = deepcopy(value)
+        bad["subjects"][0]["sections"][0]["generations"][0]["feedback"][0]["rating"] = rating
+        with pytest.raises(schema.LearnValidationError, match="rating"):
+            schema.validate_catalog(bad)
+
+    bad = deepcopy(value)
+    event = bad["subjects"][0]["sections"][0]["generations"][0]["feedback"][0]
+    event["mode"] = "quick"
+    event["rating"] = 5
+    with pytest.raises(schema.LearnValidationError, match="quick feedback"):
+        schema.validate_catalog(bad)
+
+    bad = deepcopy(value)
+    bad["subjects"][0]["sections"][0]["body"] = "projection drift"
+    with pytest.raises(schema.LearnValidationError, match="must match active generation"):
+        schema.validate_catalog(bad)
 
 
 def test_social_links_and_trending_metrics_are_bounded():

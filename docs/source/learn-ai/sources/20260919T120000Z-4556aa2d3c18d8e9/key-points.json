@@ -4,6 +4,9 @@
   "section": {
     "body": "Use the estimator-specific subsections and API links for current objectives, penalties, solver constraints, and examples.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

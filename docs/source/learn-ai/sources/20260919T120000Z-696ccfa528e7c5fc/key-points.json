@@ -4,6 +4,9 @@
   "section": {
     "body": "Neighbor methods are local and distance-driven, so representation, metric choice, and dimensionality are part of the model design.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "key-points",
     "links": [],
     "title": "Key Points"

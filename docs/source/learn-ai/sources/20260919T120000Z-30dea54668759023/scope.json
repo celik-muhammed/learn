@@ -4,6 +4,9 @@
   "section": {
     "body": "Covers SGDClassifier, SGDRegressor, supported losses and penalties, stopping criteria, sparse input, and practical tuning.",
     "citations": [],
+    "contributors": [
+      "Anonymous"
+    ],
     "id": "scope",
     "links": [],
     "title": "Scope"
