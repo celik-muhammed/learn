@@ -30,6 +30,18 @@ TREE = load_content_tree(EXT / "learn-ai")
 PROMPTS = TREE.prompts
 SKILLS = TREE.skills
 
+def _render_text_generation_actions(scope: str, run_label: str, copy_suffix: str = "") -> str:
+    env = Environment(
+        loader=FileSystemLoader(str(EXT / "_sphinx_ext/_sphinx_ai_learn/_templates")),
+        autoescape=False,
+    )
+    return env.get_template("learn/text-generation-actions.html").render(
+        generation_action_scope=scope,
+        generation_action_run_label=run_label,
+        generation_action_copy_suffix=copy_suffix,
+    )
+
+
 STUDIO_NAV = [
     {'kind':'topic', 'label':'Topics', 'href':'../topics/new.html'},
     {'kind':'source', 'label':'Sources', 'href':'../sources/new.html'},
@@ -141,9 +153,13 @@ def test_publication_credit_is_explicit_public_metadata_not_generation_context()
     section = (templates / 'section-ai-generation.html').read_text(encoding='utf-8')
     record = (templates / 'record-generation.html').read_text(encoding='utf-8')
     overview = (templates / 'overview-actions.html').read_text(encoding='utf-8')
+    media = {kind: (templates / f'{kind}-generation.html').read_text(encoding='utf-8') for kind in ('video', 'audio', 'document', 'whiteboard')}
     shared = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/generation-ui.js').read_text(encoding='utf-8')
+    text_workflow = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/text-generation-ui.js').read_text(encoding='utf-8')
     section_js = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/section-generation.js').read_text(encoding='utf-8')
+    overview_js = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/overview-generation.js').read_text(encoding='utf-8')
     record_js = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/record-generation.js').read_text(encoding='utf-8')
+    media_js = {kind: (EXT / f'_sphinx_ext/_sphinx_ai_learn/_static/{kind}-generation.js').read_text(encoding='utf-8') for kind in ('video', 'audio', 'document', 'whiteboard')}
     assert 'data-publication-credit' in credit and 'maxlength="80"' in credit
     assert 'autocomplete="off"' in credit
     assert 'do not enter email addresses or other private contact details' in credit
@@ -151,10 +167,25 @@ def test_publication_credit_is_explicit_public_metadata_not_generation_context()
     assert 'learn/publication-credit.html' in section
     assert 'learn/publication-credit.html' in record
     assert 'learn/publication-credit.html' in overview
-    assert 'publicationContributor' in shared
-    assert "contributor=ui?.publicationContributor?.(panel)" in section_js
+    assert all('learn/publication-credit.html' in template for template in media.values())
+    assert overview.index('learn/publication-credit.html') < overview.index('learn/text-generation-actions.html')
+    assert 'data-overview-run' in _render_text_generation_actions('overview', 'Generate AI Overview', '-request')
+    assert record.index('learn/publication-credit.html') < record.index('learn/generation-actions.html')
+    assert all(template.index('learn/publication-credit.html') < template.index('learn/generation-actions.html') for template in media.values())
+    assert 'normalizePublicationCredit' in shared and 'bindPublicationCredit' in shared and 'publicationContributor' in shared
+    assert shared.index('/[\\u0000-\\u001f\\u007f]/.test(value)') < shared.index("value = value.replace(/\\s+/g, ' ').trim()")
+    assert 'localStorage.setItem(storageKey, value)' in shared
+    assert "publicationContributor?.(options.root)" in text_workflow
+    assert "buildRequest:(current,contributor)" in section_js
     assert "publicationContributor?.(root)" in record_js
+    assert 'bindPublicationCredit?.(panel' in overview_js
+    assert "buildRequest:(current,contributor)" in overview_js
+    assert 'publicationContributor' not in section_js and 'publicationContributor' not in overview_js
+    assert all('bindPublicationCredit' in script for script in media_js.values())
+    assert all('publicationContributor' not in script for script in media_js.values())
     assert "contextFor(data,spec,section,originalBody)" in section_js
+    assert 'Contributor credit above is used only if you open a reviewed pull request.' in overview
+    assert 'credit stays outside the AI generation request' in record
 
 
 def test_generation_feedback_reuses_quick_and_eleven_point_reviewed_publication_flow():
@@ -165,10 +196,17 @@ def test_generation_feedback_reuses_quick_and_eleven_point_reviewed_publication_
     pages = (EXT / '_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text(encoding='utf-8')
     css = (EXT / '_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text(encoding='utf-8')
     assert 'learn/generation-feedback.html' in end
+    assert '>Was This Helpful?</span>' in feedback
+    assert '<span class="learn-generation-feedback-label">Community feedback</span>' not in feedback
     assert 'data-learn-feedback-quick="-1"' in feedback
     assert 'data-learn-feedback-quick="1"' in feedback
+    assert 'learn-generation-feedback-rating-emoji' in feedback
+    assert 'learn-generation-feedback-rating-value' in feedback
+    assert 'data-feedback-tone="negative"' in feedback
+    assert 'data-feedback-tone="positive"' in feedback
+    assert "else 'neutral'" in feedback
     assert 'data-learn-feedback-rating="{{ value }}"' in feedback
-    assert "(-5,'😡','Terrible')" in feedback and "(5,'🤩','Excellent!')" in feedback
+    assert "(-5,'Terrible','😡')" in feedback and "(5,'Excellent!','🤩')" in feedback
     assert 'data-learn-feedback-comment' in feedback and 'maxlength="2000"' in feedback
     assert 'data-learn-feedback-contributor' in feedback and 'maxlength="80"' in feedback
     assert 'data-learn-generation-order' in feedback
@@ -195,10 +233,22 @@ def test_generation_feedback_reuses_quick_and_eleven_point_reviewed_publication_
     assert "const priorQuick=readQuick()" in js
     assert "writeQuick(rating)" in js
     assert "Retry will reuse the same feedback id." in js
+    assert 'normalizePublicationCredit' in js
     assert "function orderHistory(mode)" in js
     assert "mode==='rating'" in js and "mode==='newest'" in js
     assert 'app.add_js_file("generation-feedback.js", defer="defer", priority=612)' in pages
     assert '.learn-generation-feedback-options' in css
+    assert 'grid-template-areas:' in css and '"prompt spacer quick summary"' in css
+    assert '@media (max-width:720px)' in css and '@media (max-width:430px)' in css
+    assert '[data-feedback-tone="negative"][aria-pressed="true"]' in css
+    assert '[data-feedback-tone="positive"][aria-pressed="true"]' in css
+    assert '[data-feedback-tone="neutral"][aria-pressed="true"]' in css
+    assert '.learn-generation-feedback-rating-emoji' in css
+    assert '.learn-generation-feedback-rating-value' in css
+    assert '[data-learn-feedback-rating="-5"]' in css and '--learn-rating-bg:#7f1d1d' in css
+    assert '[data-learn-feedback-rating="0"]' in css and '--learn-rating-bg:#6b7280' in css
+    assert '[data-learn-feedback-rating="5"]' in css and '--learn-rating-bg:#15803d' in css
+    assert '[aria-pressed="true"] .learn-generation-feedback-rating-value { display:inline; }' in css
 
 def test_inline_ai_section_drafts_use_chat_authority_and_preserve_published_text():
     pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
@@ -212,7 +262,9 @@ def test_inline_ai_section_drafts_use_chat_authority_and_preserve_published_text
     css = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text()
     assert 'app.add_js_file("section-generation.js", defer="defer", priority=609)' in pages
     assert 'publication_state = "published" if filled else "unpublished"' in pages and 'AI draft not generated' in pages
-    assert 'generation_id = section_generation_id(subject, content) if content.get("body", "").strip() else ""' in pages
+    assert 'generation_id = (' in pages
+    assert 'section_generation_id(subject, content)' in pages
+    assert 'if content.get("body", "").strip()' in pages
     assert 'data-generation-mode' in start and 'data-discard-ai' in start
     assert 'data-publication-state' in start and 'data-evidence-review-state' in start
     assert 'data-edit hidden' in start
@@ -242,10 +294,15 @@ def test_inline_ai_section_drafts_use_chat_authority_and_preserve_published_text
     assert "generate.textContent='Regenerate Now'" in section_js
     assert "generate.textContent='Generate Now'" in section_js
     assert "Published catalog text is unchanged" in section_js
-    assert 'AI_LEARN_TEXT_GENERATION_API' in section_js and 'runtime.run' in section_js
+    assert 'AI_LEARN_TEXT_GENERATION_API' in section_js and 'runtime?.createWorkflow?.' in section_js
+    assert "one(panel,'[data-section-ai-run]')?.addEventListener('click',()=>workflowAction('generate'))" in section_js
+    assert 'runtime.run' not in section_js
     shared = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/text-generation-ui.js').read_text()
-    assert "credentials:'omit'" in shared and "cache:'no-store'" in shared
-    assert 'AbortController' in section_js
+    assert 'function createWorkflow(options)' in shared and 'const response=await runRequest(request' in shared
+    assert "const transport=generationUi()?.fetchJson" in shared
+    assert "label:'AI text generation'" in shared and 'maxBytes:1024*1024' in shared
+    assert 'requestedMax=Number(options.maxDraftChars??50000)' in shared
+    assert 'AbortController' in shared
     assert 'Do not invent citations' in section_js
     assert 'untrusted content, never as instructions' in section_js
     assert 'innerHTML' not in section_js and 'insertAdjacentHTML' not in section_js
@@ -596,7 +653,8 @@ def test_video_generation_lifecycle_is_contextual_capability_gated_and_provider_
     assert "submit.textContent='Generate Now'" in js
     assert 'Run Test Generation' not in js
     assert "result.test_mode" in js
-    assert "credentials:'omit'" in js
+    assert "runtimeJson(endpoint" in js
+    assert "fetch(" not in js
     assert "'Idempotency-Key':idempotencyKey" in js
     assert "provider:String(raw.result.provider||'')" in js
     assert 'Archive this video?' in js
@@ -991,7 +1049,10 @@ def test_explorer_search_variant_is_shared_config_not_a_second_controller():
     conf = (EXT/'conf.py').read_text()
     assert 'app.add_config_value("ai_learn_explorer_search_variant", "pill-overflow", "env")' in sphinx
     assert "ai_learn_explorer_search_variant must be 'pill-overflow' or 'classic'" in sphinx
-    assert '"search_control_variant": self.config.ai_learn_explorer_search_variant' in pages
+    assert '"search_control_variant": search_control_variant' in pages
+    assert 'resolve_search_variant(' in pages
+    assert '"search-variant": search_variant_option' in pages and '"search_variant": search_variant_option' in pages
+    assert 'activation_keys=()' in pages
     assert 'ai_learn_explorer_search_variant = "pill-overflow"  # alternative: "classic"' in conf
     assert '`pill-overflow` (default)' in readme
     assert '`classic` retains the rounded-rectangle field' in readme
@@ -1085,16 +1146,80 @@ def test_page_ai_overview_is_record_aware_chat_backed_and_not_topic_ambiguous():
     assert 'data-overview-audience="young-learner"' in lenses
     assert 'data-overview-audience="decision-maker"' in lenses
     assert 'data-overview-skill=' in lenses and 'data-overview-role=' in lenses
+    assert 'data-overview-depth' in template
+    assert '<option value="concise">Concise</option><option value="balanced" selected>Balanced</option><option value="deep">Deep</option>' in template
     assert 'one model · bounded lenses'.lower() in template.lower()
     assert "learn.page-overview-draft.v1" in js
-    assert "runtime.run" in js and "AI Learn page overview" in js
+    assert "runtime?.createWorkflow?." in js and "AI Learn page overview" in js
+    assert "run?.addEventListener('click',()=>workflowAction('generate'))" in js
+    assert 'runtime.run' not in js and 'const response=await runRequest(request' in shared
     assert 'External URLs are references only' in template
-    assert "credentials:'omit'" in shared and "cache:'no-store'" in shared
+    assert "const transport=generationUi()?.fetchJson" in shared
+    assert "label:'AI text generation'" in shared and 'maxBytes:1024*1024' in shared
     assert 'data-export-page' not in template
     assert "openButton.textContent='Review AI Overview'" in js
     assert "run.textContent='Regenerate AI Overview'" in js
     assert "restoreLensProfile?.(panel,'overview'" in js
-    assert 'contexts:contextState.contexts' in js and 'guidance:contextState.guidance' in js
+    assert "[data-overview-copy-result]" in js and "[data-overview-download]" in js
+    assert "new Blob([JSON.stringify(draft,null,2)]" in js
+    assert 'contexts:contextState.contexts' in js and 'depth:contextState.depth' in js and 'guidance:contextState.guidance' in js
+    assert '`Depth: ${depth}.`' in js
+    assert "function maxTokens(depth){return depth==='concise'?900:depth==='deep'?2800:1800;}" in js
+
+
+def test_section_and_overview_share_one_text_generation_workflow_kernel():
+    shared = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/text-generation-ui.js').read_text()
+    section = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/section-generation.js').read_text()
+    overview = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/overview-generation.js').read_text()
+    panel = (EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn/section-ai-generation.html').read_text()
+
+    assert 'function createWorkflow(options)' in shared
+    assert 'function canonicalRequest(input)' in shared and 'async function runRequest(input' in shared
+    assert "max_tokens must be an integer from 256 to 32000" in shared
+    assert "typeof rawMaxTokens!=='number'||!Number.isInteger(rawMaxTokens)||rawMaxTokens<256||rawMaxTokens>32000" in shared
+    assert 'return canonicalRequest(request)' in shared
+    assert 'const response=await runRequest(request' in shared
+    for primitive in ('copyRequest','generate','cancel','publish','sync'):
+        assert primitive in shared
+    assert 'validateLensProfile' in shared
+    assert 'submitPublication' in shared
+    assert 'captureRunState' in shared  # section multi-tab compare-and-save remains adapter state
+    assert 'runtime?.createWorkflow?.({' in section
+    assert 'runtime?.createWorkflow?.({' in overview
+    assert "buildRequest:requestBody" in section and "buildRequest:request" in overview
+    assert "createDraft:({response,request,profile,startState})" in section
+    assert "createDraft:({response,profile,startState})" in overview
+    assert 'fetch(' not in section and 'fetch(' not in overview
+    assert 'runtime.run' not in section and 'runtime.run' not in overview
+    assert "readProfile:draftProfile" in section
+    assert "captureRunState:()=>({storageRaw:loadedRaw,instructions:instructions()})" in section
+    assert "captureRunState:()=>({...selectedContextState(),storageRaw:loadedRaw})" in overview
+    assert "request=requestFor(profile,startState)" in shared
+    assert "options.buildRequest(profile,startState)" in shared
+    assert "function requestBody(profile=draftProfile(),startState)" in section
+    assert "function request(profile=selectedProfile(),contextState=selectedContextState())" in overview
+    assert "buildMessage(profile,contextState)" in overview and "buildContext(contextState)" in overview
+    assert "save(next,context.startState?.storageRaw)" in section
+    assert "profile:startState?.profile" not in section
+    assert "const payload=response.payload||{},now=new Date().toISOString()" in section
+    assert "const contextState=startState||selectedContextState()" in overview
+    assert "profile,contexts:contextState.contexts" in overview
+    assert "function safeDraft(value)" in overview
+    assert "Browser storage is unavailable; the generated overview was not saved." in overview
+    assert "This AI overview draft changed in another tab. Reload before replacing it." in overview
+    assert "This AI overview draft changed in another tab. Reload before discarding it." in overview
+    assert "saveDraft:(next,context)=>saveDraft(next,context.startState?.storageRaw)" in overview
+    assert "Browser storage is unavailable; the AI section draft was not saved." in section
+    assert "draft=safeDraft(JSON.parse(loadedRaw))" in overview
+    assert "const transport=generationUi()?.fetchJson" in shared
+    assert "label:'AI text generation'" in shared and 'maxBytes:1024*1024' in shared
+    assert "if(runButton)runButton.disabled=running||publishing" in shared
+    assert "button.disabled=running||publishing||unavailable" in shared
+    assert "if(running||publishing)return false" in shared
+    assert "if(publishing||running)return false" in shared
+    assert "await options.saveDraft(draft,context)" in shared
+    assert 'learn/text-generation-actions.html' in panel
+    assert 'data-section-ai-publish disabled' in _render_text_generation_actions('section-ai', 'Generate Now')
 
 
 def test_evidence_review_controls_are_local_non_verifying_and_feed_ai_context():
@@ -1299,7 +1424,8 @@ def test_inline_generation_supports_multi_audience_purpose_skill_and_role_lenses
     assert "audiences:profile.audiences" in js and "purposes:profile.purposes" in js
     assert "skills:profile.skills" in js and "roles:profile.roles" in js
     assert 'Skill mix:' in js and 'combined instructional lenses in one model request' in js
-    assert 'AI_LEARN_TEXT_GENERATION_API' in js and 'runtime.run' in js
+    assert 'AI_LEARN_TEXT_GENERATION_API' in js and 'runtime?.createWorkflow?.' in js
+    assert 'runtime.run' not in js
     assert 'fetch(' not in js and 'chatEndpoint' not in js and 'extractReply' not in js
 
 
@@ -1409,14 +1535,150 @@ def test_reviewed_publication_ui_is_explicit_and_shared_across_private_drafts():
 
     assert 'data-record-publish' in record
     assert 'data-record-metadata-reviewed' in record
-    assert 'data-overview-publish' in overview
-    assert 'data-section-ai-publish' in section
+    overview_actions = _render_text_generation_actions('overview', 'Generate AI Overview', '-request')
+    assert overview.count('data-overview-publish') + overview_actions.count('data-overview-publish') == 2
+    assert 'data-overview-publish disabled>Open pull request' in overview_actions
+    section_actions = _render_text_generation_actions('section-ai', 'Generate Now')
+    assert 'data-section-ai-publish' in section_actions
     assert 'function submitPublication' in shared
     assert "resolveEndpoint('publication')" in shared
     assert "credentials:'omit'" in shared
     assert "redirect:'error'" in shared
+    assert "url.port && url.port !== '443'" in shared
     assert "action:'publish'" in record_js
     assert "metadata_reviewed=true" in record_js
     assert "section_id:'summary'" in overview_js
+    assert "publishButtons=all(panel,'[data-overview-publish]')" in overview_js
+    text_workflow = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/text-generation-ui.js').read_text()
+    assert "publishButtons.forEach(button=>button.addEventListener('click',()=>workflowAction('publish')))" in overview_js
+    assert 'async function publish()' in text_workflow and 'ui?.submitPublication?.(publicationRequest)' in text_workflow
+    assert 'syncPublishButtons' not in overview_js
     assert "section_id:String(id||'')" in section_js
     assert 'Generate Now' in section  # generation remains distinct from publication
+
+
+
+def test_multimodal_generation_uses_one_bounded_redirect_safe_transport_and_retry_identity():
+    static = EXT/'_sphinx_ext/_sphinx_ai_learn/_static'
+    shared = (static/'generation-ui.js').read_text()
+    media = {
+        name: (static/name).read_text()
+        for name in ('video-generation.js','audio-generation.js','document-generation.js','whiteboard-generation.js')
+    }
+
+    # Raw browser transport is centralized. Modality controllers retain only
+    # contract-specific request/job logic.
+    assert shared.count('fetch(requestUrl.href, requestInit)') == 1
+    assert "credentials:'omit', cache:'no-store', redirect:'error', referrerPolicy:'no-referrer'" in shared
+    assert 'Runtime request URL must use HTTPS (or loopback HTTP for local development) without credentials or fragments.' in shared
+    assert "requestUrl.protocol === 'http:' && !loopback" in shared
+    assert 'This browser does not support bounded runtime requests.' in shared
+    assert 'readBoundedResponse(response' in shared
+    assert 'timed out after ' in shared
+    assert 'fetchJson: fetchJson' in shared and 'fetchBlob: fetchBlob' in shared
+    assert 'function mimeMatches(expected, actual)' in shared
+    assert "response.ok && expectedMime && !mimeMatches(expectedMime, actualMime)" in shared
+    assert "returned an unexpected content type" in shared
+    for source in media.values():
+        assert 'fetch(' not in source
+        assert 'Shared AI Learn runtime transport is unavailable.' in source
+
+    # Discovery, job/status, artifacts and synchronous outputs all declare
+    # bounded waits and byte ceilings rather than inheriting an unbounded read.
+    assert "label:'Video capability discovery'" in media['video-generation.js']
+    assert "label:'Video generation'" in media['video-generation.js']
+    assert "label:'Audio artifact'" in media['audio-generation.js']
+    assert '64*1024*1024' in media['audio-generation.js']
+    assert "label:'Document generation'" in media['document-generation.js']
+    assert '8*1024*1024' in media['document-generation.js']
+    assert "label:'Whiteboard image'" in media['whiteboard-generation.js']
+    assert '64*1024*1024' in media['whiteboard-generation.js']
+
+    # Ambiguous audio retries now reuse one key for the exact same request,
+    # matching the video/server idempotency contract.
+    audio = media['audio-generation.js']
+    assert 'function ensureIdempotency(request)' in audio
+    assert 'idempotencySignature !== signature' in audio
+    assert "'Idempotency-Key':ensureIdempotency(request)" in audio
+    assert "'Idempotency-Key':randomKey()" not in audio
+    assert "['localhost','127.0.0.1','::1'].includes(url.hostname)" in audio
+    assert "url.protocol === 'https:' && (!url.port || url.port === '443')" in audio
+
+    # Public runtime video links are HTTPS; loopback HTTP remains available for
+    # local development without permitting arbitrary insecure artifact links.
+    video = media['video-generation.js']
+    assert "u.protocol==='https:'" in video
+    assert "['localhost','127.0.0.1','::1'].includes(u.hostname)" in video
+
+
+def test_private_generation_library_fails_closed_on_storage_errors_and_tracks_other_tabs():
+    shared = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/generation-ui.js').read_text()
+    assert 'That \' + singular + \' is no longer available in this browser.' in shared
+    assert "for this tab. Browser storage is unavailable, so the change will not survive reload." in shared
+    assert "receipt is kept only in this tab and will not survive reload." in shared
+    assert "window.addEventListener('storage', onStorage)" in shared
+    assert "window.removeEventListener('storage', onStorage)" in shared
+    assert "var persisted = write(rows);" in shared
+    assert 'boundedInteger(options.maxRows, 50, 1, 100)' in shared
+    assert 'boundedInteger(options.maxStorage, 250000, 10000, 1000000)' in shared
+
+
+
+def test_video_receipts_survive_storage_failure_in_the_current_tab_and_sync_other_tabs():
+    video = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/video-generation.js').read_text()
+    assert 'let volatileJobs=[]' in video
+    assert 'function boundedJobs(rows)' in video
+    assert 'rows.map(row=>normalizeJob(row)).filter(Boolean).slice(0,50)' in video
+    assert 'catch{return volatileJobs.slice();}' in video
+    assert 'volatileJobs=normalized' in video
+    assert 'return true;}catch{return false;}' in video
+    assert 'const persisted=mergeJob(job)' in video
+    assert 'receipt is kept only in this tab because browser storage is unavailable' in video
+    assert "window.addEventListener('storage',handleJobsStorage)" in video
+    assert "window.removeEventListener('storage',handleJobsStorage)" in video
+    assert 'if(changed&&!writeJobs(jobs))' in video
+
+
+def test_record_generation_freezes_request_provenance_and_requires_durable_local_result():
+    js = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/record-generation.js').read_text()
+    assert 'runProfile=profile()' in js and 'runAdvanced=advanced()' in js
+    assert 'runContextIds=selectedContext().map(row=>row.id)' in js
+    assert 'runSourceUrl=sourceUrl()' in js
+    assert 'profile:runProfile,advanced:runAdvanced,context_ids:runContextIds' in js
+    assert 'sanitizeDraft(kind,parsed,runSourceUrl)' in js
+    assert 'current!==loadedResultRaw' in js
+    assert 'localStorage.setItem(resultKey,encoded)' in js
+    assert 'loadedResultRaw=encoded;generated=value;renderGenerated()' in js
+    assert 'Browser storage is unavailable; the generated draft was not saved.' in js
+    assert 'if(controller||publishing)' in js
+    assert 'submit.disabled=!!controller||publishing' in js
+    assert 'publishing=false;publish.disabled=false;syncAuthority()' in js
+
+
+def test_generation_cleanup_is_bfcache_safe_and_private_libraries_keep_volatile_receipts():
+    static = EXT/'_sphinx_ext/_sphinx_ai_learn/_static'
+    shared = (static/'generation-ui.js').read_text()
+    assert 'function onPageDispose(callback)' in shared
+    assert 'event && event.persisted === true' in shared
+    assert 'onPageDispose: onPageDispose' in shared
+    assert 'var volatileRows = [];' in shared
+    assert 'function safeLibraryRow(row)' in shared
+    assert 'Persist display metadata only.' in shared
+    assert 'request bodies and any future unknown fields are intentionally dropped.' in shared
+    assert 'return volatileRows.slice();' in shared
+    assert 'volatileRows = normalized;' in shared
+    assert 'receipt is kept only in this tab and will not survive reload.' in shared
+    assert 'volatileRows = [];' in shared
+
+    files = (
+        'generation-ui.js', 'video-generation.js', 'audio-generation.js',
+        'document-generation.js', 'whiteboard-generation.js', 'record-generation.js'
+    )
+    for name in files:
+        source = (static/name).read_text()
+        assert "pagehide'," in source
+        import re
+        assert not re.search(r"pagehide[^\n]{0,160}once\s*:\s*true", source)
+    for name in ('video-generation.js','audio-generation.js','document-generation.js','whiteboard-generation.js','record-generation.js'):
+        source = (static/name).read_text()
+        assert 'onPageDispose' in source or 'event?.persisted===true' in source or 'event.persisted === true' in source

@@ -254,6 +254,307 @@ def _section_directive(subject_id: str, section_id: str, kind: str):
     return f".. ai-topic-section:: {section_id}\n   :topic-id: {subject_id}\n"
 
 
+_DESIGN_CLASS_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}\Z")
+_DOCNAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*(?:/[A-Za-z0-9][A-Za-z0-9_-]*)*\Z")
+
+
+def _safe_docname(value, where):
+    value = _text(value, where, 200)
+    path = PurePosixPath(value)
+    if (
+        path.is_absolute()
+        or ".." in path.parts
+        or value.endswith((".rst", ".json"))
+        or not _DOCNAME_RE.fullmatch(value)
+    ):
+        raise LearnValidationError(f"AI Learn: {where} contains an unsafe docname")
+    return value
+
+
+def _responsive_values(value, where, *, minimum, maximum, allow_auto=False):
+    """Normalize one-or-four responsive Sphinx-Design values."""
+    rows = value if isinstance(value, list) else [value]
+    if len(rows) not in {1, 4}:
+        raise LearnValidationError(f"AI Learn: {where} must contain one or four values")
+    result = []
+    for item in rows:
+        if allow_auto and item == "auto":
+            result.append("auto")
+            continue
+        if (
+            isinstance(item, bool)
+            or not isinstance(item, int)
+            or not minimum <= item <= maximum
+        ):
+            raise LearnValidationError(
+                f"AI Learn: {where} contains an invalid responsive value"
+            )
+        result.append(str(item))
+    return " ".join(result)
+
+
+def _design_class_list(value, where):
+    if isinstance(value, str):
+        rows = value.split()
+    elif isinstance(value, list):
+        rows = value
+    else:
+        raise LearnValidationError(f"AI Learn: {where} must be a class name or list")
+    if not rows or len(rows) > 16:  # ruff: ignore[magic-value-comparison]
+        raise LearnValidationError(f"AI Learn: {where} must be a bounded class list")
+    result = []
+    for row in rows:
+        if not isinstance(row, str) or not _DESIGN_CLASS_RE.fullmatch(row):
+            raise LearnValidationError(
+                f"AI Learn: {where} contains an invalid class name"
+            )
+        result.append(row)
+    return " ".join(result)
+
+
+def _validate_design_grid(value, where):  # ruff: ignore[too-many-branches]
+    """Validate an RST-free Sphinx-Design grid projection for one page."""
+    _object(
+        value,
+        required=("columns", "items"),
+        allowed=(
+            "columns",
+            "gutter",
+            "margin",
+            "padding",
+            "outline",
+            "reverse",
+            "class_container",
+            "class_row",
+            "items",
+        ),
+        where=where,
+    )
+    grid = {
+        "columns": _responsive_values(
+            value["columns"], f"{where}.columns", minimum=1, maximum=12, allow_auto=True
+        )
+    }
+    for name in ("gutter", "padding"):
+        if name in value:
+            grid[name] = _responsive_values(
+                value[name], f"{where}.{name}", minimum=0, maximum=5
+            )
+    if "margin" in value:
+        grid["margin"] = _responsive_values(
+            value["margin"], f"{where}.margin", minimum=0, maximum=5, allow_auto=True
+        )
+    for name in ("outline", "reverse"):
+        if name in value:
+            if not isinstance(value[name], bool):
+                raise LearnValidationError(f"AI Learn: {where}.{name} must be boolean")
+            grid[name] = value[name]
+    for name in ("class_container", "class_row"):
+        if name in value:
+            grid[name] = _design_class_list(value[name], f"{where}.{name}")
+    items = value["items"]
+    _len = len(items) > 64  # ruff: ignore[magic-value-comparison]
+    if not isinstance(items, list) or not items or _len:
+        raise LearnValidationError(
+            f"AI Learn: {where}.items must be a non-empty bounded list"
+        )
+    normalized = []
+    for index, raw in enumerate(items):
+        item_where = f"{where}.items[{index}]"
+        _object(
+            raw,
+            required=("title", "toctree"),
+            allowed=("title", "card", "toctree"),
+            where=item_where,
+        )
+        card_raw = raw.get("card", {})
+        _object(
+            card_raw,
+            allowed=(
+                "columns",
+                "margin",
+                "padding",
+                "child_direction",
+                "child_align",
+                "outline",
+                "text_align",
+                "shadow",
+                "class_item",
+                "class_card",
+                "class_header",
+                "class_body",
+            ),
+            where=f"{item_where}.card",
+        )
+        card = {}
+        if "columns" in card_raw:
+            card["columns"] = _responsive_values(
+                card_raw["columns"],
+                f"{item_where}.card.columns",
+                minimum=1,
+                maximum=12,
+                allow_auto=True,
+            )
+        if "padding" in card_raw:
+            card["padding"] = _responsive_values(
+                card_raw["padding"], f"{item_where}.card.padding", minimum=0, maximum=5
+            )
+        if "margin" in card_raw:
+            card["margin"] = _responsive_values(
+                card_raw["margin"],
+                f"{item_where}.card.margin",
+                minimum=0,
+                maximum=5,
+                allow_auto=True,
+            )
+        if "child_direction" in card_raw:
+            if card_raw["child_direction"] not in {"column", "row"}:
+                raise LearnValidationError(
+                    f"AI Learn: {item_where}.card.child_direction is unsupported"
+                )
+            card["child_direction"] = card_raw["child_direction"]
+        if "child_align" in card_raw:
+            if card_raw["child_align"] not in {
+                "start",
+                "end",
+                "center",
+                "justify",
+                "spaced",
+            }:
+                raise LearnValidationError(
+                    f"AI Learn: {item_where}.card.child_align is unsupported"
+                )
+            card["child_align"] = card_raw["child_align"]
+        if "text_align" in card_raw:
+            if card_raw["text_align"] not in {"left", "right", "center", "justify"}:
+                raise LearnValidationError(
+                    f"AI Learn: {item_where}.card.text_align is unsupported"
+                )
+            card["text_align"] = card_raw["text_align"]
+        if "shadow" in card_raw:
+            if card_raw["shadow"] not in {"none", "sm", "md", "lg"}:
+                raise LearnValidationError(
+                    f"AI Learn: {item_where}.card.shadow is unsupported"
+                )
+            card["shadow"] = card_raw["shadow"]
+        if "outline" in card_raw:
+            if not isinstance(card_raw["outline"], bool):
+                raise LearnValidationError(
+                    f"AI Learn: {item_where}.card.outline must be boolean"
+                )
+            card["outline"] = card_raw["outline"]
+        for name in ("class_item", "class_card", "class_header", "class_body"):
+            if name in card_raw:
+                card[name] = _design_class_list(
+                    card_raw[name], f"{item_where}.card.{name}"
+                )
+        tree_raw = raw["toctree"]
+        _object(
+            tree_raw,
+            required=("children",),
+            allowed=("children", "maxdepth", "hidden", "titlesonly", "caption"),
+            where=f"{item_where}.toctree",
+        )
+        children = tree_raw["children"]
+        _len = len(children) > 64  # ruff: ignore[magic-value-comparison]
+        if not isinstance(children, list) or not children or _len:
+            raise LearnValidationError(
+                f"AI Learn: {item_where}.toctree.children must be a non-empty bounded list"
+            )
+        docs = [
+            _safe_docname(child, f"{item_where}.toctree.children") for child in children
+        ]
+        if len(docs) != len(set(docs)):
+            raise LearnValidationError(
+                f"AI Learn: {item_where}.toctree.children contains duplicate docnames"
+            )
+        maxdepth = tree_raw.get("maxdepth", 2)
+        _maxdepth = 0 <= maxdepth <= 10  # ruff: ignore[magic-value-comparison]
+        if isinstance(maxdepth, bool) or not isinstance(maxdepth, int) or not _maxdepth:
+            raise LearnValidationError(
+                f"AI Learn: {item_where}.toctree.maxdepth must be an integer from 0 to 10"
+            )
+        toctree = {"children": docs, "maxdepth": maxdepth}
+        for name in ("hidden", "titlesonly"):
+            if name in tree_raw:
+                if not isinstance(tree_raw[name], bool):
+                    raise LearnValidationError(
+                        f"AI Learn: {item_where}.toctree.{name} must be boolean"
+                    )
+                toctree[name] = tree_raw[name]
+        if "caption" in tree_raw:
+            toctree["caption"] = _text(
+                tree_raw["caption"], f"{item_where}.toctree.caption", 200
+            )
+        normalized.append(
+            {
+                "title": _text(raw["title"], f"{item_where}.title", 200),
+                "card": card,
+                "toctree": toctree,
+            }
+        )
+    grid["items"] = normalized
+    return grid
+
+
+def _render_design_grid(grid):
+    """Render one validated design grid without accepting raw RST from JSON."""
+    lines = [f".. grid:: {grid['columns']}"]
+    option_names = ("gutter", "margin", "padding", "class_container", "class_row")
+    option_rst = {"class_container": "class-container", "class_row": "class-row"}
+    lines.extend(
+        f"   :{option_rst.get(name, name.replace('_', '-'))}: {grid[name]}"
+        for name in option_names
+        if name in grid
+    )
+    lines.extend(f"   :{name}:" for name in ("outline", "reverse") if grid.get(name))
+    lines.append("")
+    card_option_rst = {
+        "child_direction": "child-direction",
+        "child_align": "child-align",
+        "text_align": "text-align",
+        "class_item": "class-item",
+        "class_card": "class-card",
+        "class_header": "class-header",
+        "class_body": "class-body",
+    }
+    for item in grid["items"]:
+        lines.append("   .. grid-item-card::")
+        lines.extend(
+            f"      :{card_option_rst.get(name, name.replace('_', '-'))}: {item['card'][name]}"
+            for name in (
+                "columns",
+                "margin",
+                "padding",
+                "child_direction",
+                "child_align",
+                "text_align",
+                "shadow",
+                "class_item",
+                "class_card",
+                "class_header",
+                "class_body",
+            )
+            if name in item["card"]
+        )
+        if item["card"].get("outline"):
+            lines.append("      :outline:")
+        lines.extend(["", f"      **{_rst_text(item['title'])}**", "      ^^^"])
+        tree = item["toctree"]
+        lines.append("      .. toctree::")
+        lines.append(f"         :maxdepth: {tree['maxdepth']}")
+        if tree.get("hidden"):
+            lines.append("         :hidden:")
+        if tree.get("titlesonly"):
+            lines.append("         :titlesonly:")
+        if tree.get("caption"):
+            lines.append(f"         :caption: {_rst_text(tree['caption'])}")
+        lines.append("")
+        lines.extend(f"         {child}" for child in tree["children"])
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _media_directive(subject):
     kind = subject["kind"]
     if kind == "audio":
@@ -296,6 +597,7 @@ def _validate_page(  # ruff: ignore[too-many-branches]
             "mode",
             "children",
             "create_label",
+            "design_grid",
         ),
         where=str(rel),
     )
@@ -325,21 +627,29 @@ def _validate_page(  # ruff: ignore[too-many-branches]
             raise LearnValidationError(
                 f"AI Learn: {rel}.children must be a bounded list",
             )
-        children = []
-        for child in data["children"]:
-            child = _text(  # ruff: ignore[redefined-loop-name]
-                child,
-                f"{rel}.children",
-                200,
+        children = [
+            _safe_docname(child, f"{rel}.children") for child in data["children"]
+        ]
+        if len(children) != len(set(children)):
+            raise LearnValidationError(
+                f"AI Learn: {rel}.children contains duplicate docnames"
             )
-            p = PurePosixPath(child)
-            if p.is_absolute() or ".." in p.parts or child.endswith((".rst", ".json")):
-                raise LearnValidationError(
-                    f"AI Learn: {rel}.children contains an unsafe docname",
-                )
-            children.append(child)
         result["children"] = children
+    if "design_grid" in data:
+        result["design_grid"] = _validate_design_grid(
+            data["design_grid"], f"{rel}.design_grid"
+        )
     view = result["view"]
+    if view == "root" and result.get("design_grid"):
+        layout_children = [
+            child
+            for item in result["design_grid"]["items"]
+            for child in item["toctree"]["children"]
+        ]
+        if layout_children != result.get("children", []):
+            raise LearnValidationError(
+                f"AI Learn: {rel}.design_grid must cover root children exactly once and in order"
+            )
     if view == "root" and rel != Path("index.json"):
         raise LearnValidationError("AI Learn: the root page must be index.json")
     if view in {"explorer", "media-gallery"}:
@@ -858,6 +1168,24 @@ def load_content_tree(  # ruff: ignore[too-many-branches]
         else:
             raise LearnValidationError(f"AI Learn: unsupported JSON contract at {rel}")
 
+    # Typed page grids may only point at canonical materialized documents.
+    # Resolve nested toctree docnames relative to the owning page, matching
+    # Sphinx semantics, while keeping layout incapable of reaching handwritten
+    # files outside the JSON-owned tree.
+    materialized_sources = {
+        rel
+        for rel, data in raw_by_rel.items()
+        if isinstance(data, dict) and data.get("contract") != FEEDBACK_CONTRACT
+    }
+    for page_rel, page in pages.items():
+        for item in page.get("design_grid", {}).get("items", []):
+            for child in item["toctree"]["children"]:
+                target = page_rel.parent / (child + ".json")
+                if target not in materialized_sources:
+                    raise LearnValidationError(
+                        f"AI Learn: {page_rel}.design_grid references unknown canonical document {child}"
+                    )
+
     prompts.sort(key=lambda item: (item["order"], item["id"]))
     skills.sort(key=lambda item: (item["order"], item["id"]))
     validate_interaction_registry(prompts, skills)
@@ -1293,6 +1621,14 @@ def _toctree(children, *, maxdepth=1, hidden=False):
     return "\n".join(lines) + "\n"
 
 
+def _append_page_design(body, page):
+    grid = page.get("design_grid")
+    if not grid:
+        return body
+    separator = "" if not body or body.endswith("\n\n") else "\n"
+    return body + separator + _render_design_grid(grid)
+
+
 def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
     page,
     tree: ContentTree,
@@ -1303,6 +1639,8 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
     subjects_by_id = {subject["id"]: subject for subject in tree.catalog["subjects"]}
     body = _rst_text(description) + "\n\n" if description else ""
     if view == "root":
+        if page.get("design_grid"):
+            return body + _render_design_grid(page["design_grid"])
         return body + _toctree(page.get("children", []), maxdepth=2)
     if view == "explorer":
         kind = page["kind"]
@@ -1317,7 +1655,7 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
             for identity, route in sorted(tree.routes.items())
             if subjects_by_id[identity]["kind"] == kind
         )
-        return body + _toctree(children, hidden=True)
+        return _append_page_design(body + _toctree(children, hidden=True), page)
     if view == "media-gallery":
         # Keep media indexes simple and reusable: the rich explorer/directives own
         # presentation, while the materializer owns only deterministic structure.
@@ -1335,38 +1673,46 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
             for identity, route in sorted(tree.routes.items())
             if subjects_by_id[identity]["kind"] == kind
         )
-        return body + _toctree(children, hidden=True)
+        return _append_page_design(body + _toctree(children, hidden=True), page)
     if view == "record-create":
-        return body + f".. ai-record-generation:: {page['kind']}\n"
+        return _append_page_design(
+            body + f".. ai-record-generation:: {page['kind']}\n", page
+        )
     if view == "media-create":
-        return body + f".. {_MEDIA_CREATE_DIRECTIVES[page['kind']]}::\n"
+        return _append_page_design(
+            body + f".. {_MEDIA_CREATE_DIRECTIVES[page['kind']]}::\n", page
+        )
     if view == "prompt-library":
         children = ["new", *(f"{prompt['id']}/index" for prompt in tree.prompts)]
-        return (
+        return _append_page_design(
             body
             + ".. container:: learn-index-actions learn-topic-prompt-index-actions\n\n"
             + "   :doc:`Create a Topic Prompt <new>`\n\n"
             + ".. ai-topic-prompt-library::\n\n"
-            + _toctree(children, hidden=True)
+            + _toctree(children, hidden=True),
+            page,
         )
     if view == "prompt-create":
-        return body + ".. ai-record-generation:: topic-prompt\n"
+        return _append_page_design(
+            body + ".. ai-record-generation:: topic-prompt\n", page
+        )
     if view == "skill-library":
         children = ["new", *(f"{skill['id']}/index" for skill in tree.skills)]
-        return (
+        return _append_page_design(
             body
             + ".. container:: learn-index-actions learn-skill-index-actions\n\n"
             + "   :doc:`Create a Skill <new>`\n\n"
             + ".. ai-skill-library::\n\n"
-            + _toctree(children, hidden=True)
+            + _toctree(children, hidden=True),
+            page,
         )
     if view == "skill-create":
-        return body + ".. ai-record-generation:: skill\n"
+        return _append_page_design(body + ".. ai-record-generation:: skill\n", page)
     if view == "user-library":
         result = body + f".. ai-topic-user-library:: {page['mode']}\n"
         if page.get("children"):
             result += "\n" + _toctree(page["children"], hidden=True)
-        return result
+        return _append_page_design(result, page)
     raise LearnValidationError(f"AI Learn: unsupported page view at {rel}")
 
 

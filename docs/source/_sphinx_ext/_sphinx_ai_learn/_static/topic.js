@@ -317,7 +317,7 @@
         event.preventDefault();if(loading)return;loading=true;next.textContent='Loading…';
         try {
           const url=new URL(next.href);if(url.origin!==location.origin)throw new Error();
-          const response=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error();
+          const response=await fetch(url,{signal:AbortSignal.timeout(10000),credentials:'same-origin',cache:'no-store',redirect:'error'});if(!response.ok)throw new Error();
           const reader=response.body.getReader();let length=0;const chunks=[];
           while(true){const {value,done}=await reader.read();if(done)break;length+=value.length;if(length>2*1024*1024){await reader.cancel();throw new Error();}chunks.push(value);}
           const buffer=new Uint8Array(length);let offset=0;for(const chunk of chunks){buffer.set(chunk,offset);offset+=chunk.length;}

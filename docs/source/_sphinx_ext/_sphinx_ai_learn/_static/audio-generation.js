@@ -53,6 +53,17 @@
     return '';
   }
 
+  function runtimeJson(url, init, options) {
+    var fn = window.AI_LEARN_GENERATION_UI && window.AI_LEARN_GENERATION_UI.fetchJson;
+    if (typeof fn !== 'function') return Promise.reject(new Error('Shared AI Learn runtime transport is unavailable.'));
+    return fn(url, init, options);
+  }
+  function runtimeBlob(url, init, options) {
+    var fn = window.AI_LEARN_GENERATION_UI && window.AI_LEARN_GENERATION_UI.fetchBlob;
+    if (typeof fn !== 'function') return Promise.reject(new Error('Shared AI Learn runtime transport is unavailable.'));
+    return fn(url, init, options);
+  }
+
   function randomKey() {
     try { if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch (_) {}
     var bytes = new Uint8Array(16);
@@ -66,8 +77,10 @@
       var root = stripKnownRoute(base.toString());
       if (!root) return '';
       var url = new URL(root + '/v1/generated-artifacts/' + encodeURIComponent(artifactId));
-      if (url.protocol !== 'https:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') return '';
-      return url.toString();
+      if (url.username || url.password || url.hash) return '';
+      if (url.protocol === 'https:' && (!url.port || url.port === '443')) return url.toString();
+      if (url.protocol === 'http:' && ['localhost','127.0.0.1','::1'].includes(url.hostname)) return url.toString();
+      return '';
     } catch (_) { return ''; }
   }
 
@@ -102,11 +115,14 @@
     var runtimeEnabled = false;
     var discoverySerial = 0;
     var unsubscribeProfile = null;
+    var idempotencyKey = '';
+    var idempotencySignature = '';
 
     if (!payload || !form) return;
 
     var ui = window.AI_LEARN_GENERATION_UI || {};
     var activity = ui.bindGenerationStatus ? ui.bindGenerationStatus(root) : null;
+    if (ui.bindPublicationCredit) ui.bindPublicationCredit(root, {storageKey:'learn-publication-credit:v1:' + String(payload.site_id || 'default') + ':audio'});
     var library = ui.bindPrivateLibrary ? ui.bindPrivateLibrary(root, {
       storageKey:'learn-audio:v2:' + String(payload.site_id || 'default') + ':library',
       singular:'audio generation', plural:'audio generations'
@@ -216,6 +232,15 @@
     function requestBody() {
       return {contract:'assistant.audio-generation-request.v1', text:buildText(), selected_model:selectedAssistantModel(), mode:'narration'};
     }
+    function ensureIdempotency(request) {
+      var signature = JSON.stringify(request || {});
+      if (!idempotencyKey || idempotencySignature !== signature) {
+        idempotencyKey = randomKey();
+        idempotencySignature = signature;
+      }
+      return idempotencyKey;
+    }
+
     function validateRequest(body) {
       var lensError = window.AI_LEARN_GENERATION_UI && window.AI_LEARN_GENERATION_UI.validateLensProfile ? window.AI_LEARN_GENERATION_UI.validateLensProfile(draftState().lenses) : '';
       if (lensError) return lensError;
@@ -270,9 +295,10 @@
         return;
       }
       try {
-        var res = await fetch(base + '/', {headers:{'Accept':'application/json'}, credentials:'omit', cache:'no-store'});
+        var packet = await runtimeJson(base + '/', {headers:{'Accept':'application/json'}}, {label:'Audio capability discovery', timeoutMs:12000, maxBytes:512*1024});
+        var res = packet.response;
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        var discovery = await res.json();
+        var discovery = packet.body || {};
         if (serial !== discoverySerial) return;
         var cap = discovery && discovery.capabilities && discovery.capabilities.audio_generation;
         var providerCap = discovery && discovery.capabilities && discovery.capabilities.provider_artifact_output;
@@ -319,13 +345,13 @@
       if (!artifact || !artifact.artifact_id || !artifact.artifact_capability) return false;
       var url = safeArtifactUrl(endpoint, artifact.artifact_id);
       if (!url) throw new Error('Artifact delivery endpoint is unavailable.');
-      var res = await fetch(url, {
-        method: 'GET',
-        headers: {'Accept': artifact.mime_type || 'audio/*', 'X-Artifact-Capability': artifact.artifact_capability},
-        credentials: 'omit', cache: 'no-store'
-      });
+      var packet = await runtimeBlob(url, {
+        method:'GET',
+        headers:{'Accept': artifact.mime_type || 'audio/*', 'X-Artifact-Capability': artifact.artifact_capability}
+      }, {label:'Audio artifact', timeoutMs:60000, maxBytes:64*1024*1024, mimeType:artifact.mime_type || 'audio/*'});
+      var res = packet.response;
       if (!res.ok) throw new Error('Unable to retrieve generated audio.');
-      var blob = await res.blob();
+      var blob = packet.body;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(blob);
       resultAudio.src = objectUrl;
@@ -365,11 +391,10 @@
       stopPolling();
       pollTimer = window.setTimeout(async function () {
         try {
-          var res = await fetch(endpoint + '/' + encodeURIComponent(job.generation_id), {
-            headers: {'Accept':'application/json', 'X-Generation-Capability': job.generation_capability},
-            credentials:'omit', cache:'no-store'
-          });
-          var body = await res.json().catch(function () { return {}; });
+          var packet = await runtimeJson(endpoint + '/' + encodeURIComponent(job.generation_id), {
+            headers:{'Accept':'application/json', 'X-Generation-Capability': job.generation_capability}
+          }, {label:'Audio status', timeoutMs:15000, maxBytes:256*1024});
+          var res = packet.response, body = packet.body || {};
           if (!res.ok) throw new Error((body.error && body.error.message) || ('HTTP ' + res.status));
           poll(body);
         } catch (error) {
@@ -393,13 +418,12 @@
       submit.disabled = true; cancel.hidden = true; resultAudio.hidden = true; resultNote.hidden = true;
       announce('Submitting audio generation…', 'working');
       try {
-        var res = await fetch(endpoint, {
+        var packet = await runtimeJson(endpoint, {
           method:'POST',
-          headers:{'Content-Type':'application/json','Accept':'application/json','Idempotency-Key':randomKey()},
-          body:JSON.stringify(request),
-          credentials:'omit', cache:'no-store'
-        });
-        var body = await res.json().catch(function () { return {}; });
+          headers:{'Content-Type':'application/json','Accept':'application/json','Idempotency-Key':ensureIdempotency(request)},
+          body:JSON.stringify(request)
+        }, {label:'Audio generation', timeoutMs:45000, maxBytes:512*1024});
+        var res = packet.response, body = packet.body || {};
         if (!res.ok) throw new Error((body.error && body.error.message) || String(body.detail || ('HTTP ' + res.status)));
         if (requestActions) requestActions.saveDraft(true);
         announce('Audio generation accepted.', 'working', 'Queued');
@@ -414,10 +438,10 @@
     cancel.addEventListener('click', async function () {
       if (!activeJob || !activeJob.generation_id || !activeJob.generation_capability) return;
       try {
-        var res = await fetch(endpoint + '/' + encodeURIComponent(activeJob.generation_id) + '/cancel', {
-          method:'POST', headers:{'Accept':'application/json','X-Generation-Capability':activeJob.generation_capability}, credentials:'omit', cache:'no-store'
-        });
-        var body = await res.json().catch(function () { return {}; });
+        var packet = await runtimeJson(endpoint + '/' + encodeURIComponent(activeJob.generation_id) + '/cancel', {
+          method:'POST', headers:{'Accept':'application/json','X-Generation-Capability':activeJob.generation_capability}
+        }, {label:'Audio cancellation', timeoutMs:20000, maxBytes:256*1024});
+        var res = packet.response, body = packet.body || {};
         if (!res.ok) throw new Error((body.error && body.error.message) || ('HTTP ' + res.status));
         poll(body);
       } catch (error) { announce('Unable to cancel audio generation: ' + String(error.message || error), 'error'); }
@@ -428,10 +452,17 @@
       var endpointApi = window.AI_ASSISTANT_ENDPOINT_API;
       unsubscribeProfile = endpointApi && typeof endpointApi.onProfileChange === 'function' ? endpointApi.onProfileChange(discoverRuntime) : null;
     } catch (_) {}
-    window.addEventListener('pagehide', function () {
+    var dispose = ui.onPageDispose || function (callback) {
+      window.addEventListener('pagehide', function handler(event) {
+        if (event && event.persisted === true) return;
+        window.removeEventListener('pagehide', handler);
+        callback();
+      });
+    };
+    dispose(function () {
       stopPolling();
       if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = ''; }
       if (typeof unsubscribeProfile === 'function') unsubscribeProfile();
-    }, {once:true});
+    });
   });
 }());

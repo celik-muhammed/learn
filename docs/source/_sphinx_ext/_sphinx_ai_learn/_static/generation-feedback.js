@@ -62,7 +62,10 @@
       const ui=window.AI_LEARN_GENERATION_UI;
       if(!ui?.submitPublication){announce('Reviewed feedback transport is unavailable.');return;}
       const clean=String(textValue||'').trim().slice(0,2000);
-      const displayName=String(credit||'').replace(/\s+/g,' ').trim().slice(0,80);
+      let displayName='';
+      try{displayName=ui.normalizePublicationCredit?ui.normalizePublicationCredit(credit):String(credit||'').replace(/\s+/g,' ').trim();}
+      catch(error){announce(String(error?.message||'Invalid public credit.'));return;}
+      if(displayName.length>80){announce('Contributor credit must be plain text of at most 80 characters.');return;}
       const fingerprint=JSON.stringify([rating,clean,displayName,mode]);
       // Reuse the exact envelope after an ambiguous transport failure.  The
       // repository treats feedback_id as an idempotency key, so retrying cannot

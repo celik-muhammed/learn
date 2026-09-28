@@ -41,6 +41,11 @@
     } catch (_) { return null; }
   }
   function record(rows, id) { return (rows || []).find(function (x) { return x.id === id; }) || null; }
+  function runtimeJson(url, init, options) {
+    var fn = window.AI_LEARN_GENERATION_UI && window.AI_LEARN_GENERATION_UI.fetchJson;
+    if (typeof fn !== 'function') return Promise.reject(new Error('Shared AI Learn runtime transport is unavailable.'));
+    return fn(url, init, options);
+  }
   function copyText(text) {
     return navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject(new Error('Clipboard is unavailable.'));
   }
@@ -50,6 +55,7 @@
     if (!data || !form) return;
     var ui = window.AI_LEARN_GENERATION_UI || {};
     var activity = ui.bindGenerationStatus ? ui.bindGenerationStatus(root) : null;
+    if (ui.bindPublicationCredit) ui.bindPublicationCredit(root, {storageKey:'learn-publication-credit:v1:' + String(data.site_id || 'default') + ':document'});
     var library = ui.bindPrivateLibrary ? ui.bindPrivateLibrary(root, {
       storageKey:'learn-document:v2:' + String(data.site_id || 'default') + ':library',
       singular:'document generation', plural:'document generations'
@@ -205,9 +211,10 @@
         return;
       }
       try {
-        var res = await fetch(base + '/', {headers:{'Accept':'application/json'}, credentials:'omit', cache:'no-store'});
+        var packet = await runtimeJson(base + '/', {headers:{'Accept':'application/json'}}, {label:'Document capability discovery', timeoutMs:12000, maxBytes:512*1024});
+        var res = packet.response;
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        var discovery = await res.json();
+        var discovery = packet.body || {};
         if (serial !== discoverySerial) return;
         var cap = discovery && discovery.capabilities && discovery.capabilities.document_generation;
         var contractOk = cap && String(cap.contract || '') === 'assistant.document-generation-request.v1';
@@ -259,13 +266,12 @@
       }
       submit.disabled = true; card.hidden = true; announce('Generating document…', 'working');
       try {
-        var res = await fetch(ep, {
+        var packet = await runtimeJson(ep, {
           method:'POST',
           headers:{'Content-Type':'application/json','Accept':'application/json'},
-          body:JSON.stringify(request),
-          credentials:'omit', cache:'no-store'
-        });
-        var body = await res.json().catch(function () { return {}; });
+          body:JSON.stringify(request)
+        }, {label:'Document generation', timeoutMs:120000, maxBytes:8*1024*1024});
+        var res = packet.response, body = packet.body || {};
         if (!res.ok) throw new Error((body.error && body.error.message) || String(body.detail || ('HTTP ' + res.status)));
         if (body.contract !== 'assistant.document-generation-response.v1' || typeof body.content !== 'string') throw new Error('Document runtime returned an invalid response.');
         last = body;
@@ -301,6 +307,13 @@
       var endpointApi = window.AI_ASSISTANT_ENDPOINT_API;
       unsubscribeProfile = endpointApi && typeof endpointApi.onProfileChange === 'function' ? endpointApi.onProfileChange(discoverRuntime) : null;
     } catch (_) {}
-    window.addEventListener('pagehide', function () { if (typeof unsubscribeProfile === 'function') unsubscribeProfile(); }, {once:true});
+    var dispose = ui.onPageDispose || function (callback) {
+      window.addEventListener('pagehide', function handler(event) {
+        if (event && event.persisted === true) return;
+        window.removeEventListener('pagehide', handler);
+        callback();
+      });
+    };
+    dispose(function () { if (typeof unsubscribeProfile === 'function') unsubscribeProfile(); });
   });
 }());

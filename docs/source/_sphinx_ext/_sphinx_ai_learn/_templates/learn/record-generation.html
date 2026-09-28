@@ -71,6 +71,8 @@
     {% set authority_status = 'Checking shared Assistant model and Chat runtime authority…' %}
     {% include "learn/generation-authority.html" %}
 
+    {% set publication_credit_help = 'Nickname or name reserved for a later reviewed pull-request handoff. Leave blank for Anonymous. Use only a name you want published; do not enter email addresses or other private contact details. This credit stays outside the AI generation request.' %}
+    {% include "learn/publication-credit.html" %}
     {% set generation_kind = 'record' %}{% include "learn/generation-actions.html" %}
     {% set generation_kind = 'record' %}{% set status_initial_message = 'Ready to create a private AI-assisted draft.' %}{% include "learn/generation-status.html" %}
     <div class="learn-actions learn-record-generation-job-actions" data-record-generation-job-actions hidden><button type="button" data-record-cancel>Cancel generation</button></div>
@@ -84,9 +86,8 @@
       <div class="learn-section-ai-heading"><div><p class="learn-kicker">Reviewed publication</p><h4>Open pull request</h4></div><span class="learn-section-ai-badge">Explicit handoff</span></div>
       <p class="learn-meta">Generation stays browser-local until you explicitly send this reviewed draft to the configured publication transport. The repository workflow revalidates the current catalog revision and opens a JSON-only review.</p>
       {% if creation_kind == 'source' %}<label class="learn-generation-check"><input type="checkbox" data-record-metadata-reviewed> I reviewed the Source URL, metadata, and supplied notes for repository handoff.</label>{% endif %}
-      {% include "learn/publication-credit.html" %}
       <div class="learn-actions"><button type="button" class="learn-primary" data-record-publish>Open pull request</button></div>
-      <p class="learn-meta" data-record-publication-status role="status" aria-live="polite">Local only · publication not requested.</p>
+      <p class="learn-meta" data-record-publication-status role="status" aria-live="polite">Local only · publication not requested. Contributor credit from the studio above is applied only to this reviewed handoff.</p>
       <p class="learn-meta" data-record-publication-link hidden></p>
     </div>
     <p class="learn-meta">Until the reviewed publication action succeeds, this handoff remains local and is not a catalog mutation.</p>

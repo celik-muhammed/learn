@@ -379,8 +379,22 @@ filter box that hides non-matching cards as you type.
 
 | Option | Meaning |
 | --- | --- |
-| `:searchable:` | add a filter box to this collection |
+| `:searchable:` / `:searchable: classic` | add a filter box; optional value selects its presentation |
+| `:interactive:` / `:interactive: pill-overflow` | add search plus live filter/sort/reset controls; optional value selects presentation |
+| `:search-variant:` / `:search_variant:` | explicit presentation override: `pill-overflow` or `classic` |
 | `:search-label:` | placeholder and accessible name for the box |
+
+The site-wide presentation default is `collection_search_variant = "pill-overflow"`;
+set it to `"classic"` to keep the original rounded field + chevron everywhere.
+Per-directive presentation can be selected either explicitly (`:search-variant:` /
+`:search_variant:`) or as a shorthand value on the activating option
+(`:searchable: classic`, `:interactive: pill-overflow`). Valueless activation
+keeps the site-wide default. Supplying conflicting variants is a build error rather
+than an order-dependent override. A standalone variant option is presentation only
+and does not enable JavaScript controls unless `:searchable:` or `:interactive:`
+is present. `_sphinx_youtube_core` and `_sphinxcontrib_youtube`
+remain provider/player layers with no duplicate search controller; a
+`youtube-gallery` reaches the shared UI through `gallery-grid`.
 
 It is **progressive enhancement, never load-bearing**. Every card is
 rendered into the HTML and visible by default; the script only ever *hides*

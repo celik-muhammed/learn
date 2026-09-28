@@ -9,6 +9,7 @@
 
 CONTAINER_CLASS = "sk-collection"
 SEARCHABLE_CLASS = "sk-collection-searchable"
+SEARCH_VARIANTS = ("pill-overflow", "classic")
 
 ASSET_CSS = r"""/* Compact collection controls share one inline shell across gallery consumers. */
 .sk-collection-data,.sk-collection-label { display:none !important; }
@@ -29,12 +30,14 @@ ASSET_CSS = r"""/* Compact collection controls share one inline shell across gal
 .sk-collection-primary-row {
   display:grid; grid-template-columns:minmax(0,1fr) 2.75rem; gap:.42rem; align-items:stretch; min-inline-size:0;
 }
+.sk-collection-primary-row--pill-overflow { grid-template-columns:minmax(0,1fr) 2.5rem; }
 .sk-collection-search { display:block; inline-size:100%; min-inline-size:0; margin:0; }
 .sk-collection-search-field {
   display:grid; grid-template-columns:minmax(0,1fr) 2.7rem; min-inline-size:0; min-block-size:2.5rem;
   overflow:hidden; border:1px solid var(--sk-collection-line); border-radius:8px;
   background:var(--pst-color-background,Canvas); transition:border-color .16s ease,box-shadow .16s ease;
 }
+.sk-collection-search-field--pill { border-radius:999px; }
 .sk-collection-search-field:focus-within {
   border-color:var(--sk-collection-accent);
   box-shadow:0 0 0 2px color-mix(in srgb,var(--sk-collection-accent) 18%,transparent);
@@ -66,9 +69,11 @@ ASSET_CSS = r"""/* Compact collection controls share one inline shell across gal
   padding:.4rem; border:1px solid var(--sk-collection-line); border-radius:8px;
   font:inherit; color:inherit; background:var(--pst-color-background,Canvas); cursor:pointer;
 }
+.sk-collection-disclosure--overflow { inline-size:2.5rem; min-inline-size:2.5rem; border-radius:999px; }
 .sk-collection-disclosure:hover { border-color:var(--sk-collection-accent); color:var(--sk-collection-accent); }
 .sk-collection-disclosure:focus-visible { outline:2px solid var(--sk-collection-accent); outline-offset:2px; }
 .sk-collection-disclosure svg { inline-size:.9rem; block-size:.9rem; }
+.sk-collection-overflow-icon { fill:currentColor; stroke:none; }
 .sk-collection-panel {
   display:grid; gap:.75rem; padding-block-start:.72rem; margin-block-start:.08rem;
   border-block-start:1px solid var(--sk-collection-line); max-block-size:min(34rem,70dvh); overflow:auto;
@@ -274,7 +279,8 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
     var searchLabel = carrier ? carrier.textContent.trim() : 'Search this gallery';
     controls.setAttribute('aria-label', searchLabel + ' controls');
     var status=element('p','sk-collection-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.setAttribute('aria-atomic','true');
-    var primary=element('div','sk-collection-primary-row');
+    var searchVariant=config.searchVariant==='classic'?'classic':'pill-overflow';
+    var primary=element('div','sk-collection-primary-row sk-collection-primary-row--'+searchVariant);primary.dataset.searchVariant=searchVariant;
     var panel=element('div','sk-collection-panel');panel.hidden=true;
     do{panel.id='sk-gallery-options-'+(++instance);}while(document.getElementById(panel.id));
     panel.setAttribute('role','group');panel.setAttribute('aria-label','More gallery options');
@@ -288,7 +294,7 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
       wrap.append(element('span','sk-collection-control-label',caption),el);viewGrid.append(wrap);return el;
     }
     var searchWrap=element('form','sk-collection-search');searchWrap.setAttribute('role','search');searchWrap.setAttribute('aria-label',searchLabel);
-    var searchField=element('div','sk-collection-search-field');
+    var searchField=element('div','sk-collection-search-field'+(searchVariant==='pill-overflow'?' sk-collection-search-field--pill':''));
     var input = element('input');input.type='search';input.maxLength=1024;input.autocomplete='off';input.placeholder=searchLabel;
     input.setAttribute('aria-label',searchLabel);
     var searchButton=element('button','sk-collection-submit','');searchButton.type='submit';searchButton.setAttribute('aria-label',searchLabel);searchButton.title='Search';
@@ -296,10 +302,10 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
     var path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d','M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm5.5 10 5.2 5.2-1.4 1.4-5.2-5.2Z');svg.append(path);searchButton.append(svg);
     searchField.append(input,searchButton);searchWrap.append(searchField);primary.append(searchWrap);
     searchWrap.addEventListener('submit',function(event){event.preventDefault();apply();input.focus();});
-    var toggle=element('button','sk-collection-disclosure','');toggle.type='button';
+    var toggle=element('button','sk-collection-disclosure '+(searchVariant==='pill-overflow'?'sk-collection-disclosure--overflow':'sk-collection-disclosure--chevron'),'');toggle.type='button';
     toggle.setAttribute('aria-label','More gallery options');toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',panel.id);toggle.title='More options';
     var toggleSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');toggleSvg.setAttribute('viewBox','0 0 24 24');toggleSvg.setAttribute('aria-hidden','true');toggleSvg.setAttribute('focusable','false');
-    var polyline=document.createElementNS(toggleSvg.namespaceURI,'polyline');polyline.setAttribute('points','6 9 12 15 18 9');polyline.setAttribute('fill','none');polyline.setAttribute('stroke','currentColor');polyline.setAttribute('stroke-width','2');polyline.setAttribute('stroke-linecap','round');polyline.setAttribute('stroke-linejoin','round');toggleSvg.append(polyline);toggle.append(toggleSvg);primary.append(toggle);
+    var polyline=null;if(searchVariant==='pill-overflow'){toggleSvg.classList.add('sk-collection-overflow-icon');[5,12,19].forEach(function(y){var circle=document.createElementNS(toggleSvg.namespaceURI,'circle');circle.setAttribute('cx','12');circle.setAttribute('cy',String(y));circle.setAttribute('r','1.8');toggleSvg.append(circle);});}else{polyline=document.createElementNS(toggleSvg.namespaceURI,'polyline');polyline.setAttribute('points','6 9 12 15 18 9');polyline.setAttribute('fill','none');polyline.setAttribute('stroke','currentColor');polyline.setAttribute('stroke-width','2');polyline.setAttribute('stroke-linecap','round');polyline.setAttribute('stroke-linejoin','round');toggleSvg.append(polyline);}toggle.append(toggleSvg);primary.append(toggle);
     controls.append(status,primary,panel);
     var facetControls=[];
     if (config.interactive) (config.facets || []).forEach(function (field) {
@@ -332,7 +338,7 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
     var initialCards=cards.slice(), added=[];
     var revert=element('button','sk-collection-revert','Restore original gallery');revert.type='button';
     revert.title='Restore the published cards and order, and clear saved additions and view preferences';
-    function showPanel(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));polyline.setAttribute('points',open?'6 15 12 9 18 15':'6 9 12 15 18 9');}
+    function showPanel(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(polyline)polyline.setAttribute('points',open?'6 15 12 9 18 15':'6 9 12 15 18 9');}
     toggle.addEventListener('click',function(){showPanel(panel.hidden);});
     panel.addEventListener('keydown',function(event){if(event.key==='Escape'){event.stopPropagation();showPanel(false);toggle.focus();}});
     var saveAdditions=function(){}, restoreAdditions=function(){}, forgetSaved=function(){}, refreshAdditions=function(){};

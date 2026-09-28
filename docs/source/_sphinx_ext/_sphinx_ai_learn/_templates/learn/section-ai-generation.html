@@ -51,13 +51,10 @@
   </label>
   <p class="learn-meta">Catalog context and attached Source metadata are sent only to the configured Assistant endpoint. URLs are references; this browser does not fetch them for the model.</p>
   {% include "learn/publication-credit.html" %}
-  <div class="learn-actions learn-section-ai-actions">
-    <button type="button" class="learn-primary" data-section-ai-run>Generate Now</button>
-    <button type="button" data-section-ai-cancel hidden>Cancel</button>
-    <button type="button" data-section-ai-copy>Copy request</button>
-    <button type="button" class="learn-primary" data-section-ai-publish>Open pull request</button>
-    <button type="button" data-section-ai-close>Close</button>
-  </div>
+  {% set generation_action_scope = 'section-ai' %}
+  {% set generation_action_run_label = 'Generate Now' %}
+  {% set generation_action_copy_suffix = '' %}
+  {% include "learn/text-generation-actions.html" %}
   <p class="learn-section-ai-status" data-section-ai-status role="status" aria-live="polite" aria-atomic="true">Ready to create a private AI draft.</p>
   <p class="learn-meta" data-section-ai-publication-status role="status" aria-live="polite">Local only · publication not requested.</p>
   <p class="learn-meta" data-section-ai-publication-link hidden></p>

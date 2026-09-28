@@ -547,3 +547,96 @@ def test_feedback_outdated_documents_is_record_scoped_and_tracks_external_consum
         previous=current,
         current=current,
     ) == []
+
+
+
+def test_page_design_grid_is_typed_optional_and_deterministic(tmp_path):
+    root = _json_only_copy(tmp_path)
+    tree = load_content_tree(root)
+    page = tree.pages[Path("index.json")]
+    assert page["design_grid"]["columns"] == "1 1 1 1"
+    assert page["design_grid"]["items"][0]["card"]["columns"] == "12 12 6 6"
+    rst = render_materialized(tree)[Path("index.rst")].decode()
+    assert ".. grid:: 1 1 1 1" in rst
+    assert rst.count(".. grid-item-card::") == 11
+    assert ":padding: 2" in rst
+    assert ":columns: 12 12 6 6" in rst
+    assert "**topics**\n      ^^^\n      .. toctree::" in rst
+    assert "         topics/index" in rst
+
+    # Removing the optional layout returns the legacy plain toctree projection.
+    source = root / "index.json"
+    data = json.loads(source.read_text(encoding="utf-8"))
+    data.pop("design_grid")
+    source.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    plain = render_materialized(load_content_tree(root))[Path("index.rst")].decode()
+    assert ".. grid::" not in plain
+    assert ".. toctree::\n   :maxdepth: 2" in plain
+    assert "   topics/index" in plain
+
+
+def test_page_design_grid_can_augment_non_root_page_contracts(tmp_path):
+    root = _json_only_copy(tmp_path)
+    target = root / "topics" / "index.json"
+    data = json.loads(target.read_text(encoding="utf-8"))
+    data["design_grid"] = {
+        "columns": [1, 1, 2, 2],
+        "gutter": [1, 1, 2, 2],
+        "items": [
+            {
+                "title": "Create topic",
+                "card": {"padding": 2, "columns": [12, 12, 6, 6], "shadow": "sm"},
+                "toctree": {"maxdepth": 1, "children": ["new"]},
+            }
+        ],
+    }
+    target.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    tree = load_content_tree(root)
+    rst = render_materialized(tree)[Path("topics/index.rst")].decode()
+    assert ".. ai-topic-explorer:: topic" in rst
+    assert ".. grid:: 1 1 2 2" in rst
+    assert ":gutter: 1 1 2 2" in rst
+    assert ":shadow: sm" in rst
+    assert "         new" in rst
+
+
+def test_page_design_grid_rejects_raw_rst_unsafe_paths_and_invalid_options(tmp_path):
+    def mutated(name, mutate):
+        root = _json_only_copy(tmp_path / name)
+        target = root / "index.json"
+        data = json.loads(target.read_text(encoding="utf-8"))
+        mutate(data)
+        target.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        return root
+
+    with pytest.raises(LearnValidationError, match="unexpected or missing fields"):
+        load_content_tree(mutated("raw", lambda d: d["design_grid"].update({"raw_rst": ".. include:: secret.rst"})))
+
+    with pytest.raises(LearnValidationError, match="invalid responsive value"):
+        load_content_tree(mutated("columns", lambda d: d["design_grid"].update({"columns": [1, 1, 1, 13]})))
+
+    with pytest.raises(LearnValidationError, match="unsafe docname"):
+        load_content_tree(mutated("path", lambda d: d["design_grid"]["items"][0]["toctree"].update({"children": ["../secret"]})))
+
+    with pytest.raises(LearnValidationError, match="unsafe docname"):
+        load_content_tree(mutated("explicit-title", lambda d: d["design_grid"]["items"][0]["toctree"].update({"children": ["Label <topics/index>"]})))
+
+    with pytest.raises(LearnValidationError, match="invalid class name"):
+        load_content_tree(mutated("class", lambda d: d["design_grid"].update({"class_container": "ok ..bad"})))
+
+    with pytest.raises(LearnValidationError, match="must cover root children exactly once and in order"):
+        load_content_tree(mutated("coverage", lambda d: d["design_grid"].update({"items": d["design_grid"]["items"][:-1]})))
+
+    def unknown_non_root(data):
+        data["design_grid"] = {
+            "columns": 1,
+            "items": [{"title": "Missing", "toctree": {"children": ["missing-page"]}}],
+        }
+
+    root = _json_only_copy(tmp_path / "unknown")
+    target = root / "topics" / "index.json"
+    data = json.loads(target.read_text(encoding="utf-8"))
+    unknown_non_root(data)
+    target.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    with pytest.raises(LearnValidationError, match="references unknown canonical document missing-page"):
+        load_content_tree(root)

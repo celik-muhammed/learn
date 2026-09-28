@@ -15,9 +15,10 @@
     cancelled:'Cancelled',archived:'Archived'
   };
   const safeJson=node=>{try{return JSON.parse(node?.textContent||'{}');}catch{return null;}};
-  const httpUrl=value=>{try{const u=new URL(String(value||''),location.href);return /^https?:$/.test(u.protocol)?u.href:'';}catch{return '';}};
+  const httpUrl=value=>{try{const u=new URL(String(value||''),location.href);if(u.username||u.password)return '';if(u.protocol==='https:')return u.href;if(u.protocol==='http:'&&['localhost','127.0.0.1','::1'].includes(u.hostname))return u.href;return '';}catch{return '';}};
   const nowIso=()=>new Date().toISOString();
   const randomId=()=>{try{return crypto.randomUUID();}catch{return 'vg-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);}};
+  const runtimeJson=(url,init,options)=>{const fn=window.AI_LEARN_GENERATION_UI?.fetchJson;if(typeof fn!=='function')return Promise.reject(new Error('Shared AI Learn runtime transport is unavailable.'));return fn(url,init,options);};
 
   all(document,'[data-video-generator]').forEach(root=>{
     const data=safeJson(one(root,'.learn-video-generator-data'));
@@ -44,6 +45,7 @@
     const storagePrefix='learn-video:v2:'+String(data.site_id||'default')+':';
     const draftKey=storagePrefix+'draft';
     const jobsKey=storagePrefix+'jobs';
+    window.AI_LEARN_GENERATION_UI?.bindPublicationCredit?.(root,{storageKey:'learn-publication-credit:v1:'+String(data.site_id||'default')+':video'});
     let endpoint='';
     let runtimeEnabled=false;
     let runtimeTestMode=false;
@@ -160,11 +162,20 @@
     })||null;
     form.addEventListener('input',()=>{if(signature()!==idempotencySignature)idempotencyKey='';});
     form.addEventListener('change',()=>{if(signature()!==idempotencySignature)idempotencyKey='';});
+    let volatileJobs=[];
+    function boundedJobs(rows){return Array.isArray(rows)?rows.map(row=>normalizeJob(row)).filter(Boolean).slice(0,50):[];}
     function readJobs(){
-      try{const raw=localStorage.getItem(jobsKey);if(!raw||raw.length>250000)return [];const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed.filter(row=>row&&typeof row.generation_id==='string').slice(0,50):[];}
-      catch{return [];}
+      try{
+        const raw=localStorage.getItem(jobsKey);
+        if(!raw)return volatileJobs.slice();
+        if(raw.length>250000)return volatileJobs.slice();
+        const parsed=JSON.parse(raw),jobs=boundedJobs(parsed);volatileJobs=jobs;return jobs.slice();
+      }catch{return volatileJobs.slice();}
     }
-    function writeJobs(jobs){try{localStorage.setItem(jobsKey,JSON.stringify(jobs.slice(0,50)));}catch{}}
+    function writeJobs(jobs){
+      const normalized=boundedJobs(jobs);volatileJobs=normalized;
+      try{const encoded=JSON.stringify(normalized);if(encoded.length>250000)return false;localStorage.setItem(jobsKey,encoded);return true;}catch{return false;}
+    }
     function normalizeJob(raw,fallbackTitle='Generated video'){
       if(!raw||typeof raw!=='object')return null;
       const id=String(raw.generation_id||raw.id||'').trim();if(!/^[A-Za-z0-9._:-]{1,128}$/.test(id))return null;
@@ -180,7 +191,7 @@
         error:raw.error&&typeof raw.error==='object'?{code:String(raw.error.code||''),message:String(raw.error.message||'Generation could not complete.').slice(0,500),retryable:raw.error.retryable!==false}:null,
         result,execution};
     }
-    function mergeJob(job){if(!job)return;const jobs=readJobs().filter(row=>row.generation_id!==job.generation_id);jobs.unshift(job);writeJobs(jobs);renderJobs();syncGenerationStatus(job);}
+    function mergeJob(job){if(!job)return false;const jobs=readJobs().filter(row=>row.generation_id!==job.generation_id);jobs.unshift(job);const persisted=writeJobs(jobs);renderJobs();syncGenerationStatus(job);return persisted;}
     function visibleJobs(){const filter=jobFilter?.value||'active';return readJobs().filter(job=>filter==='all'||(filter==='archived'?job.status==='archived':job.status!=='archived'));}
     function stageLabel(job){return STAGE_LABELS[job.stage]||STAGE_LABELS[job.status]||job.stage||job.status;}
     function syncGenerationStatus(job){
@@ -212,12 +223,12 @@
       if(!runtimeActions.has(action)){announce(jobsStatus,'The active video runtime does not advertise the '+action+' action.');return;}
       const target=endpoint+'/'+encodeURIComponent(job.generation_id)+'/'+action;
       try{
-        const res=await fetch(target,{method:'POST',headers:{'Accept':'application/json'},credentials:'omit',cache:'no-store'});
-        const body=await res.json().catch(()=>({}));
+        const packet=await runtimeJson(target,{method:'POST',headers:{'Accept':'application/json'}},{label:'Video lifecycle action',timeoutMs:20000,maxBytes:256*1024});
+        const res=packet.response,body=packet.body||{};
         if(!res.ok)throw new Error(String(body.detail||body.error||('HTTP '+res.status)));
         const optimisticStatus={archive:'archived',restore:(job.result?.url?'ready':'queued'),cancel:'cancelled',retry:'queued'}[action]||job.status;
         const next=normalizeJob(body,job.title)||{...job,status:optimisticStatus,stage:optimisticStatus,updated_at:nowIso()};
-        mergeJob(next);announce(jobsStatus,action[0].toUpperCase()+action.slice(1)+' request accepted.');
+        const persisted=mergeJob(next);announce(jobsStatus,action[0].toUpperCase()+action.slice(1)+' request accepted.'+(persisted?'':' This receipt is kept only in this tab because browser storage is unavailable.'));
       }
       catch(error){announce(jobsStatus,'Unable to '+action+' this generation: '+String(error.message||error));}
     }
@@ -251,21 +262,25 @@
     }
     function renderJobs(){const jobs=visibleJobs();grid.replaceChildren(...jobs.map(renderJob));empty.hidden=jobs.length>0;announce(jobsStatus,jobs.length+' video generation'+(jobs.length===1?'':'s')+' shown from this browser.');}
     jobFilter?.addEventListener('change',renderJobs);
+    const handleJobsStorage=event=>{if(event.key!==jobsKey)return;volatileJobs=[];renderJobs();};
+    window.addEventListener('storage',handleJobsStorage);
 
     async function fetchJob(job){
       if(!runtimeEnabled||!endpoint)return null;
-      try{const res=await fetch(endpoint+'/'+encodeURIComponent(job.generation_id),{headers:{'Accept':'application/json'},credentials:'omit',cache:'no-store'});if(!res.ok)return null;return normalizeJob(await res.json(),job.title);}
+      try{const packet=await runtimeJson(endpoint+'/'+encodeURIComponent(job.generation_id),{headers:{'Accept':'application/json'}},{label:'Video status',timeoutMs:15000,maxBytes:256*1024});const res=packet.response;if(!res.ok)return null;return normalizeJob(packet.body,job.title);}
       catch{return null;}
     }
     async function refreshJobs(){
       if(!runtimeEnabled||!endpoint){announce(jobsStatus,'The configured runtime does not advertise video generation yet.');return;}
-      refresh.disabled=true;const jobs=readJobs();let changed=false;
-      for(const job of jobs){if(job.status==='archived')continue;const live=await fetchJob(job);if(live){const index=jobs.findIndex(row=>row.generation_id===live.generation_id);jobs[index]=live;syncGenerationStatus(live);changed=true;}}
-      if(changed)writeJobs(jobs);renderJobs();refresh.disabled=false;
+      refresh.disabled=true;
+      try{
+        const jobs=readJobs();let changed=false;
+        for(const job of jobs){if(job.status==='archived')continue;const live=await fetchJob(job);if(live){const index=jobs.findIndex(row=>row.generation_id===live.generation_id);jobs[index]=live;syncGenerationStatus(live);changed=true;}}
+        if(changed&&!writeJobs(jobs))announce(jobsStatus,'Updated video receipts are kept only in this tab because browser storage is unavailable.');renderJobs();
+      }finally{refresh.disabled=false;}
     }
     refresh?.addEventListener('click',refreshJobs);
     function schedulePolling(){clearInterval(pollTimer);if(!runtimeEnabled)return;pollTimer=setInterval(()=>{if(document.visibilityState==='visible'&&readJobs().some(job=>ACTIVE_STATUSES.has(job.status)))refreshJobs();},5000);}
-    window.addEventListener('pagehide',()=>clearInterval(pollTimer),{once:true});
 
     async function discoverRuntime(){
       const serial=++discoverySerial;
@@ -280,8 +295,8 @@
       const base=String(profile?.base||'').replace(/\/+$/,'');
       if(!base){setReadiness(readyGeneration,'Unverified','pending');setReadiness(readyPublishing,'Unknown','pending');if(runtimeAuthority)runtimeAuthority.textContent='Unverified';announce(runtimeStatus,'A video endpoint can be derived, but no service base is available for capability discovery.');return;}
       try{
-        const res=await fetch(base+'/',{headers:{'Accept':'application/json'},credentials:'omit',cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);
-        const discovery=await res.json();if(serial!==discoverySerial)return;const cap=discovery?.capabilities?.video_generation;
+        const packet=await runtimeJson(base+'/',{headers:{'Accept':'application/json'}},{label:'Video capability discovery',timeoutMs:12000,maxBytes:512*1024});const res=packet.response;if(!res.ok)throw new Error('HTTP '+res.status);
+        const discovery=packet.body||{};if(serial!==discoverySerial)return;const cap=discovery?.capabilities?.video_generation;
         const contractOk=String(cap?.contract||'')===REQUEST_CONTRACT&&String(cap?.job_contract||'')===JOB_CONTRACT;
         if(cap?.enabled===true&&contractOk){
           runtimeEnabled=true;runtimeTestMode=cap.test_mode===true;runtimePublishesMedia=cap.publishes_media===true;runtimePublishProvider=String(cap.publish_provider||'');if(runtimeAuthority)runtimeAuthority.textContent=runtimeTestMode?'Stub lifecycle · no media':(String(cap.mode||'upstream')==='upstream'?'Upstream video service':'Server-selected video service');runtimeActions=new Set(Array.isArray(cap.actions)?cap.actions.filter(action=>['cancel','retry','archive','restore'].includes(action)):[]);
@@ -300,10 +315,10 @@
       if(!runtimeEnabled||!endpoint){await discoverRuntime();if(!runtimeEnabled||!endpoint){announceGeneration('Video generation is not ready in the active runtime. Check Endpoint / Generation above, or save and copy the request while the runtime is configured.','warning');return;}}
       submit.disabled=true;announceGeneration('Submitting video generation…','working');
       try{
-        const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Idempotency-Key':idempotencyKey},body:JSON.stringify(body),credentials:'omit',cache:'no-store'});
-        const raw=await res.json().catch(()=>({}));if(!res.ok)throw new Error(String(raw.detail||raw.error||('HTTP '+res.status)));
+        const packet=await runtimeJson(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','Idempotency-Key':idempotencyKey},body:JSON.stringify(body)},{label:'Video generation',timeoutMs:45000,maxBytes:512*1024});
+        const res=packet.response,raw=packet.body||{};if(!res.ok)throw new Error(String(raw.detail||raw.error||('HTTP '+res.status)));
         const job=normalizeJob(raw,requestLabel(body));if(!job)throw new Error('The runtime returned an invalid generation receipt.');
-        activeGenerationId=job.generation_id;mergeJob(job);requestActions?.saveDraft(true);if(activeGenerationId)announceGeneration(runtimeTestMode?'Test generation accepted. No media will be published; lifecycle progress appears in Your Videos below.':'Generation accepted. Progress appears in Your Videos below.','working','Queued');schedulePolling();
+        activeGenerationId=job.generation_id;const persisted=mergeJob(job);requestActions?.saveDraft(true);if(activeGenerationId){const baseMessage=runtimeTestMode?'Test generation accepted. No media will be published; lifecycle progress appears in Your Videos below.':'Generation accepted. Progress appears in Your Videos below.';announceGeneration(baseMessage+(persisted?'':' The receipt is kept only in this tab because browser storage is unavailable; keep this page open until generation finishes.'),'working','Queued');}schedulePolling();
       }catch(error){announceGeneration('Video generation could not start: '+String(error.message||error),'error');}
       finally{submit.disabled=false;}
     });
@@ -312,6 +327,7 @@
     applyQuery();renderJobs();discoverRuntime();
     const endpointApi=window.AI_ASSISTANT_ENDPOINT_API;
     const unsubscribeProfile=endpointApi?.onProfileChange?.(()=>discoverRuntime());
-    window.addEventListener('pagehide',()=>{if(typeof unsubscribeProfile==='function')unsubscribeProfile();},{once:true});
+    const dispose=window.AI_LEARN_GENERATION_UI?.onPageDispose||((callback)=>window.addEventListener('pagehide',function handler(event){if(event?.persisted===true)return;window.removeEventListener('pagehide',handler);callback();}));
+    dispose(()=>{window.removeEventListener('storage',handleJobsStorage);clearInterval(pollTimer);if(typeof unsubscribeProfile==='function')unsubscribeProfile();});
   });
 })();

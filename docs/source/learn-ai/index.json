@@ -14,6 +14,214 @@
   ],
   "contract": "learn.page.v1",
   "description": "Explore a topic through sources, explanations, visuals, and questions.",
+  "design_grid": {
+    "columns": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "items": [
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "topics",
+        "toctree": {
+          "children": [
+            "topics/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "open-problems",
+        "toctree": {
+          "children": [
+            "open-problems/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "sources",
+        "toctree": {
+          "children": [
+            "sources/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "whiteboards",
+        "toctree": {
+          "children": [
+            "whiteboards/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "videos",
+        "toctree": {
+          "children": [
+            "videos/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "audios",
+        "toctree": {
+          "children": [
+            "audios/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "documents",
+        "toctree": {
+          "children": [
+            "documents/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "topic-prompts",
+        "toctree": {
+          "children": [
+            "topic-prompts/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "skills",
+        "toctree": {
+          "children": [
+            "skills/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "bookmarks",
+        "toctree": {
+          "children": [
+            "bookmarks/index"
+          ],
+          "maxdepth": 2
+        }
+      },
+      {
+        "card": {
+          "columns": [
+            12,
+            12,
+            6,
+            6
+          ],
+          "padding": 2
+        },
+        "title": "collections",
+        "toctree": {
+          "children": [
+            "collections/index"
+          ],
+          "maxdepth": 2
+        }
+      }
+    ]
+  },
   "title": "Learn-AI (XwAI)",
   "view": "root"
 }

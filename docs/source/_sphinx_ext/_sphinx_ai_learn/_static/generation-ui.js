@@ -271,6 +271,26 @@
   }
 
 
+  function onPageDispose(callback) {
+    if (typeof callback !== 'function') return function () {};
+    var active = true;
+    function handler(event) {
+      // BFCache pagehide is a freeze, not a disposal. Keep listeners, object
+      // URLs, and subscriptions alive so Back/Forward restores a live page.
+      if (event && event.persisted === true) return;
+      if (!active) return;
+      active = false;
+      window.removeEventListener('pagehide', handler);
+      callback(event || null);
+    }
+    window.addEventListener('pagehide', handler);
+    return function () {
+      if (!active) return;
+      active = false;
+      window.removeEventListener('pagehide', handler);
+    };
+  }
+
   function bindPrivateLibrary(root, options) {
     options = options || {};
     if (!root) return null;
@@ -288,32 +308,57 @@
     var plural = String(options.plural || section.dataset.generationLibraryPlural || singular + 's');
     var renderCard = typeof options.renderCard === 'function' ? options.renderCard : null;
     var refreshHandler = typeof options.refresh === 'function' ? options.refresh : null;
-    var maxRows = Math.max(1, Math.min(100, Number(options.maxRows || 50)));
-    var maxStorage = Math.max(10000, Math.min(1000000, Number(options.maxStorage || 250000)));
+    var maxRows = boundedInteger(options.maxRows, 50, 1, 100);
+    var maxStorage = boundedInteger(options.maxStorage, 250000, 10000, 1000000);
+    var volatileRows = [];
 
     function announce(message) { status.textContent = String(message || ''); }
+    function libraryText(value, limit) {
+      return String(value == null ? '' : value).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
+    }
+    function safeLibraryRow(row) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+      var id = libraryText(row.id, 256);
+      var title = libraryText(row.title, 300);
+      if (!id || !title) return null;
+      // Persist display metadata only. Bearer capabilities, endpoint authority,
+      // request bodies and any future unknown fields are intentionally dropped.
+      return {
+        id:id, title:title,
+        status:libraryText(row.status || 'ready', 40) || 'ready',
+        state_label:libraryText(row.state_label, 120),
+        preview_label:libraryText(row.preview_label, 40),
+        meta:libraryText(row.meta, 600),
+        note:libraryText(row.note, 1200),
+        created_at:libraryText(row.created_at, 64),
+        updated_at:libraryText(row.updated_at, 64),
+        previous_status:libraryText(row.previous_status, 40)
+      };
+    }
     function safeRows(value) {
-      return Array.isArray(value) ? value.filter(function (row) {
-        return row && typeof row === 'object' && typeof row.id === 'string' && row.id && typeof row.title === 'string';
-      }).slice(0, maxRows) : [];
+      return Array.isArray(value) ? value.map(safeLibraryRow).filter(Boolean).slice(0, maxRows) : [];
     }
     function read() {
-      if (!storageKey) return [];
+      if (!storageKey) return volatileRows.slice();
       try {
         var raw = localStorage.getItem(storageKey);
-        if (!raw || raw.length > maxStorage) return [];
-        var parsed = JSON.parse(raw);
-        return safeRows(parsed);
-      } catch (_) { return []; }
+        if (!raw || raw.length > maxStorage) return volatileRows.slice();
+        var parsed = safeRows(JSON.parse(raw));
+        volatileRows = parsed;
+        return parsed.slice();
+      } catch (_) { return volatileRows.slice(); }
     }
     function write(rows) {
+      var normalized = safeRows(rows);
+      volatileRows = normalized;
       if (!storageKey) return false;
       try {
-        var text = JSON.stringify(safeRows(rows));
+        var text = JSON.stringify(normalized);
         if (text.length > maxStorage) {
-          var trimmed = safeRows(rows).slice(0, Math.max(1, Math.floor(maxRows / 2)));
+          var trimmed = normalized.slice(0, Math.max(1, Math.floor(maxRows / 2)));
           text = JSON.stringify(trimmed);
           if (text.length > maxStorage) return false;
+          volatileRows = trimmed;
         }
         localStorage.setItem(storageKey, text);
         return true;
@@ -353,10 +398,19 @@
           updated_at: nowIso()
         });
       });
-      if (changed) write(rows);
+      if (!changed) {
+        render();
+        announce('That ' + singular + ' is no longer available in this browser. Refresh the library and try again.');
+        return false;
+      }
+      var persisted = write(rows);
       render();
+      if (!persisted) {
+        announce((archived ? 'Archived ' : 'Restored ') + singular + ' for this tab. Browser storage is unavailable, so the change will not survive reload.');
+        return false;
+      }
       announce((archived ? 'Archived ' : 'Restored ') + singular + '.');
-      return changed;
+      return true;
     }
     function defaultCard(row) {
       var card = document.createElement('article');
@@ -460,6 +514,7 @@
       rows.unshift(next);
       var ok = write(rows);
       render();
+      if (!ok) announce('Browser storage is unavailable. This ' + singular + ' receipt is kept only in this tab and will not survive reload.');
       return ok;
     }
     async function runRefresh() {
@@ -488,6 +543,13 @@
       section:section
     };
     section._learnPrivateLibrary = api;
+    function onStorage(event) {
+      if (!storageKey || event.key !== storageKey) return;
+      volatileRows = [];
+      render();
+    }
+    window.addEventListener('storage', onStorage);
+    onPageDispose(function () { window.removeEventListener('storage', onStorage); });
     filter.addEventListener('change', render);
     refresh.addEventListener('click', runRefresh);
     setRefreshEnabled(!!refreshHandler, refresh.title);
@@ -495,10 +557,65 @@
     return api;
   }
 
-  function publicationContributor(root) {
+  function normalizePublicationCredit(value) {
+    value = String(value || '');
+    if (/[\u0000-\u001f\u007f]/.test(value)) throw new Error('Contributor credit must not contain control characters.');
+    value = value.replace(/\s+/g, ' ').trim();
+    if (value.length > 80) throw new Error('Contributor credit must be plain text of at most 80 characters.');
+    return value;
+  }
+
+  function publicationCreditValue(root) {
     var input = root && root.querySelector ? root.querySelector('[data-publication-credit]') : null;
-    var value = String(input && input.value || '').replace(/\s+/g, ' ').trim();
-    if (value.length > 80 || /[\u0000-\u001f\u007f]/.test(value)) throw new Error('Contributor credit must be plain text of at most 80 characters.');
+    return normalizePublicationCredit(input && input.value || '');
+  }
+
+  function restorePublicationCredit(root, value) {
+    var input = root && root.querySelector ? root.querySelector('[data-publication-credit]') : null;
+    if (!input) return false;
+    try {
+      input.value = normalizePublicationCredit(value || '');
+      input.setCustomValidity('');
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function bindPublicationCredit(root, options) {
+    options = options || {};
+    var input = root && root.querySelector ? root.querySelector('[data-publication-credit]') : null;
+    if (!input) return null;
+    if (input._learnPublicationCredit) return input._learnPublicationCredit;
+    var storageKey = String(options.storageKey || '').trim();
+
+    function persist() {
+      try {
+        var value = normalizePublicationCredit(input.value || '');
+        input.setCustomValidity('');
+        if (storageKey) {
+          if (value) localStorage.setItem(storageKey, value);
+          else localStorage.removeItem(storageKey);
+        }
+        return value;
+      } catch (error) {
+        input.setCustomValidity(String(error && error.message || 'Invalid contributor credit.'));
+        return null;
+      }
+    }
+    if (storageKey) {
+      try {
+        var saved = localStorage.getItem(storageKey);
+        if (saved && saved.length <= 80) restorePublicationCredit(root, saved);
+      } catch (_) {}
+    }
+    input.addEventListener('input', persist);
+    input.addEventListener('change', persist);
+    var binding = {input:input, persist:persist, value:function () { return publicationCreditValue(root); }};
+    input._learnPublicationCredit = binding;
+    return binding;
+  }
+
+  function publicationContributor(root) {
+    var value = publicationCreditValue(root);
     return {display_name:value || 'Anonymous'};
   }
 
@@ -512,6 +629,153 @@
     return '';
   }
 
+  function boundedInteger(value, fallback, minimum, maximum) {
+    var number = Number(value);
+    if (!Number.isFinite(number) || !Number.isInteger(number)) number = fallback;
+    return Math.max(minimum, Math.min(maximum, number));
+  }
+
+  async function readBoundedResponse(response, maxBytes, label) {
+    maxBytes = boundedInteger(maxBytes, 256 * 1024, 1, 128 * 1024 * 1024);
+    label = String(label || 'Runtime response');
+    var declared = Number(response && response.headers && response.headers.get ? response.headers.get('Content-Length') : 0);
+    if (Number.isFinite(declared) && declared > maxBytes) throw new Error(label + ' exceeded the ' + maxBytes.toLocaleString() + '-byte response limit.');
+    var body = response && response.body;
+    if (!body || typeof body.getReader !== 'function') {
+      var fallback = new Uint8Array(await response.arrayBuffer());
+      if (fallback.byteLength > maxBytes) throw new Error(label + ' exceeded the ' + maxBytes.toLocaleString() + '-byte response limit.');
+      return [fallback];
+    }
+    var reader = body.getReader(), chunks = [], total = 0;
+    try {
+      while (true) {
+        var part = await reader.read();
+        if (part.done) break;
+        var chunk = part.value instanceof Uint8Array ? part.value : new Uint8Array(part.value || []);
+        total += chunk.byteLength;
+        if (total > maxBytes) {
+          try { await reader.cancel(); } catch (_) {}
+          throw new Error(label + ' exceeded the ' + maxBytes.toLocaleString() + '-byte response limit.');
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      try { reader.releaseLock(); } catch (_) {}
+    }
+    return chunks;
+  }
+
+  function decodeChunks(chunks) {
+    var decoder = new TextDecoder('utf-8'), text = '';
+    chunks.forEach(function (chunk) { text += decoder.decode(chunk, {stream:true}); });
+    return text + decoder.decode();
+  }
+
+  async function runtimeFetch(url, init, options, reader) {
+    var requestUrl;
+    try {
+      requestUrl = new URL(String(url || '').trim(), window.location.href);
+      if (!/^https?:$/.test(requestUrl.protocol) || requestUrl.username || requestUrl.password || requestUrl.hash) throw new Error();
+      var host = String(requestUrl.hostname || '').toLowerCase();
+      var loopback = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+      if (requestUrl.protocol === 'http:' && !loopback) throw new Error();
+    } catch (_) { throw new Error('Runtime request URL must use HTTPS (or loopback HTTP for local development) without credentials or fragments.'); }
+    init = init && typeof init === 'object' ? init : {};
+    options = options && typeof options === 'object' ? options : {};
+    var label = String(options.label || 'Runtime request');
+    var timeoutMs = boundedInteger(options.timeoutMs, 30000, 1000, 180000);
+    var externalSignal = init.signal || null;
+    if (typeof AbortController !== 'function') throw new Error('This browser does not support bounded runtime requests.');
+    var controller = new AbortController();
+    var timedOut = false, abortListener = null;
+    if (controller && externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else { abortListener = function () { controller.abort(); }; externalSignal.addEventListener('abort', abortListener, {once:true}); }
+    }
+    var timer = controller ? window.setTimeout(function () { timedOut = true; controller.abort(); }, timeoutMs) : 0;
+    var requestInit = Object.assign({}, init, {credentials:'omit', cache:'no-store', redirect:'error', referrerPolicy:'no-referrer'});
+    if (controller) requestInit.signal = controller.signal;
+    try {
+      var response = await fetch(requestUrl.href, requestInit);
+      var body = await reader(response, options);
+      return {response:response, body:body};
+    } catch (error) {
+      if (timedOut) throw new Error(label + ' timed out after ' + Math.round(timeoutMs / 1000) + ' seconds.');
+      throw error;
+    } finally {
+      if (timer) window.clearTimeout(timer);
+      if (externalSignal && abortListener) { try { externalSignal.removeEventListener('abort', abortListener); } catch (_) {} }
+    }
+  }
+
+  async function fetchJson(url, init, options) {
+    return runtimeFetch(url, init, options, async function (response, settings) {
+      var chunks = await readBoundedResponse(response, settings.maxBytes || 256 * 1024, settings.label || 'Runtime JSON response');
+      var raw = decodeChunks(chunks).trim();
+      if (!raw) return {};
+      try {
+        var value = JSON.parse(raw);
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
+        return value;
+      } catch (_) {
+        if (!response.ok) return {};
+        throw new Error(String(settings.label || 'Runtime') + ' returned invalid JSON.');
+      }
+    });
+  }
+
+  function normalizedMime(value) {
+    return String(value || '').split(';', 1)[0].trim().toLowerCase();
+  }
+
+  function mimeMatches(expected, actual) {
+    expected = normalizedMime(expected);
+    actual = normalizedMime(actual);
+    if (!expected) return true;
+    if (!actual) return false;
+    if (expected.endsWith('/*')) return actual.startsWith(expected.slice(0, -1));
+    return actual === expected;
+  }
+
+  async function fetchBlob(url, init, options) {
+    return runtimeFetch(url, init, options, async function (response, settings) {
+      var label = String(settings.label || 'Runtime artifact');
+      var expectedMime = normalizedMime(settings.mimeType);
+      var actualMime = normalizedMime(response.headers.get('Content-Type'));
+      if (response.ok && expectedMime && !mimeMatches(expectedMime, actualMime)) {
+        throw new Error(label + ' returned an unexpected content type' + (actualMime ? ': ' + actualMime : '.'));
+      }
+      var chunks = await readBoundedResponse(response, settings.maxBytes || 64 * 1024 * 1024, label);
+      return new Blob(chunks, {type:actualMime || expectedMime || 'application/octet-stream'});
+    });
+  }
+
+  function safeWorkflowUrl(value) {
+    try {
+      var url = new URL(String(value || '').trim());
+      if (url.protocol !== 'https:' || url.username || url.password || url.hash || (url.port && url.port !== '443')) return '';
+      if (url.hostname !== 'github.com') return '';
+      if (!/^\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/runs\/[0-9]+(?:\/.*)?$/.test(url.pathname)) return '';
+      return url.href;
+    } catch (_) { return ''; }
+  }
+
+  function appendPublicationReceiptLink(container, receipt) {
+    if (!container) return false;
+    container.hidden = true;
+    container.replaceChildren();
+    var href = safeWorkflowUrl(receipt && receipt.workflow_url);
+    if (!href) return false;
+    var link = document.createElement('a');
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Review GitHub Actions run';
+    container.appendChild(link);
+    container.hidden = false;
+    return true;
+  }
+
   async function submitPublication(request, options) {
     options = options || {};
     var endpoint = publicationEndpoint();
@@ -520,37 +784,27 @@
     try { raw = JSON.stringify(request); }
     catch (_) { throw new Error('Publication request could not be encoded.'); }
     if (!raw || raw.length > 60000) throw new Error('Publication request is too large for the reviewed handoff.');
-    var controller = typeof AbortController === 'function' ? new AbortController() : null;
-    var timer = controller ? window.setTimeout(function () { controller.abort(); }, Number(options.timeoutMs || 30000)) : 0;
-    try {
-      var response = await fetch(endpoint, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Accept':'application/json'},
-        body:raw,
-        credentials:'omit',
-        cache:'no-store',
-        redirect:'error',
-        signal:controller ? controller.signal : undefined
-      });
-      var text = await response.text();
-      if (text.length > 65536) throw new Error('Publication service returned an oversized response.');
-      var doc = {};
-      if (text) {
-        try { doc = JSON.parse(text); }
-        catch (_) { throw new Error('Publication service returned invalid JSON.'); }
-      }
-      if (!response.ok) {
-        var detail = doc && (doc.detail || doc.message);
-        throw new Error(String(detail || ('Publication service returned HTTP ' + response.status + '.')));
-      }
-      if (!doc || doc.contract !== 'learn.publication-receipt.v1') throw new Error('Publication service returned an unexpected receipt.');
-      return doc;
-    } catch (error) {
-      if (error && error.name === 'AbortError') throw new Error('Publication request timed out. The local draft is unchanged.');
-      throw error;
-    } finally {
-      if (timer) window.clearTimeout(timer);
+    var result = await fetchJson(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:raw
+    }, {
+      label:'Publication service',
+      timeoutMs:Number(options.timeoutMs || 30000),
+      maxBytes:65536
+    });
+    var response = result.response, doc = result.body || {};
+    if (!response.ok) {
+      var detail = doc && (doc.detail || doc.message);
+      throw new Error(String(detail || ('Publication service returned HTTP ' + response.status + '.')));
     }
+    if (!doc || doc.contract !== 'learn.publication-receipt.v1') throw new Error('Publication service returned an unexpected receipt.');
+    if (doc.workflow_url) {
+      var workflowUrl = safeWorkflowUrl(doc.workflow_url);
+      if (workflowUrl) doc.workflow_url = workflowUrl;
+      else delete doc.workflow_url;
+    }
+    return doc;
   }
 
   function publicationReceiptMessage(receipt) {
@@ -576,6 +830,15 @@
     assistantModelState: assistantModelState,
     assistantModelSnapshot: assistantModelSnapshot,
     publicationEndpoint: publicationEndpoint,
+    fetchJson: fetchJson,
+    fetchBlob: fetchBlob,
+    onPageDispose: onPageDispose,
+    safeWorkflowUrl: safeWorkflowUrl,
+    appendPublicationReceiptLink: appendPublicationReceiptLink,
+    normalizePublicationCredit: normalizePublicationCredit,
+    publicationCreditValue: publicationCreditValue,
+    restorePublicationCredit: restorePublicationCredit,
+    bindPublicationCredit: bindPublicationCredit,
     publicationContributor: publicationContributor,
     submitPublication: submitPublication,
     publicationReceiptMessage: publicationReceiptMessage
@@ -787,9 +1050,9 @@
 
   bindAssistantAuthorities(document);
   window.addEventListener('ai-assistant-model-api-ready', connectAssistantAuthorityApi);
-  window.addEventListener('pagehide', function () {
+  onPageDispose(function () {
     if (typeof assistantAuthorityUnsubscribe === 'function') assistantAuthorityUnsubscribe();
     assistantAuthorityUnsubscribe = null;
     window.removeEventListener('ai-assistant-model-api-ready', connectAssistantAuthorityApi);
-  }, {once:true});
+  });
 }());

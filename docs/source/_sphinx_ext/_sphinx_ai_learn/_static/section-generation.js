@@ -7,7 +7,7 @@
   const one=(root,selector)=>root?.querySelector?.(selector)||null;
   const all=(root,selector)=>root?.querySelectorAll?[...root.querySelectorAll(selector)]:[];
   const text=(tag,value)=>{const el=document.createElement(tag);el.textContent=String(value??'');return el;};
-  const readStorage=key=>{try{const raw=localStorage.getItem(key);return raw&&raw.length<=320000?raw:null;}catch{return null;}};
+  const readStorage=key=>{try{return localStorage.getItem(key);}catch{return null;}};
   const textRuntime=()=>window.AI_LEARN_TEXT_GENERATION_API||null;
 
   function activeModel(){
@@ -119,9 +119,10 @@
       const originalState=String(section.dataset.state||'empty'),originalStateLabel=stateLabel?stateLabel.textContent:'',originalReview=review?review.textContent:'';
       const key='learn-ai-section:v2:'+String(data.site_id||'default')+':'+String(subject.id||'record')+':'+String(data.revision||'unknown')+':'+id;
       const legacyKey='learn-page:v1:'+String(data.site_id||'default')+':'+String(subject.id||'record')+':'+String(data.revision||'unknown')+':'+id;
-      let loadedRaw=readStorage(key),draft=null,controller=null,legacy=null;
-      if(loadedRaw){try{draft=safeRecord(JSON.parse(loadedRaw));}catch{} if(!draft)loadedRaw=null;}
-      if(!draft){const legacyRaw=readStorage(legacyKey);if(legacyRaw){try{const candidate=JSON.parse(legacyRaw);if(candidate&&typeof candidate==='object'&&typeof candidate.body==='string'&&candidate.body.length<=50000&&typeof candidate.title==='string'&&candidate.title.length<=200)legacy=candidate;}catch{}}}
+      if(panel)window.AI_LEARN_GENERATION_UI?.bindPublicationCredit?.(panel,{storageKey:'learn-publication-credit:v1:'+String(data.site_id||'default')+':'+String(subject.id||'record')+':section:'+id});
+      let loadedRaw=readStorage(key),draft=null,legacy=null,workflow=null;
+      if(loadedRaw&&loadedRaw.length<=320000){try{draft=safeRecord(JSON.parse(loadedRaw));}catch{}}
+      if(!draft){const legacyRaw=readStorage(legacyKey);if(legacyRaw&&legacyRaw.length<=320000){try{const candidate=JSON.parse(legacyRaw);if(candidate&&typeof candidate==='object'&&typeof candidate.body==='string'&&candidate.body.length<=50000&&typeof candidate.title==='string'&&candidate.title.length<=200)legacy=candidate;}catch{}}}
       if(draft)pageDrafts.set(id,draft);
 
       function expanded(open){if(!content||!collapse)return;content.hidden=!open;collapse.setAttribute('aria-expanded',String(open));collapse.textContent=open?'Hide content':'Show content';}
@@ -142,6 +143,7 @@
           if(generate)generate.textContent='Generate Now';const panelRun=one(panel,'[data-section-ai-run]');if(panelRun)panelRun.textContent='Generate Now';if(editButton)editButton.hidden=true;if(discard)discard.hidden=true;expanded(true);
         }
         const legacyNode=one(section,'[data-section-legacy-note]');if(legacyNode)legacyNode.hidden=!!draft||!legacy;
+        workflow?.sync();
         if(panel&&draft){
           const field=one(panel,'[data-section-ai-instructions]');if(field)field.value=draft.instructions||field.value;
           const profile=draft.provenance||{};
@@ -159,18 +161,64 @@
         next=safeRecord(next);if(!next)throw new Error('The AI draft is incomplete or exceeds the local text limits.');
         let current;try{current=localStorage.getItem(key);}catch{throw new Error('Browser storage is unavailable.');}
         if(current!==expectedRaw)throw new Error('This AI draft changed in another tab. Copy your work before reloading.');
-        const raw=JSON.stringify(next);localStorage.setItem(key,raw);loadedRaw=raw;draft=next;pageDrafts.set(id,draft);apply();
+        const raw=JSON.stringify(next);try{localStorage.setItem(key,raw);}catch{throw new Error('Browser storage is unavailable; the AI section draft was not saved.');}loadedRaw=raw;draft=next;pageDrafts.set(id,draft);apply();
       }
       function selectedLensProfile(){return window.AI_LEARN_GENERATION_UI?.readLensProfile?.(panel,'section-ai')||{audiences:[],purposes:[],skills:[],roles:[]};}
-      function draftProfile(){const selected=selectedLensProfile(),audiences=selected.audiences||[],purposes=selected.purposes||[],skills=selected.skills||[],roles=selected.roles||[];return{audience:audiences[0]||'general',purpose:purposes[0]||'understand',audiences:audiences.length?audiences:['general'],purposes:purposes.length?purposes:['understand'],skills:skills.length?skills:['explain'],roles:roles.length?roles:['explainer'],depth:String(one(panel,'[data-section-ai-depth]')?.value||'balanced')};}
-      function lensValidation(){return window.AI_LEARN_GENERATION_UI?.validateLensProfile?.(selectedLensProfile())||'';}
+      function draftProfile(selected=selectedLensProfile()){const audiences=selected.audiences||[],purposes=selected.purposes||[],skills=selected.skills||[],roles=selected.roles||[];return{audience:audiences[0]||'general',purpose:purposes[0]||'understand',audiences:audiences.length?audiences:['general'],purposes:purposes.length?purposes:['understand'],skills:skills.length?skills:['explain'],roles:roles.length?roles:['explainer'],depth:String(one(panel,'[data-section-ai-depth]')?.value||'balanced')};}
       function instructions(){return String(one(panel,'[data-section-ai-instructions]')?.value||'').trim();}
-      function requestBody(){
-        const model=activeModel(),profile=draftProfile();
-        return{contract:CHAT_CONTRACT,model:model.model,user_message:userMessage(spec,profile,instructions()),context:{page_text:contextFor(data,spec,section,originalBody),page_descriptor:`AI Learn ${subject.kind||'record'} section draft · ${subject.title||subject.id||''} · ${spec.title}`},max_tokens:maxTokens(profile.depth),stream:false};
+      function requestBody(profile=draftProfile(),startState){
+        const model=activeModel(),requestInstructions=String(startState?.instructions??instructions());
+        return{contract:CHAT_CONTRACT,model:model.model,user_message:userMessage(spec,profile,requestInstructions),context:{page_text:contextFor(data,spec,section,originalBody),page_descriptor:`AI Learn ${subject.kind||'record'} section draft · ${subject.title||subject.id||''} · ${spec.title}`},max_tokens:maxTokens(profile.depth),stream:false};
       }
       function status(value,state='idle') {const node=one(panel,'[data-section-ai-status]');if(!node)return;node.dataset.state=state;node.textContent=String(value||'');}
       function flow(active){window.AI_LEARN_GENERATION_UI?.setFlowStage?.(panel,'section-ai',['context','draft','review','export'],active);}
+
+      const runtime=textRuntime();
+      workflow=runtime?.createWorkflow?.({
+        root:panel,
+        runButton:one(panel,'[data-section-ai-run]'),
+        cancelButton:one(panel,'[data-section-ai-cancel]'),
+        publishButtons:[one(panel,'[data-section-ai-publish]')],
+        readProfile:draftProfile,
+        buildRequest:requestBody,
+        getDraft:()=>draft,
+        captureRunState:()=>({storageRaw:loadedRaw,instructions:instructions()}),
+        maxDraftChars:50000,
+        status,
+        stage:flow,
+        generatingStage:'draft',
+        generatedStage:'review',
+        publishedStage:'export',
+        createDraft:({response,request,profile,startState})=>{
+          const payload=response.payload||{},now=new Date().toISOString();
+          return{contract:DRAFT_CONTRACT,title:originalTitle,body:response.reply,instructions:String(startState?.instructions??instructions()),expanded:true,provenance:{authorship:'ai-generated',workflow_id:spec.generation.workflow_id||WORKFLOW,skill:spec.generation.skill||'record-synthesis',agent:spec.generation.agent||'learning-section-agent',model:response.model?.model||request.model,generated_at:now,base_revision:String(data.revision||''),audience:profile.audience,purpose:profile.purpose,audiences:profile.audiences,purposes:profile.purposes,skills:profile.skills,roles:profile.roles,depth:profile.depth,request_id:typeof payload.id==='string'?payload.id.slice(0,200):''}};
+        },
+        saveDraft:(next,context)=>save(next,context.startState?.storageRaw),
+        onGenerated:()=>{announce('AI draft generated for '+originalTitle+'. Review it before export or publication.');content.scrollIntoView({block:'nearest'});},
+        publication:{
+          statusNode:one(panel,'[data-section-ai-publication-status]'),
+          linkNode:one(panel,'[data-section-ai-publication-link]'),
+          buildRequest:(current,contributor)=>({contract:'learn.publication-request.v1',action:'publish',draft:current,base_revision:String(data.revision||''),subject_id:String(subject.id||''),section_id:String(id||''),section_title:originalTitle,contributor})
+        },
+        messages:{
+          copyModelMissing:'Select an Assistant model before copying the generation request.',
+          copySuccess:'Generation request copied. No network request was sent.',
+          copyFailure:'Clipboard is unavailable. The draft settings remain editable.',
+          runtimeUnavailable:'AI generation runtime helpers are unavailable on this page.',
+          generateModelMissing:'Select an Assistant model before generating this section.',
+          generating:({model})=>'Generating a private AI draft with '+String(model?.label||'the selected model')+'…',
+          oversize:'The generated section exceeds the 50,000-character draft limit.',
+          generated:'AI draft ready for review. Edit or regenerate it; published catalog text is unchanged.',
+          cancelled:'Generation cancelled. No draft was changed.',
+          generateFailed:({error})=>'Unable to generate this section: '+String(error?.message||error),
+          publishMissingDraft:'Generate or restore this section draft before opening a pull request.',
+          publishConfirm:'Send this reviewed section draft to the configured publication service for a JSON-only pull request?',
+          publishing:'Sending reviewed section for repository validation…',
+          published:({receipt})=>receipt.mode==='stub'?'Publication validated in stub mode; no GitHub write occurred.':'Section queued for repository validation and human review.',
+          publicationStatusFailed:({error})=>'Publication failed; this section draft remains local. '+String(error?.message||error),
+          publishFailed:({error})=>'Unable to open publication review: '+String(error?.message||error)
+        }
+      })||null;
 
       collapse?.addEventListener('click',()=>expanded(content.hidden));
       if(spec.generation?.mode!=='chat'){apply();return;}
@@ -184,24 +232,11 @@
       one(section,'[data-cancel-edit]')?.addEventListener('click',()=>{edit.hidden=true;editButton?.focus();});
       edit?.addEventListener('submit',event=>{event.preventDefault();if(!draft)return;try{const now=new Date().toISOString(),next={...draft,title:edit.elements.title.value.trim(),body:edit.elements.body.value,instructions:edit.elements.instructions.value,expanded:edit.elements.expanded.checked,provenance:{...draft.provenance,authorship:'ai-assisted',edited_at:now}};save(next);edit.hidden=true;announce('AI draft changes saved in this browser. Published catalog text is unchanged.');}catch(error){announce(error.message);}});
       discard?.addEventListener('click',()=>{if(!draft)return;if(!window.confirm('Discard this browser-local AI draft and return to the published catalog text?'))return;try{if(localStorage.getItem(key)!==loadedRaw)throw new Error('This AI draft changed in another tab. Reload before discarding it.');localStorage.removeItem(key);loadedRaw=null;draft=null;pageDrafts.delete(id);if(edit)edit.hidden=true;if(panel)panel.hidden=true;apply();announce('AI draft discarded. Published catalog text restored.');}catch(error){announce(error.message);}});
-      one(panel,'[data-section-ai-copy]')?.addEventListener('click',async()=>{const lensError=lensValidation();if(lensError){status(lensError,'warning');return;}const request=requestBody();if(!request.model){status('Select an Assistant model before copying the generation request.','warning');return;}try{await navigator.clipboard.writeText(JSON.stringify(request,null,2));status('Generation request copied. No network request was sent.','success');}catch{status('Clipboard is unavailable. The draft settings remain editable.','warning');}});
-      one(panel,'[data-section-ai-publish]')?.addEventListener('click',async()=>{if(!draft){status('Generate or restore this section draft before opening a pull request.','warning');return;}if(!window.confirm('Send this reviewed section draft to the configured publication service for a JSON-only pull request?'))return;const button=one(panel,'[data-section-ai-publish]'),pubStatus=one(panel,'[data-section-ai-publication-status]'),pubLink=one(panel,'[data-section-ai-publication-link]');button.disabled=true;if(pubStatus)pubStatus.textContent='Sending reviewed section for repository validation…';if(pubLink){pubLink.hidden=true;pubLink.replaceChildren();}try{const ui=window.AI_LEARN_GENERATION_UI,contributor=ui?.publicationContributor?.(panel)||{display_name:'Anonymous'};const receipt=await ui?.submitPublication?.({contract:'learn.publication-request.v1',action:'publish',draft,base_revision:String(data.revision||''),subject_id:String(subject.id||''),section_id:String(id||''),section_title:originalTitle,contributor});if(!receipt)throw new Error('Publication transport is unavailable.');if(pubStatus)pubStatus.textContent=window.AI_LEARN_GENERATION_UI?.publicationReceiptMessage?.(receipt)||String(receipt.message||'Publication request completed.');if(receipt.workflow_url&&pubLink){const a=document.createElement('a');a.href=receipt.workflow_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Review GitHub Actions run';pubLink.appendChild(a);pubLink.hidden=false;}flow('export');status(receipt.mode==='stub'?'Publication validated in stub mode; no GitHub write occurred.':'Section queued for repository validation and human review.','success');}catch(error){if(pubStatus)pubStatus.textContent='Publication failed; this section draft remains local. '+String(error?.message||error);status('Unable to open publication review: '+String(error?.message||error),'error');}finally{button.disabled=false;}});
-      one(panel,'[data-section-ai-cancel]')?.addEventListener('click',()=>controller?.abort());
-      one(panel,'[data-section-ai-run]')?.addEventListener('click',async()=>{
-        const runtime=textRuntime(),lensError=lensValidation(),request=requestBody(),model=activeModel();
-        if(lensError){status(lensError,'warning');return;}
-        if(!runtime||typeof runtime.run!=='function'){status('AI generation runtime helpers are unavailable on this page.','warning');return;}
-        if(!request.model){status('Select an Assistant model before generating this section.','warning');return;}
-        const expectedRaw=loadedRaw,run=one(panel,'[data-section-ai-run]'),cancel=one(panel,'[data-section-ai-cancel]');
-        controller=typeof AbortController==='function'?new AbortController():null;run.disabled=true;if(cancel)cancel.hidden=!controller;flow('draft');status('Generating a private AI draft with '+model.label+'…','working');
-        try{
-          const response=await runtime.run({userMessage:request.user_message,pageText:request.context.page_text,pageDescriptor:request.context.page_descriptor,maxTokens:request.max_tokens,signal:controller?.signal});
-          const body=response.reply;if(body.length>50000)throw new Error('The generated section exceeds the 50,000-character draft limit.');
-          const payload=response.payload||{},profile=draftProfile(),now=new Date().toISOString(),next={contract:DRAFT_CONTRACT,title:originalTitle,body,instructions:instructions(),expanded:true,provenance:{authorship:'ai-generated',workflow_id:spec.generation.workflow_id||WORKFLOW,skill:spec.generation.skill||'record-synthesis',agent:spec.generation.agent||'learning-section-agent',model:response.model?.model||request.model,generated_at:now,base_revision:String(data.revision||''),audience:profile.audience,purpose:profile.purpose,audiences:profile.audiences,purposes:profile.purposes,skills:profile.skills,roles:profile.roles,depth:profile.depth,request_id:typeof payload.id==='string'?payload.id.slice(0,200):''}};
-          save(next,expectedRaw);flow('review');status('AI draft ready for review. Edit or regenerate it; published catalog text is unchanged.','success');announce('AI draft generated for '+originalTitle+'. Review it before export or publication.');content.scrollIntoView({block:'nearest'});
-        }catch(error){if(error?.name==='AbortError')status('Generation cancelled. No draft was changed.','warning');else status('Unable to generate this section: '+String(error?.message||error),'error');}
-        finally{controller=null;run.disabled=false;if(cancel)cancel.hidden=true;}
-      });
+      const workflowAction=action=>{const fn=workflow?.[action];if(typeof fn==='function')return fn();status('AI generation runtime helpers are unavailable on this page.','warning');return false;};
+      one(panel,'[data-section-ai-copy]')?.addEventListener('click',()=>workflowAction('copyRequest'));
+      one(panel,'[data-section-ai-publish]')?.addEventListener('click',()=>workflowAction('publish'));
+      one(panel,'[data-section-ai-cancel]')?.addEventListener('click',()=>workflowAction('cancel'));
+      one(panel,'[data-section-ai-run]')?.addEventListener('click',()=>workflowAction('generate'));
       apply();if(panel)flow(draft?'review':'draft');
     });
     return{drafts:pageDrafts};

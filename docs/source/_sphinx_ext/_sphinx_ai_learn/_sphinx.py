@@ -22,6 +22,8 @@ from sphinx.errors import ConfigError
 from sphinx.util import logging as sphinx_logging
 from sphinx.util.docutils import SphinxDirective
 
+from .._search_variant import SEARCH_VARIANTS
+from . import __version__
 from ._generation import feedback_outdated_documents
 from ._materialize import materialize
 from ._pages import TEMPLATES, setup_pages
@@ -37,10 +39,12 @@ _MAX_DOMAINS = 100
 _MAX_SECTIONS = 32
 _PRESET_FIELDS = 2
 _MAX_TITLE = 200
+_MAX_SUBSCRIBE_URL = 2048
 
 _ASSETS = Path(__file__).parent / "_static"
 _LOGGER = sphinx_logging.getLogger(__name__)
 _ENV_SCHEMA_REVISION = "learn-json-materializer-v3"
+_ENV_VERSION = 1
 
 
 class LearnRoot(nodes.General, nodes.Element):
@@ -194,6 +198,15 @@ def _resolve_routes(app, doctree, docname):
         }
 
 
+def _append_unique_config_path(config, name, path):
+    """Append one Sphinx path exactly once, preserving author order."""
+    values = list(getattr(config, name, ()) or ())
+    value = str(path)
+    if value not in values:
+        values.append(value)
+    setattr(config, name, values)
+
+
 def _configure(  # ruff: ignore[too-many-branches]
     app,
     config,
@@ -201,7 +214,9 @@ def _configure(  # ruff: ignore[too-many-branches]
     """Validate runtime config, then materialize canonical JSON before discovery."""
     if config.ai_learn_runtime not in ("none", "assistant"):
         raise ConfigError("ai_learn_runtime must be 'none' or 'assistant'")
-    if config.ai_learn_explorer_search_variant not in ("pill-overflow", "classic"):
+    if not isinstance(config.ai_learn_media, bool):
+        raise ConfigError("ai_learn_media must be true or false")
+    if config.ai_learn_explorer_search_variant not in SEARCH_VARIANTS:
         raise ConfigError(
             "ai_learn_explorer_search_variant must be 'pill-overflow' or 'classic'"
         )
@@ -213,14 +228,28 @@ def _configure(  # ruff: ignore[too-many-branches]
     youtube_subscribe_url = config.ai_learn_youtube_subscribe_url
     if not isinstance(youtube_subscribe_url, str):
         raise ConfigError("ai_learn_youtube_subscribe_url must be a string")
+    if len(youtube_subscribe_url) > _MAX_SUBSCRIBE_URL or any(
+        ord(ch) < 32 or ord(ch) == 127  # ruff: ignore[magic-value-comparison]
+        for ch in youtube_subscribe_url  # lint
+    ):
+        raise ConfigError(
+            "ai_learn_youtube_subscribe_url is too long or contains control characters"
+        )
     if youtube_subscribe_url:
-        parsed = urlsplit(youtube_subscribe_url)
+        try:
+            parsed = urlsplit(youtube_subscribe_url)
+            port = parsed.port
+        except ValueError as exc:
+            raise ConfigError(
+                "ai_learn_youtube_subscribe_url must be a valid HTTPS youtube.com URL"
+            ) from exc
         if (
             parsed.scheme != "https"
             or parsed.username
             or parsed.password
             or parsed.hostname
             not in {"youtube.com", "www.youtube.com", "m.youtube.com"}
+            or port not in (None, 443)
         ):
             raise ConfigError(
                 "ai_learn_youtube_subscribe_url must be an HTTPS youtube.com URL"
@@ -248,6 +277,8 @@ def _configure(  # ruff: ignore[too-many-branches]
         )
     ):
         raise ConfigError("ai_learn_domains must contain domain identifiers")
+    if len(set(config.ai_learn_domains)) != len(config.ai_learn_domains):
+        raise ConfigError("ai_learn_domains contains duplicate identifiers")
     presets = config.ai_learn_sections
     if not isinstance(presets, (list, tuple)) or not 1 <= len(presets) <= _MAX_SECTIONS:
         raise ConfigError("ai_learn_sections must contain 1 to 32 ID/title pairs")
@@ -289,8 +320,8 @@ def _configure(  # ruff: ignore[too-many-branches]
         len(changed),
         tree.catalog["revision"],
     )
-    config.html_static_path = [*config.html_static_path, str(_ASSETS)]
-    config.templates_path = [*config.templates_path, str(TEMPLATES)]
+    _append_unique_config_path(config, "html_static_path", _ASSETS)
+    _append_unique_config_path(config, "templates_path", TEMPLATES)
 
 
 def _environment_signature(app):
@@ -352,6 +383,34 @@ def _purge_feedback_consumer(app, env, docname):
         consumers.pop(record_id, None)
 
 
+def _merge_feedback_consumers(app, env, docnames, other):
+    """Replace master feedback-consumer state for documents read by a worker.
+
+    ``other`` can carry cached registrations for documents outside the worker's
+    read set.  The master can also still carry registrations from the previous
+    parse of a document.  First purge every document in ``docnames`` from the
+    master, then merge only the worker's current registrations for that exact
+    read set.  This gives parallel reads the same replace-on-reread semantics as
+    serial ``env-purge-doc`` + parse, without importing unrelated worker cache.
+    """
+    worker_docs = set(docnames or ())
+    if not worker_docs:
+        return
+    for docname in worker_docs:
+        _purge_feedback_consumer(app, env, docname)
+    incoming = getattr(other, "_ai_learn_feedback_consumers", None) or {}
+    if not incoming:
+        return
+    consumers = getattr(env, "_ai_learn_feedback_consumers", None)
+    if consumers is None:
+        consumers = {}
+        env._ai_learn_feedback_consumers = consumers
+    for record_id, names in incoming.items():
+        selected = set(names or ()) & worker_docs
+        if selected:
+            consumers.setdefault(record_id, set()).update(selected)
+
+
 def _page_assets(app, pagename, templatename, context, doctree):
     if doctree is not None and any(doctree.findall(LearnRoot)):
         app.add_css_file("ai-learn.css")
@@ -362,7 +421,8 @@ def setup_extension(app):
     """Wire public hooks without importing or starting the proxy application."""
     if getattr(app, "_ai_learn_registered", False):
         return {
-            "version": "0.38.0",
+            "version": __version__,
+            "env_version": _ENV_VERSION,
             "parallel_read_safe": True,
             "parallel_write_safe": True,
         }
@@ -370,20 +430,28 @@ def setup_extension(app):
     # Reuse the sibling namespace guard without importing a public Python library.
 
     import_module(root + "._extension_setup").check_namespace(app, root)
-    app._ai_learn_registered = True
+    # Canonical learn.page.v1 indexes may materialize typed sphinx-design
+    # grid/card directives. Declare the dependency here rather than relying on
+    # a project conf.py ordering accident; Sphinx setup_extension is idempotent.
+    app.setup_extension("sphinx_design")
     app.add_config_value("ai_learn_content_root", "learn-ai", "env")
     app.add_config_value("ai_learn_site_id", "scikit-plots-learn", "env")
     app.add_config_value("ai_learn_runtime", "none", "env")
     app.add_config_value("ai_learn_explorer_search_variant", "pill-overflow", "env")
     app.add_config_value("ai_learn_media", False, "env")
     app.add_config_value("ai_learn_youtube_subscribe_url", "", "env")
-    if app.config.ai_learn_media:
+    media = app.config.ai_learn_media
+    if not isinstance(media, bool):
+        raise ConfigError("ai_learn_media must be true or false")
+    if media:
         app.setup_extension(root + "._sphinx_gallery_grid")
         app.setup_extension(root + "._sphinxcontrib_youtube")
     app.add_config_value("ai_learn_domains", list(DOMAINS), "env")
     app.add_config_value("ai_learn_sections", list(SECTION_PRESETS), "env")
     # Config access honors both conf.py and command-line overrides.
     runtime = app.config.ai_learn_runtime
+    if runtime not in ("none", "assistant"):
+        raise ConfigError("ai_learn_runtime must be 'none' or 'assistant'")
     if runtime == "assistant":
         app.setup_extension(root + "._sphinx_ai_assistant")
     app.add_node(
@@ -400,10 +468,16 @@ def setup_extension(app):
     app.connect("env-get-outdated", _outdated_learn_documents)
     app.connect("env-updated", _remember_environment_signature)
     app.connect("env-purge-doc", _purge_feedback_consumer)
+    app.connect("env-merge-info", _merge_feedback_consumers)
     app.connect("html-page-context", _page_assets)
     app.connect("doctree-resolved", _resolve_routes)
+    # Mark registration complete only after every config value, dependency,
+    # node, directive and event hook succeeded.  A setup exception must never
+    # make a later call look successfully registered on a half-configured app.
+    app._ai_learn_registered = True
     return {
-        "version": "0.38.0",
+        "version": __version__,
+        "env_version": _ENV_VERSION,
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

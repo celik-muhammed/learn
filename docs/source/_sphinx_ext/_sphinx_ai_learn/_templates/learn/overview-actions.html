@@ -77,8 +77,16 @@
   {% set lens_scope = 'overview' %}
   {% set lens_variant = 'overview' %}
   {% include "learn/ai-lens-profile.html" %}
+  <label class="learn-generation-field">Depth
+    <select name="ai-depth" data-overview-depth><option value="concise">Concise</option><option value="balanced" selected>Balanced</option><option value="deep">Deep</option></select>
+  </label>
   <label class="learn-section-ai-instructions">Additional guidance<textarea data-overview-instructions maxlength="4000" rows="4" placeholder="Optional emphasis, questions, constraints, or evidence boundaries."></textarea></label>
-  <div class="learn-actions learn-section-ai-actions"><button type="button" class="learn-primary" data-overview-run>Generate AI Overview</button><button type="button" data-overview-cancel hidden>Cancel</button><button type="button" data-overview-copy-request>Copy request</button><button type="button" data-overview-close>Close</button></div>
+  {% set publication_credit_help = 'Nickname or name reserved for the reviewed publication handoff. Leave blank for Anonymous. Use only a name you want published; do not enter email addresses or other private contact details. This credit is stored separately from generation context and is never sent to the AI model.' %}
+  {% include "learn/publication-credit.html" %}
+  {% set generation_action_scope = 'overview' %}
+  {% set generation_action_run_label = 'Generate AI Overview' %}
+  {% set generation_action_copy_suffix = '-request' %}
+  {% include "learn/text-generation-actions.html" %}
   <p class="learn-section-ai-status" data-overview-status role="status" aria-live="polite" aria-atomic="true">Ready to create a private AI overview.</p>
-  <article class="learn-ai-overview-result" data-overview-result hidden><div class="learn-section-ai-heading"><div><p class="learn-kicker">Private AI draft</p><h4>Generated overview</h4></div><span class="learn-section-ai-badge" data-overview-provenance>AI-generated</span></div><div class="learn-prose" data-overview-output></div>{% include "learn/publication-credit.html" %}<div class="learn-actions"><button type="button" data-overview-copy-result>Copy overview</button><button type="button" data-overview-download>Download handoff</button><button type="button" data-overview-discard>Discard draft</button><button type="button" class="learn-primary" data-overview-publish>Open pull request</button></div><p class="learn-meta" data-overview-publication-status role="status" aria-live="polite">Local only · publication not requested.</p><p class="learn-meta" data-overview-publication-link hidden></p></article>
+  <article class="learn-ai-overview-result" data-overview-result hidden><div class="learn-section-ai-heading"><div><p class="learn-kicker">Private AI draft</p><h4>Generated overview</h4></div><span class="learn-section-ai-badge" data-overview-provenance>AI-generated</span></div><div class="learn-prose" data-overview-output></div><div class="learn-actions"><button type="button" data-overview-copy-result>Copy overview</button><button type="button" data-overview-download>Download handoff</button><button type="button" data-overview-discard>Discard draft</button><button type="button" class="learn-primary" data-overview-publish>Open pull request</button></div><p class="learn-meta" data-overview-publication-status role="status" aria-live="polite">Local only · publication not requested. Contributor credit above is used only if you open a reviewed pull request.</p><p class="learn-meta" data-overview-publication-link hidden></p></article>
 </div>
