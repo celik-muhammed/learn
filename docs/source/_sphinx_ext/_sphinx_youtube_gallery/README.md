@@ -294,6 +294,18 @@ extra wrapper.
 
 ## Live reader controls
 
+The search shell uses the same shared presentation contract as `gallery-grid`.
+`collection_search_variant = "pill-overflow"` (default) gives the pill field +
+circular overflow button; `"classic"` gives the rounded field + chevron. One
+gallery may override the presentation explicitly with `:search-variant:` (or
+`:search_variant:`), or concisely on the activating option itself, for example
+`:searchable: classic` or `:interactive: pill-overflow`. Valueless activation
+continues to inherit the global default. Repeating the same choice is harmless;
+conflicting choices fail the build. A standalone variant option is
+presentation-only and does not make a static gallery live. `_sphinx_youtube_core`
+and `_sphinxcontrib_youtube` stay UI-free; the typed gallery forwards this option
+to the single collection controller.
+
 Use `searchable` for search alone:
 
 ```rst

@@ -101,6 +101,7 @@ def metadata_node(records, options):
     payload = {
         "version": 1,
         "interactive": "interactive" in options,
+        "searchVariant": options.get("search-variant", "pill-overflow"),
         "facets": list(_field_tuple(options.get("filter-fields", ()))),
         "sorts": list(_field_tuple(options.get("sort-fields", ("title",)))),
         "records": records,

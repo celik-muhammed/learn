@@ -22,6 +22,7 @@ from importlib import import_module
 _EXPORTS = {
     "CONTAINER_CLASS": (".assets", "CONTAINER_CLASS"),
     "SEARCHABLE_CLASS": (".assets", "SEARCHABLE_CLASS"),
+    "SEARCH_VARIANTS": (".assets", "SEARCH_VARIANTS"),
     "ensure_assets": (".setup", "ensure_assets"),
     "SECTION_STYLES": (".sections", "SECTION_STYLES"),
     "render_sections": (".sections", "render_sections"),

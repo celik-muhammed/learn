@@ -24,6 +24,7 @@ from docutils.parsers.rst import directives
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
 
+from .._search_variant import resolve_search_variant, search_variant_option
 from ._generation import section_generation_feedback, section_generation_id
 from ._materialize import DIRECTORIES, LABELS, page_size
 from ._registry import (
@@ -1247,7 +1248,11 @@ class UserLibraryDirective(SphinxDirective):
 
 class ExplorerDirective(SphinxDirective):
     required_arguments = 1
-    option_spec: ClassVar = {"offset": directives.nonnegative_int}
+    option_spec: ClassVar = {
+        "offset": directives.nonnegative_int,
+        "search-variant": search_variant_option,
+        "search_variant": search_variant_option,
+    }
 
     def run(self):
         kind = self.arguments[0]
@@ -1261,6 +1266,14 @@ class ExplorerDirective(SphinxDirective):
         offset = self.options.get("offset", 0)
         selected = records[offset : offset + size]
         page = offset // size
+        try:
+            search_control_variant = resolve_search_variant(
+                self.options,
+                self.config.ai_learn_explorer_search_variant,
+                activation_keys=(),
+            )
+        except ValueError as exc:
+            raise self.error(str(exc)) from exc
         context = {
             "kind": kind,
             "label": LABELS[kind],
@@ -1276,7 +1289,7 @@ class ExplorerDirective(SphinxDirective):
             ),
             "bookmarks_href": "#",
             "collections_href": "#",
-            "search_control_variant": self.config.ai_learn_explorer_search_variant,
+            "search_control_variant": search_control_variant,
         }
         catalog = lookup(self)
         if kind == "topic":

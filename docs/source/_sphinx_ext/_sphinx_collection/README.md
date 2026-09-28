@@ -17,9 +17,42 @@ they must not create a second search toolbar.
 
 ## Compact control contract
 
-The browser enhancement creates one inline control surface:
+The browser enhancement has one controller and two presentation variants.
+`collection_search_variant = "pill-overflow"` is the site-wide default;
+`"classic"` keeps the original rounded-rectangle field and chevron. A specific `gallery-grid` / `youtube-gallery` may override the presentation with
+`:search-variant:` (or the underscore alias `:search_variant:`). Authors may also
+use the concise activation forms `:searchable: classic` or
+`:interactive: pill-overflow`; the old valueless forms remain valid and inherit the
+global default. If multiple forms specify different variants, the build fails closed.
+A standalone variant option never activates controls by itself: `:searchable:` or
+`:interactive:` remains required.
+
+Equivalent per-directive examples:
+
+```rst
+.. gallery-grid::
+   :interactive: classic
+
+.. gallery-grid::
+   :interactive:
+   :search_variant: classic
+
+.. youtube-gallery:: ./_data/youtube.yaml
+   :searchable: pill-overflow
+```
+
+For `ai-topic-explorer`, search is intrinsic to the explorer, so only the
+presentation override is needed: `:search_variant: classic` (or the hyphenated
+alias). Its fallback remains `ai_learn_explorer_search_variant`.
 
 ```text
+pill-overflow (default)
+result metadata
+[ pill search input               | search icon ] [ ⋮ ]
+---------------------------------------------------------
+long-form controls when expanded
+
+classic
 result metadata
 [ search input                    | search icon ] [ chevron ]
 -------------------------------------------------------------
@@ -41,8 +74,8 @@ when closed. **Restore original gallery** is visually separated from ordinary
 view reset because it also clears local additions and saved preferences.
 
 There is no redundant Close button or explanatory footer. Escape collapses the
-outer panel and returns focus to the disclosure; the chevron remains the
-primary explicit open/close control. The panel does not auto-close on arbitrary
+outer panel and returns focus to the disclosure; the overflow/chevron control
+remains the primary explicit open/close control. The panel does not auto-close on arbitrary
 outside pointer activity.
 
 ## Progressive-enhancement invariant

@@ -61,6 +61,8 @@
     {% set authority_status = 'Checking shared Assistant model context and server-owned Image rendering authority…' %}
     {% include "learn/generation-authority.html" %}
 
+    {% set publication_credit_help = 'Optional public credit reserved for a later reviewed publication handoff. Leave blank for Anonymous. Use only a name you want published; do not enter email addresses or other private contact details. It is stored only with this browser studio state and is never sent to the Image generation runtime.' %}
+    {% include "learn/publication-credit.html" %}
     {% set generation_kind = 'whiteboard' %}
     {% include "learn/generation-actions.html" %}
     {% set status_initial_state = 'idle' %}

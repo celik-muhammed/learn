@@ -52,6 +52,7 @@ from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 from yaml import safe_dump
 
+from .._search_variant import resolve_search_variant, search_variant_option
 from .._sphinx_collection import (
     CONTAINER_CLASS,
     SECTION_STYLES,
@@ -259,11 +260,17 @@ class YouTubeGalleryDirective(SphinxDirective):
     section-style : {"auto", "section", "rubric"}
         Use real sections where allowed, otherwise rubrics. Explicit section
         mode warns when it must fall back; auto falls back quietly.
-    searchable : flag
+    searchable : flag or {"pill-overflow", "classic"}
         Add local search to emitted cards without enabling facet/sort controls.
-    interactive : flag
+        An optional value selects the search-shell presentation for this gallery.
+    interactive : flag or {"pill-overflow", "classic"}
         Add local search, available field filters, sorting, counts and Reset.
+        An optional value selects the search-shell presentation for this gallery.
         Controls act on rendered cards only and are not enabled in list mode.
+    search-variant : {"pill-overflow", "classic"}
+        Presentation override for the shared collection search shell. The
+        site-wide fallback is ``collection_search_variant``; this option does
+        not activate controls without ``searchable`` or ``interactive``.
     filter-fields : comma-separated field names
         Metadata fields for live dropdowns, e.g. ``channel,tags``. Fields with
         no values are omitted. Multiple selected fields combine with AND.
@@ -333,7 +340,9 @@ class YouTubeGalleryDirective(SphinxDirective):
         "view": _view_choice,
         "columns": directives.unchanged,
         "grid-columns": directives.unchanged,
-        "interactive": directives.flag,
+        "interactive": search_variant_option,
+        "search-variant": search_variant_option,
+        "search_variant": search_variant_option,
         "filter-fields": field_names,
         "sort-fields": field_names,
         "search-fields": field_names,
@@ -346,7 +355,7 @@ class YouTubeGalleryDirective(SphinxDirective):
         "section-style": lambda argument: directives.choice(
             (argument or "auto").strip().lower(), SECTION_STYLES
         ),
-        "searchable": directives.flag,
+        "searchable": search_variant_option,
         "search-label": directives.unchanged,
         "collection-id": collection_id,
     }
@@ -761,6 +770,16 @@ class YouTubeGalleryDirective(SphinxDirective):
         for key in ("search-label", "collection-id"):
             if key in self.options:
                 options[key] = self.options[key]
+        if any(
+            key in self.options
+            for key in ("searchable", "interactive", "search-variant", "search_variant")
+        ):
+            try:
+                options["search-variant"] = resolve_search_variant(
+                    self.options, self.config.collection_search_variant
+                )
+            except ValueError as exc:
+                raise self.error(str(exc)) from exc
 
         def option_line(key: str, value: Any, indent: str = "") -> str:
             if value is None:

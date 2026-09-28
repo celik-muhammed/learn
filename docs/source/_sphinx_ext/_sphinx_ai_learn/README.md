@@ -4,7 +4,9 @@
 site. Canonical content lives below `docs/source/learn-ai` as validated JSON.
 The extension deterministically materializes one sibling RST file for every
 canonical JSON file during Sphinx `config-inited`; normal Sphinx rendering then
-produces HTML or another builder output.
+produces HTML or another builder output. Typed `design_grid` pages activate the
+`sphinx_design` dependency through the extension itself, so correctness does not
+depend on a project's extension-list ordering.
 
 ```text
 *.json                     canonical repository authority
@@ -40,6 +42,16 @@ same build. The materializer validates the whole JSON tree, writes only changed
 extension-owned RST, prunes only stale extension-owned RST, and records the
 semantic content digest for Sphinx environment invalidation.
 
+The extension also owns custom feedback-dependency state in the Sphinx build
+environment. Its setup metadata therefore carries an explicit `env_version`, and
+parallel reads use `env-purge-doc` plus `env-merge-info` with replace-on-reread
+semantics: worker docnames are removed from the master dependency map before the
+worker's current registrations are merged. This prevents stale record→document
+dependencies from surviving cached or parallel rebuilds. Optional YouTube thumbnail
+state follows the same version/purge/merge rule when `ai_learn_media=True`; its
+environment schema is separately versioned so changes in thumbnail-cache semantics
+invalidate old Sphinx pickles.
+
 ## Canonical contracts
 
 Repository JSON uses five source contracts:
@@ -54,6 +66,41 @@ Repository JSON uses five source contracts:
 
 `learn.catalog.v3` is only the validated normalized in-memory graph assembled
 from that JSON tree. There is no repository `catalog.json` input.
+
+### Optional Sphinx-Design page grids
+
+`learn.page.v1` may declare a typed `design_grid` projection. This is the only
+canonical JSON contract that may describe page layout; record/section bodies remain
+plain data and can never inject RST directives. `design_grid` maps a bounded subset
+of Sphinx-Design `grid` / `grid-item-card` options plus nested toctrees into derived
+RST. Raw RST, arbitrary directive names, image/link directives, unsafe docnames and
+unbounded class/options are rejected. The field is optional, so omitting it preserves
+the existing page renderer.
+
+```json
+{
+  "design_grid": {
+    "columns": [1, 1, 1, 1],
+    "items": [
+      {
+        "title": "topics",
+        "card": {"padding": 2, "columns": [12, 12, 6, 6]},
+        "toctree": {"maxdepth": 2, "children": ["topics/index"]}
+      }
+    ]
+  }
+}
+```
+
+Supported grid options are responsive `columns`, `gutter`, `margin`, `padding`,
+`outline`, `reverse`, `class_container` and `class_row`. Cards support responsive
+`columns`/`margin`/`padding`, child direction/alignment, outline, text alignment,
+shadow, and bounded class hooks. Nested toctrees support safe child docnames,
+`maxdepth`, `hidden`, `titlesonly` and a plain-text caption.
+For the root page, a declared `design_grid` must cover `children` exactly once and
+in the same order. Every nested toctree target must resolve to another canonical
+JSON-owned document, so layout typos and omissions fail during materialization rather
+than becoming broken or orphaned navigation at Sphinx build time.
 
 ## Record routes and section composition
 
@@ -257,8 +304,10 @@ only selects directives and structural classes.
   for advanced filters. `ai_learn_explorer_search_variant` controls presentation
   only: `pill-overflow` (default) uses a pill search field plus circular vertical
   overflow button, while `classic` retains the rounded-rectangle field plus
-  chevron disclosure. Both variants use the same controller, filter panel, URL
-  state, keyboard semantics, and accessible labels; do not fork search behavior by
+  chevron disclosure. One `ai-topic-explorer` may override the global default with
+  `:search-variant:` or `:search_variant:`; conflicting aliases fail the build.
+  Both variants use the same controller, filter panel, URL state, keyboard
+  semantics, and accessible labels; do not fork search behavior by
   variant or modality. Typing in the query field filters immediately and updates
   URL state; submit/Enter remains available as an equivalent accessible action.
   IME composition is allowed to finish before filtering. Advanced category,
@@ -391,12 +440,31 @@ visible authority picker, including hidden nested generation panels; do not crea
 one subscription per section.
 
 Page-level AI Overview and in-place section generation use the same embedded
-Generation authority and the same lens helpers as the creation studios. Their
-visible private-generation lifecycle is rendered by
+Generation authority, lens helpers, and **text-generation workflow kernel**.
+`text-generation-ui.js::createWorkflow()` owns the mechanics that must not drift:
+profile validation, canonical request normalization, request-copy behavior,
+abort/cancel handling, bounded runtime execution, serialized run/publication busy
+states, request-time provenance snapshots, reviewed publication transport, receipt
+links, and finally-state cleanup. Text-generation token budgets are strict integers
+from 256 through 32000; malformed or oversized values fail before network I/O.
+Runtime fetches omit credentials, disable cache, and reject redirects. The canonical
+request returned for **Copy request** is the same object sent by `runRequest()`, and
+generation adapters receive the exact request-start profile/context snapshot rather
+than rereading live controls after validation. `overview-generation.js` and
+`section-generation.js` remain domain adapters: they own their context/message,
+token budget, draft contract, revision-scoped local persistence, and publication
+target. Both local-draft paths use compare-and-save semantics: a request-start
+storage snapshot may replace only the same browser value, and discard likewise
+fails closed if another tab changed the draft. Storage/quota failures never replace
+the previously reviewed in-memory draft.
+Their common five-button lifecycle bar is rendered by
+`text-generation-actions.html`; Overview-only result handoff actions remain in the
+Overview template. Their visible private-generation lifecycle is rendered by
 `generation-private-flow.html` with the shared vocabulary **Choose context →
-Generate draft → Review → Handoff**. `setFlowStage()` is the single lifecycle
-state helper. Workflow/skill/agent metadata remains separate request metadata;
-it must not masquerade as a second model-authority picker.
+Generate draft → Review → Handoff**.
+`setFlowStage()` is the single lifecycle state helper. Workflow/skill/agent
+metadata remains separate request metadata; it must not masquerade as a second
+model-authority picker.
 
 Action wording follows one operation vocabulary:
 
@@ -410,6 +478,17 @@ output settings, provider request shape, artifact rendering, and lifecycle. Do
 not merge those contracts into a universal request controller merely to reduce
 line count. Shared UI state belongs in shared primitives; provider semantics stay
 in provider-specific adapters.
+
+`generation-ui.js` owns the common browser transport for those adapters. Runtime
+requests are byte-bounded and timeout-bounded, omit browser credentials/referrers,
+disable caching, reject redirects, require HTTPS except for loopback development,
+and verify successful binary artifact MIME types before creating object URLs.
+Private runtime-library persistence stores an allow-listed display-only receipt
+schema; bearer generation/artifact capabilities and unknown authority fields are
+never persisted by the shared library. If browser storage is unavailable, safe
+receipt summaries remain available for the current tab only. Page disposal is
+BFCache-aware: `pagehide.persisted` freezes keep listeners and object URLs alive,
+while a true disposal releases subscriptions, timers, and generated URLs.
 
 These changes are presentation/runtime orchestration only. Canonical Learn JSON
 and materialized RST must remain byte-stable under this refactor.

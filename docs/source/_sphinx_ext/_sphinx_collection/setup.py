@@ -7,6 +7,8 @@ collection directive asks for them first, when a consuming extension initializes
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +23,36 @@ __all__ = ["ensure_assets", "mark_used"]
 _CSS_NAME = "sk-collection.css"
 _JS_NAME = "sk-collection.js"
 _FLAG = "_sk_collection_assets_registered"
+
+
+def _write_asset_atomic(path: Path, content: str) -> None:
+    """Replace one generated browser asset atomically only when bytes changed."""
+    data = content.encode("utf-8")
+    try:
+        if path.is_file() and path.read_bytes() == data:
+            return
+    except OSError:
+        # The normal write path below will surface the actionable warning.
+        pass
+    fd, temporary = tempfile.mkstemp(
+        prefix=path.name + ".", suffix=".tmp", dir=path.parent
+    )
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:  # ruff: ignore[suppressible-exception]
+            os.close(fd)
+        except OSError:
+            pass
+        try:  # ruff: ignore[suppressible-exception]
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def ensure_assets(app: Any) -> None:
@@ -44,12 +76,14 @@ def ensure_assets(app: Any) -> None:
     """
     if getattr(app, _FLAG, False):
         return
+    if getattr(getattr(app, "builder", None), "format", None) != "html":
+        return
 
     try:
         static_dir = Path(app.outdir) / "_static"
         static_dir.mkdir(parents=True, exist_ok=True)
-        (static_dir / _CSS_NAME).write_text(ASSET_CSS, encoding="utf-8")
-        (static_dir / _JS_NAME).write_text(ASSET_JS, encoding="utf-8")
+        _write_asset_atomic(static_dir / _CSS_NAME, ASSET_CSS)
+        _write_asset_atomic(static_dir / _JS_NAME, ASSET_JS)
         app.add_css_file(_CSS_NAME)
         # `defer` because the script only rearranges already-rendered DOM;
         # blocking the parser for it would slow down the very pages it
