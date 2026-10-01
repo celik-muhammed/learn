@@ -94,7 +94,7 @@ exclude_patterns = [  # glob-style
     "build",  # Ignore the _build directory where generated files are stored
     ## extensions
     "_sphinx_ext",
-    "scikitplot",
+    "scikitplot._externals._sphinx_ext",
     ## local test
     # "_tags",
     # "glossary",
