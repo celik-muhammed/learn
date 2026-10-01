@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Saved learning records from this browser.",
+  "hide_secondary_sidebar": true,
   "mode": "bookmarks",
   "title": "Bookmarks",
   "view": "user-library"

@@ -15,6 +15,7 @@ import pytest
 from _sphinx_ext._sphinx_ai_learn._materialize import load_content_tree
 from _sphinx_ext._sphinx_ai_learn._publication import (
     PUBLICATION_CONTRACT,
+    _project_json_tree,
     apply_publication,
     prompt_from_draft,
     skill_from_draft,
@@ -26,7 +27,7 @@ from _sphinx_ext._sphinx_ai_learn._publication import (
 from _sphinx_ext._sphinx_ai_learn._publication_cli import main as publication_cli
 from _sphinx_ext._sphinx_ai_learn._schema import LearnValidationError
 
-SOURCE = Path(__file__).resolve().parents[3] / "learn-ai"
+SOURCE = Path(__file__).resolve().parents[5] / "learn-ai"
 
 
 def _feedback_id(index=1):
@@ -91,6 +92,34 @@ def skill_draft():
             "and state when the available evidence is insufficient."
         ),
     }
+
+
+def test_publication_projection_preserves_sidebar_layout_authority(tmp_path):
+    root = _json_only_copy(tmp_path)
+    tree = load_content_tree(root)
+    record_rel, record = next(
+        (rel, row)
+        for rel, row in tree.records.items()
+        if any(ref["id"] == "summary" for ref in row["section_refs"])
+    )
+    summary_ref = next(ref for ref in record["section_refs"] if ref["id"] == "summary")
+    summary_rel = record_rel.parent / summary_ref["source"]
+
+    for rel in (record_rel, summary_rel):
+        path = root / rel
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["hide_secondary_sidebar"] = False
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    tree = load_content_tree(root)
+    projected = _project_json_tree(
+        tree, tree.catalog, tree.prompts, tree.skills
+    )
+    assert json.loads(projected[record_rel])["hide_secondary_sidebar"] is False
+    assert json.loads(projected[summary_rel])["hide_secondary_sidebar"] is False
 
 
 def test_record_draft_maps_auxiliary_topic_fields_without_rst_interpretation():
@@ -1214,7 +1243,7 @@ def test_reviewed_source_request_requires_explicit_metadata_review(tmp_path):
 
 
 def test_reviewed_publication_workflow_separates_dry_run_and_json_only_write_authority():
-    root = Path(__file__).resolve().parents[5]
+    root = Path(__file__).resolve().parents[7]
     workflow_path = root / ".github" / "workflows" / "ai-learn-publish.yml"
     text = workflow_path.read_text()
     assert "transport-test:" in text
@@ -1260,7 +1289,7 @@ def test_reviewed_publication_workflow_separates_dry_run_and_json_only_write_aut
     assert r"- Request: \`${REQUEST_ID}\`" not in text
     assert "gh pr create" in text
     assert "https://x-access-token" not in text
-    proxy = (root / "docs/source/_sphinx_ext/_sphinx_ai_assistant/_hf_spaces_proxy/app.py").read_text()
+    proxy = (root / "docs/source/scikitplot/_externals/_sphinx_ext/_sphinx_ai_assistant/_hf_spaces_proxy/app.py").read_text()
     assert "def _learn_publication_rate_identity(request: Request, *, scope: str)" in proxy
     assert "_learn_publication_local_identity_secret: bytes = secrets.token_bytes(32)" in proxy
     assert "hmac.new(" in proxy
@@ -1274,7 +1303,7 @@ def test_reviewed_publication_workflow_separates_dry_run_and_json_only_write_aut
 
 
 def test_reviewed_publication_workflow_run_blocks_are_bash_syntax_valid():
-    root = Path(__file__).resolve().parents[5]
+    root = Path(__file__).resolve().parents[7]
     workflow = (root / ".github" / "workflows" / "ai-learn-publish.yml").read_text()
     lines = workflow.splitlines()
     blocks = []
@@ -1311,7 +1340,7 @@ def test_reviewed_publication_workflow_run_blocks_are_bash_syntax_valid():
         )
 
 def test_reviewed_publication_git_askpass_is_prompt_scoped_and_fail_closed():
-    root = Path(__file__).resolve().parents[5]
+    root = Path(__file__).resolve().parents[7]
     helper = root / ".github" / "scripts" / "ai-learn-git-askpass.sh"
     assert helper.is_file()
 

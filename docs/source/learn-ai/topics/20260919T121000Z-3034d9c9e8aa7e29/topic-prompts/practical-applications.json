@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-bayesian-regression",
   "section": {
     "body": "Use BayesianRidge or ARDRegression when a linear model is appropriate and uncertainty over coefficients or predictions matters. Inspect prior assumptions and posterior uncertainty rather than treating a Bayesian label as a guarantee of calibrated uncertainty.",

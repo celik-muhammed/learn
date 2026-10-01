@@ -7,6 +7,7 @@
   "default_enabled": false,
   "description": "Explain the topic from first principles, exposing prerequisites and weak spots instead of hiding them behind jargon.",
   "empty_message": "No one has generated a Feynman explanation for this topic yet.",
+  "hide_secondary_sidebar": true,
   "id": "feynman-explanation",
   "instruction": "Teach this topic with a Feynman-style explanation from first principles. Start by naming the minimum prerequisite concepts, then define them in plain language. Build the main mechanism step by step, use a concrete example, and explain why each step follows from the previous one. Identify places where a simple explanation becomes incomplete or misleading. Finish with a short self-check: questions a learner should be able to answer if they truly understand the topic.",
   "order": 80,

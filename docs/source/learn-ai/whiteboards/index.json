@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Whiteboard",
+  "hide_secondary_sidebar": true,
   "kind": "whiteboard",
   "title": "Whiteboards",
   "view": "media-gallery"

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-stochastic-gradient-descent",
   "section": {
     "body": "Compare SGD logistic loss with LogisticRegression. Compare hinge-loss SGD with linear SVMs. Inspect learning curves and convergence sensitivity to feature scaling.",

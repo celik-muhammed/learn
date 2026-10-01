@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-probability-calibration-under-shift",
   "section": {
     "body": "Calibration is evaluated empirically against observed outcomes, and scikit-learn separates calibration from ordinary classification performance. A change in model or evaluation conditions can therefore justify a fresh calibration check. The exact trigger threshold is application-specific and should be validated with held-out or future-like data.",

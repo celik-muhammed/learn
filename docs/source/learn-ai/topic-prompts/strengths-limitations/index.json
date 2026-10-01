@@ -7,6 +7,7 @@
   "default_enabled": false,
   "description": "Give a balanced audit of practical effectiveness, theoretical soundness, evidence quality, and failure modes.",
   "empty_message": "No one has generated a strengths-and-limitations review for this topic yet.",
+  "hide_secondary_sidebar": true,
   "id": "strengths-limitations",
   "instruction": "Provide a balanced audit of this topic's strongest ideas and most important limitations. Separate strengths, limitations, boundary conditions, and known or plausible failure modes. Evaluate practical effectiveness, theoretical assumptions, evidence quality, generalizability, reproducibility, cost, and operational risk where those dimensions are relevant. Tie judgments to the available sources and label unsupported concerns as hypotheses.",
   "order": 110,

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-linear-models",
   "section": {
     "body": "Use the estimator-specific subsections and API links for current objectives, penalties, solver constraints, and examples.",

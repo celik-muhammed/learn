@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-stochastic-gradient-descent",
   "section": {
     "body": "Use SGD when the dataset is too large for expensive batch optimization or when incremental fitting is important. Standardize features, tune the loss, penalty, learning-rate schedule, and stopping rule, and monitor convergence instead of relying on defaults blindly.",

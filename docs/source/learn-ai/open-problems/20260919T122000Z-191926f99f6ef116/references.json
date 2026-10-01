@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-regularization-correlated-predictors",
   "section": {
     "body": "Use the Linear Models and Feature selection guides to anchor the penalty and selection behavior; treat any claim about which method is best for a particular dataset as an experiment to validate, not a universal rule.",

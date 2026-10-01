@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-linear-models",
   "section": {
     "body": "Covers the linear-model family used by the Lasso, Elastic-Net, Bayesian Regression, Logistic Regression, and Generalized Linear Models topics.",

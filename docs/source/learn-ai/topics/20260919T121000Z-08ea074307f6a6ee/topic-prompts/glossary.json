@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-lda-qda",
   "section": {
     "body": "Class-conditional distribution — the feature distribution modeled separately for each class.\n\nShared covariance — the LDA assumption that classes use one covariance matrix.\n\nShrinkage — regularization of covariance estimates toward a more stable target.",

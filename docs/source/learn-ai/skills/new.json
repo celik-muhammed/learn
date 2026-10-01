@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Generate a private reusable skill draft for review before publication.",
+  "hide_secondary_sidebar": true,
   "title": "Create a Skill",
   "view": "skill-create"
 }

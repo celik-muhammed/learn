@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Create a Source catalog draft from a real source URL and user-supplied source context; AI may summarize but must not invent the source.",
+  "hide_secondary_sidebar": true,
   "kind": "source",
   "title": "Add a Source",
   "view": "record-create"

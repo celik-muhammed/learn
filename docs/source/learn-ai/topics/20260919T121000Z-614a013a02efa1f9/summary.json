@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-naive-bayes",
   "section": {
     "body": "Naive Bayes classifiers combine Bayes’ rule with a conditional-independence assumption and use different likelihood models for continuous, count, binary, or categorical features.",

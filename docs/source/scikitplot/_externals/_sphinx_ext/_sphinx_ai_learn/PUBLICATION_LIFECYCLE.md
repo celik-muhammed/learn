@@ -92,6 +92,11 @@ children omit `:orphan:`, and each child owns its standalone title/anchor.
 This option changes only document composition. Canonical JSON contracts and
 result locations do not change.
 
+Every renderable canonical artifact also owns `hide_secondary_sidebar` (default
+`true`). Publication projection carries the current record and section values forward
+rather than resetting them, while newly created pages/results receive the explicit
+hidden default. This layout policy is independent of include/toctree composition.
+
 ## Reusable interaction registries
 
 Topic Prompts and Skills share these invariants:

@@ -7,6 +7,7 @@
   "default_enabled": false,
   "description": "Turn unresolved evidence and limitations into concrete experiments, extensions, datasets, or validation work.",
   "empty_message": "No one has generated future research directions for this topic yet.",
+  "hide_secondary_sidebar": true,
   "id": "future-research",
   "instruction": "Based on this topic and its available sources, propose concrete future research directions. For each direction: identify the unresolved question, explain why it matters, suggest an experiment, dataset, benchmark, theoretical extension, or deployment study, and state what result would meaningfully reduce uncertainty. Distinguish source-supported opportunities from your own clearly labeled synthesis.",
   "order": 60,

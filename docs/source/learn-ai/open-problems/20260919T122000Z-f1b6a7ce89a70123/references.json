@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-tree-complexity-generalization",
   "section": {
     "body": "Use the Decision Trees pruning and practical-use guidance, and keep feature-selection steps inside the same validation workflow if they are added.",

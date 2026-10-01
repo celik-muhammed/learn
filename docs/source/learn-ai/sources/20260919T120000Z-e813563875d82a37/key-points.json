@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-naive-bayes",
   "section": {
     "body": "Naive Bayes is simple and often effective, but the conditional-independence model is an important interpretive limitation.",

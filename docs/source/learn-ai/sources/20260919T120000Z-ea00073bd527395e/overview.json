@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-cross-decomposition",
   "section": {
     "body": "Official scikit-learn 1.9 guidance for PLS and canonical-correlation methods that model relationships between two multivariate datasets.",

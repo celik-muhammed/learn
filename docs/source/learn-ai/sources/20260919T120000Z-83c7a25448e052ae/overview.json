@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-lda-qda",
   "section": {
     "body": "Official scikit-learn 1.9 guidance for LDA and QDA classifiers and LDA dimensionality reduction.",

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-neighbors",
   "section": {
     "body": "Covers brute-force and tree-based search, distance metrics, weighting, classification/regression, and dimensionality considerations.",

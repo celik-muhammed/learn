@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-support-vector-machines",
   "section": {
     "body": "Support Vector Machines learn margin-based decision functions for classification or regression and can use kernels to represent nonlinear relationships without explicitly constructing all transformed features.",

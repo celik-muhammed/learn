@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-feature-selection",
   "section": {
     "body": "Compare univariate selection with Lasso or tree-based SelectFromModel. Put selection inside cross-validation pipelines. Measure not only score but selection stability across folds.",

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-elastic-net",
   "section": {
     "body": "Elastic-Net combines L1 and L2 regularization, retaining sparsity while allowing correlated predictors to share shrinkage more smoothly than a pure L1 penalty.",

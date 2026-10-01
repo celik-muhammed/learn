@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-feature-selection",
   "section": {
     "body": "Feature selection reduces the input set using statistical filters, model-based importance, or sequential search so downstream estimators work with a more focused representation.",

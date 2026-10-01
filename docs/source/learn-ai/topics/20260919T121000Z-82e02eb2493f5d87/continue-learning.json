@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-isotonic-regression",
   "section": {
     "body": "Compare isotonic regression with parametric monotonic relationships. Inspect sensitivity to calibration-set size. Connect standalone isotonic fitting with classifier probability calibration.",

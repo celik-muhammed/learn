@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -16,10 +16,11 @@ from _sphinx_ext._sphinx_ai_learn._materialize import (
     load_content_tree,
     materialize,
     render_materialized,
+    record_docpath,
 )
 from _sphinx_ext._sphinx_ai_learn._schema import LearnValidationError
 
-SOURCE = Path(__file__).resolve().parents[3] / "learn-ai"
+SOURCE = Path(__file__).resolve().parents[5] / "learn-ai"
 
 
 def _feedback_id(index=1):
@@ -83,6 +84,110 @@ def test_production_tree_is_one_json_to_one_rst_and_projection_is_canonical():
             add_toctree=record["add_toctree"],
         )
         assert projected == {path: (SOURCE / path).read_bytes() for path in projected}
+
+
+def test_secondary_sidebar_control_is_explicit_for_every_renderable_json():
+    renderable_contracts = {
+        "learn.page.v1",
+        "learn.record.v2",
+        "learn.section.v1",
+        "learn.section.v2",
+        "learn.topic-prompt.v1",
+        "learn.skill.v1",
+    }
+    matched = 0
+    for source in SOURCE.rglob("*.json"):
+        data = json.loads(source.read_text(encoding="utf-8"))
+        if data.get("contract") not in renderable_contracts:
+            continue
+        matched += 1
+        assert data["hide_secondary_sidebar"] is True, source
+    assert matched >= 677
+
+
+def test_secondary_sidebar_control_can_show_sidebar_at_each_rendering_layer(tmp_path):
+    root = _json_only_copy(tmp_path)
+    tree = load_content_tree(root)
+    record_rel, record = _first_topic(tree)
+    summary_ref = next(
+        ref for ref in record["section_refs"] if ref["id"] == "summary"
+    )
+    summary_rel = record_rel.parent / summary_ref["source"]
+    prompt_rel = Path("topic-prompts") / tree.prompts[0]["id"] / "index.json"
+    skill_rel = Path("skills") / tree.skills[0]["id"] / "index.json"
+
+    targets = (Path("index.json"), record_rel, summary_rel, prompt_rel, skill_rel)
+    for rel in targets:
+        path = root / rel
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["hide_secondary_sidebar"] = False
+        path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    tree, _ = materialize(root)
+    marker = ":html_theme.sidebar_secondary.remove:"
+    for rel in targets:
+        assert marker not in (root / rel.with_suffix(".rst")).read_text(encoding="utf-8")
+
+    # An untouched page and fragment still use the explicit hidden default.
+    assert marker in (root / "topics/index.rst").read_text(encoding="utf-8")
+    untouched_ref = next(
+        ref for ref in record["section_refs"] if ref["id"] != "summary"
+    )
+    untouched = record_rel.parent / PurePosixPath(untouched_ref["source"])
+    assert marker in (root / untouched.with_suffix(".rst")).read_text(encoding="utf-8")
+
+    # Include fragments keep their orphan/search metadata even when the sidebar is shown.
+    summary_rst = (root / summary_rel.with_suffix(".rst")).read_text(encoding="utf-8")
+    assert summary_rst.startswith(":orphan:\n:no-search:\n")
+    assert tree.records[record_rel]["hide_secondary_sidebar"] is False
+    assert tree.sections[summary_rel]["hide_secondary_sidebar"] is False
+
+
+def test_secondary_sidebar_control_is_optional_defaults_hidden_and_rejects_non_boolean(tmp_path):
+    root = _json_only_copy(tmp_path)
+    page = root / "index.json"
+    data = json.loads(page.read_text(encoding="utf-8"))
+    data.pop("hide_secondary_sidebar")
+    page.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    materialize(root)
+    assert ":html_theme.sidebar_secondary.remove:" in (root / "index.rst").read_text(encoding="utf-8")
+
+    data["hide_secondary_sidebar"] = "true"
+    page.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(LearnValidationError, match="hide_secondary_sidebar must be boolean"):
+        load_content_tree(root)
+
+
+def test_canonical_record_projection_writes_sidebar_controls_explicitly():
+    tree = load_content_tree(SOURCE)
+    _, record = _first_topic(tree)
+    projected = canonical_record_json_files(
+        record["subject"],
+        tree.prompts,
+        tree.skills,
+        add_toctree=record["add_toctree"],
+        hide_secondary_sidebar=False,
+        section_hide_secondary_sidebar={"summary": False},
+    )
+    index_rel = Path(record_docpath(record["subject"]) + ".json")
+    index = json.loads(projected[index_rel])
+    assert index["hide_secondary_sidebar"] is False
+    summary = json.loads(projected[index_rel.parent / "summary.json"])
+    assert summary["hide_secondary_sidebar"] is False
+    other = next(
+        path for path in projected
+        if path != index_rel and path.name != "summary.json"
+    )
+    assert json.loads(projected[other])["hide_secondary_sidebar"] is True
 
 
 def test_materialize_is_idempotent_and_preserves_unchanged_mtime(tmp_path):

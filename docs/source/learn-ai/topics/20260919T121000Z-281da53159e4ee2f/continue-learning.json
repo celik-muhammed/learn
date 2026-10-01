@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-elastic-net",
   "section": {
     "body": "Compare the coefficient paths of Lasso and Elastic-Net. Check how l1_ratio changes sparsity and stability. Evaluate whether grouped correlated features improve interpretability or merely redistribute weight.",

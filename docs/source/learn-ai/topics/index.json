@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Topic",
+  "hide_secondary_sidebar": true,
   "kind": "topic",
   "title": "Topics",
   "view": "explorer"

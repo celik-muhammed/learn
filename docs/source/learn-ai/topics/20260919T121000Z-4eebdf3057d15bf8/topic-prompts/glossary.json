@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-lasso",
   "section": {
     "body": "L1 penalty — the sum of absolute coefficient magnitudes used to regularize the fit.\n\nSparsity — a coefficient vector in which many entries are exactly zero.\n\nRegularization strength — the parameter controlling the trade-off between data fit and coefficient shrinkage.",

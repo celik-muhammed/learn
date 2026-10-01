@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-local-kernel-scalability",
   "section": {
     "body": "Measure when nonlinear SVMs, nearest-neighbor search, or Gaussian-process models cross practical training, memory, or prediction-latency limits for a target workload.",

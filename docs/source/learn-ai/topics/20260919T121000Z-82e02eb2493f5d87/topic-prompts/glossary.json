@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-isotonic-regression",
   "section": {
     "body": "Monotonicity — the requirement that fitted values move only in one direction as the predictor increases.\n\nNon-parametric fit — a model that does not assume a fixed finite-dimensional functional form.\n\nInterpolation — prediction between fitted points while preserving the monotonic relationship.",

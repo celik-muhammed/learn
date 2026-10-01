@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-local-kernel-scalability",
   "section": {
     "body": "These methods offer flexible nonlinear behavior through different mechanisms, but their computational profiles differ substantially. Dataset size, dimensionality, kernel or distance evaluation, and latency requirements can dominate model choice before small score differences matter.",

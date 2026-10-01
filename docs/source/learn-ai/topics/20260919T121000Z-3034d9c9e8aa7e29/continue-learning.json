@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-bayesian-regression",
   "section": {
     "body": "Compare BayesianRidge with ordinary regularized linear models. Examine how posterior uncertainty changes with data size. Compare linear Bayesian uncertainty with kernel-based Gaussian-process uncertainty.",

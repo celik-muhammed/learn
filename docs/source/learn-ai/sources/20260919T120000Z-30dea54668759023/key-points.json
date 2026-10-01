@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-sgd",
   "section": {
     "body": "Feature scaling, learning-rate behavior, regularization, and iteration control materially affect SGD performance.",

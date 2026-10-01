@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Create and browse reusable community prompts for topic pages.",
+  "hide_secondary_sidebar": true,
   "title": "Topic Prompts",
   "view": "prompt-library"
 }

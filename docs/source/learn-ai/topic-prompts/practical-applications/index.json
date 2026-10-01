@@ -7,6 +7,7 @@
   "default_enabled": true,
   "description": "Translate the topic into specific real-world uses while separating deployable ideas from longer-term possibilities.",
   "empty_message": "No one has generated practical applications for this topic yet.",
+  "hide_secondary_sidebar": true,
   "id": "practical-applications",
   "instruction": "Analyze this topic for practical, real-world applications grounded in its available sources.\n\n1. Identify specific use cases in relevant areas such as software, science, education, policy, operations, healthcare, robotics, energy, or finance.\n2. Label each use case as Immediate Application or Long-Term Application.\n3. Explain what part of the topic enables the application and who would use it.\n4. State the dependencies, evidence, constraints, safety concerns, costs, or scaling issues that affect readiness.\n5. Avoid generic possibilities that are not connected to the topic's actual mechanisms or evidence.",
   "order": 30,

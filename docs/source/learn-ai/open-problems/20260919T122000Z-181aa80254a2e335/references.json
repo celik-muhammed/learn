@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-latent-component-stability",
   "section": {
     "body": "Use the Cross decomposition and Feature selection guides for the estimator definitions; treat stability criteria as an explicit evaluation design choice.",

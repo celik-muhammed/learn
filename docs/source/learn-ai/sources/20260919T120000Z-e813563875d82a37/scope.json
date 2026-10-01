@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-naive-bayes",
   "section": {
     "body": "Covers conditional-independence assumptions, model variants matched to feature distributions, smoothing, and classification usage.",

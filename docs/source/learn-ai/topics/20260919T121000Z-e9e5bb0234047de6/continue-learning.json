@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-generalized-linear-models",
   "section": {
     "body": "Compare Poisson, Gamma, and Tweedie assumptions on an appropriate dataset. Check whether a transformation plus ordinary regression tells a different story. Connect logistic regression to the broader GLM perspective.",

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-generalized-linear-models",
   "section": {
     "body": "Use GLM regressors when the target distribution suggests a non-Gaussian likelihood or constrained mean, such as count-like or positive skewed outcomes. Choose the distributional power and link assumptions from domain knowledge and validate residual behavior and predictive metrics.",

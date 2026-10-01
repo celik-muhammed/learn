@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-feature-selection",
   "section": {
     "body": "Feature selection must be fitted inside the training workflow to avoid leaking information from evaluation data.",

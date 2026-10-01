@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-regularization-correlated-predictors",
   "section": {
     "body": "Lasso can produce sparse coefficients, while Elastic-Net mixes L1 and L2 regularization and is often used when correlated predictors should not be treated as fully interchangeable. Feature-selection methods introduce another choice: select variables before or with the estimator. The practical question is which behavior is most stable and useful for the data and decision context.",

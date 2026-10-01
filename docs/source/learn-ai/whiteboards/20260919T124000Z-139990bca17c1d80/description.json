@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "whiteboard-lasso-regularization",
   "section": {
     "body": "The diagram separates three ideas: fit the observed targets, penalize the total absolute coefficient magnitude, and inspect the resulting sparse coefficient vector. It is an original explanatory asset, not a reproduction of a scikit-learn figure.",

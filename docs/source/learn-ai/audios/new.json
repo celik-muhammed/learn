@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Create a narrated audio explanation from a Topic, Source, or prompt.",
+  "hide_secondary_sidebar": true,
   "kind": "audio",
   "title": "Create Audio",
   "view": "media-create"

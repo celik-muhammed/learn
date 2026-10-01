@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-gaussian-processes",
   "section": {
     "body": "Kernel — a covariance function describing how function values co-vary across inputs.\n\nPosterior predictive distribution — the distribution of predictions after conditioning on observed data.\n\nMarginal likelihood — an objective used to tune Gaussian-process kernel hyperparameters.",

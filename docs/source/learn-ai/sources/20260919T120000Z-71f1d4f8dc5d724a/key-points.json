@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-decision-trees",
   "section": {
     "body": "Depth and leaf-size controls are central to trading training fit against generalization.",

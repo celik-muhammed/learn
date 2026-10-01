@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-regression-uncertainty-choice",
   "section": {
     "body": "Use the Linear Models and Gaussian Processes guides as the source layer, then validate predictive intervals or probability statements with metrics appropriate to the application.",
