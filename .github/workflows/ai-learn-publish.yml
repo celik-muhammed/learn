@@ -407,14 +407,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           BRANCH: ${{ steps.meta.outputs.branch }}
           PR_TITLE: ${{ steps.meta.outputs.title }}
-          REQUEST_ID: ${{ inputs.request_id }}
+          SHORT_ID: ${{ steps.meta.outputs.short_id }}
         run: |
           cat > /tmp/ai-learn-pr-body.md <<EOF
           ## AI Learn reviewed publication
 
           This pull request was created from an explicit browser review handoff.
 
-          - Request: \`${REQUEST_ID}\`
+          - Review reference: \`${SHORT_ID}\`
           - Canonical subtree: \`docs/source/learn-ai\`
           - Durable changes: canonical JSON only
           - RST/HTML: derived later by the AI Learn materializer and Sphinx

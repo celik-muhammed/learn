@@ -64,12 +64,13 @@ extensions = [
     # "sphinxext.rediraffe",
     # "myst_parser",
     # "ablog",
-    "_sphinx_ext._pydata_component_list",  # pydata_sphinx_theme
-    "_sphinx_ext._sphinx_gallery_grid",  # pydata_sphinx_theme
-    "_sphinx_ext._sphinxcontrib_youtube",  # "sphinxcontrib.youtube",
-    "_sphinx_ext._sphinx_youtube_gallery",
-    "_sphinx_ext._sphinx_ai_assistant",
-    "_sphinx_ext._sphinx_ai_learn",
+    "scikitplot._externals._sphinx_ext._pydata_component_list",  # pydata_sphinx_theme
+    "scikitplot._externals._sphinx_ext._sphinx_gallery_grid",  # pydata_sphinx_theme
+    "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",  # "sphinxcontrib.youtube",
+    "scikitplot._externals._sphinx_ext._sphinx_youtube_gallery",
+    "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
+    "scikitplot._externals._sphinx_ext._sphinx_feedback",
+    "scikitplot._externals._sphinx_ext._sphinx_ai_learn",
 ]
 
 # -- Sitemap -----------------------------------------------------------------
@@ -91,6 +92,9 @@ templates_path = ['_templates']
 # Prevent Sphinx from scanning temporary files, virtualenvs, or root build dirs
 exclude_patterns = [  # glob-style
     "build",  # Ignore the _build directory where generated files are stored
+    ## extensions
+    "_sphinx_ext",
+    "scikitplot",
     ## local test
     # "_tags",
     # "glossary",
@@ -973,10 +977,10 @@ ai_assistant_panel_hf_endpoint_label = "Active Endpoint"
 ai_assistant_panel_hamburger = True
 
 # ---------------------------------------------------------------------------
-# Feedback / telemetry / privacy
+# Feedback / review / privacy
 # ---------------------------------------------------------------------------
-# Local rating UI is always usable. Network telemetry remains separately
-# permission-gated by the runtime; logging stays off by default.
+# Assistant rating UI is local-only. Explicit content-bearing review is a separate
+# reader action; generic page feedback is owned by _sphinx_feedback.
 ai_assistant_panel_feedback = True
 ai_assistant_panel_feedback_question = "Was this helpful?"
 ai_assistant_panel_feedback_options = []   # built-in adaptive gradient
@@ -984,7 +988,6 @@ ai_assistant_panel_feedback_scale = "auto"
 ai_assistant_panel_feedback_placeholder = ""
 ai_assistant_panel_feedback_submit = "Send feedback"
 ai_assistant_panel_feedback_thanks = "Thanks for your feedback!"
-ai_assistant_panel_feedback_log = False
 
 ai_assistant_panel_privacy_title = "Privacy & Responsibility"
 ai_assistant_panel_privacy_link_text = "Privacy & Responsibility"
@@ -1009,11 +1012,12 @@ ai_assistant_isolation_allow_microphone = False
 # ---------------------------------------------------------------------------
 # Endpoint profile registry — preferred modern configuration
 # ---------------------------------------------------------------------------
-# One browser-visible BASE URL feeds the built-in routes:
+# One browser-visible BASE URL feeds the AI Assistant built-in routes:
 #   chat     -> /v1/chat/completions
 #   share    -> /v1/share
-#   feedback -> /v1/feedback
 #   training -> /v1/contribute
+# Generic page feedback is a sibling subsystem and has its own explicit
+# ``feedback_endpoint`` below.
 #   video    -> /v1/video-generations
 # No build-time tokens belong in this profile. The service authenticates
 # upstream/server-side writes using its own secret store.
@@ -1028,9 +1032,33 @@ ai_assistant_endpoint_profiles = {
 }
 ai_assistant_endpoint_default_profile = "default"
 
-# Legacy flat endpoint/token keys are intentionally NOT set when explicit
-# profiles are present. Explicit profiles take precedence, and static token
-# config is deprecated/ignored by the latest extension.
+# Generic page feedback is an independent reviewed-feedback subsystem. Its
+# endpoint is explicit rather than inherited from the active Assistant profile,
+# so a chat/share-only Cloudflare Worker cannot accidentally become feedback
+# authority. Override FEEDBACK_PROXY_BASE independently in deployments that
+# separate these services. AI Learn pages are excluded because they already own
+# section/generation feedback and should not render a competing page controller.
+_FEEDBACK_PROXY_BASE: str = (
+    os.environ.get("FEEDBACK_PROXY_BASE") or _AI_PROXY_BASE
+).rstrip("/")
+feedback_page_enabled = True
+feedback_position = "sidebar"
+feedback_page_main = True
+feedback_position_fallback = "main-bottom"
+feedback_site_id = "scikit-plots-learn"
+feedback_endpoint = _FEEDBACK_PROXY_BASE + "/v1/feedback"
+feedback_counter_enabled = True
+feedback_counter_source = "embedded"
+# Generic page-feedback counters are build-time reviewed data. This complete V3
+# snapshot currently certifies that there are no reviewed generic page-feedback
+# events, so eligible pages may render authoritative 0 / 0 quick counts. Replace
+# or regenerate this packaged extension asset from the full reviewed event set
+# as feedback is merged; never mark a partial export complete merely to make
+# zero counters visible. The leading slash is a logical root-relative asset key;
+# the extension resolves it only inside _sphinx_feedback/_static at build time.
+feedback_aggregate_file = "/page-feedback-aggregate.json"
+feedback_include = ["**"]
+feedback_exclude = ["search", "genindex", "py-modindex", "404"]
 
 ai_assistant_mcp_tools = {
     "vscode": {
