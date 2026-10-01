@@ -401,7 +401,7 @@ class MediaActionsDirective(SphinxDirective):
         }.get(context_target["kind"] if context_target else "", "")
         create_label = {
             "video": "Create a Video",
-            "audio": "Create Audio",
+            "audio": "Create an Audio",
             "whiteboard": "Create a Whiteboard",
             "document": "Create a Document",
         }[subject["kind"]]
@@ -1260,6 +1260,30 @@ class UserLibraryDirective(SphinxDirective):
         return [root]
 
 
+class IndexExplorerHeaderDirective(SphinxDirective):
+    """Render the shared index explorer masthead and library shortcuts."""
+
+    has_content = False
+    option_spec: ClassVar = {
+        "kicker": directives.unchanged_required,
+        "title": directives.unchanged_required,
+    }
+
+    def run(self):
+        root = component(
+            "index-explorer-header.html",
+            {
+                "kicker": self.options["kicker"],
+                "explorer_title": self.options["title"],
+                "bookmarks_href": "#",
+                "collections_href": "#",
+            },
+            replace=True,
+        )
+        root["index_explorer_header"] = True
+        return [root]
+
+
 class ExplorerDirective(SphinxDirective):
     required_arguments = 1
     option_spec: ClassVar = {
@@ -1301,8 +1325,6 @@ class ExplorerDirective(SphinxDirective):
             "section_registry": safe_json(
                 topic_sections(prompts=_prompts(self.env.app)),
             ),
-            "bookmarks_href": "#",
-            "collections_href": "#",
             "search_control_variant": search_control_variant,
         }
         catalog = lookup(self)
@@ -1351,7 +1373,6 @@ class ExplorerDirective(SphinxDirective):
                     "item_label": "open problem",
                     "item_heading": "Open problem",
                     "explorer_title": "Open Problems Explorer",
-                    "kicker": "Research questions",
                     "search_placeholder": "Problem, keyword, or status",
                     "numeric_sort": ["references"],
                     "sort_options": [
@@ -1365,7 +1386,6 @@ class ExplorerDirective(SphinxDirective):
                     "item_label": "source",
                     "item_heading": "Source",
                     "explorer_title": "Source Library",
-                    "kicker": "References",
                     "search_placeholder": "Source, publisher, format, or keyword",
                     "numeric_sort": ["related"],
                     "sort_options": [
@@ -1380,7 +1400,6 @@ class ExplorerDirective(SphinxDirective):
                     "item_label": "skill",
                     "item_heading": "Skill",
                     "explorer_title": "Skills Library",
-                    "kicker": "Reusable workflows",
                     "search_placeholder": "Skill, workflow, or keyword",
                     "numeric_sort": ["sections", "related"],
                     "sort_options": [
@@ -1511,7 +1530,7 @@ def resolve(  # ruff: ignore[too-many-branches]
             ctx["related"] = [
                 {**s, "href": record_href(app, docname, s)} for s in ctx["related"]
             ]
-        if item.get("overview_component") or item.get("topic_table"):
+        if item.get("overview_component") or item.get("index_explorer_header"):
             for key, leaf in (
                 ("bookmarks_href", "bookmarks/index"),
                 ("collections_href", "collections/index"),
@@ -1993,6 +2012,7 @@ def setup_pages(app):
     app.add_directive("ai-skill-detail", SkillDetailDirective)
     app.add_directive("ai-whiteboard-gallery", WhiteboardGalleryDirective)
     app.add_directive("ai-topic-user-library", UserLibraryDirective)
+    app.add_directive("ai-index-explorer-header", IndexExplorerHeaderDirective)
     app.add_directive("ai-topic-explorer", ExplorerDirective)
     app.connect("doctree-resolved", resolve)
     app.connect("html-page-context", page_context, priority=900)

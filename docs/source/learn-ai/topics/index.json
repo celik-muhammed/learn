@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Topic",
+  "description": "Browse learning topics, discover areas of interest, and open a topic to explore its sources, prompts, skills, and learning artifacts.",
+  "explorer_header": {
+    "kicker": "Topic explorer",
+    "title": "Trending Topics"
+  },
   "hide_secondary_sidebar": true,
   "kind": "topic",
   "title": "Topics",

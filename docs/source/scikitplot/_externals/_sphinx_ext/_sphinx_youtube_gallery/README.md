@@ -582,13 +582,20 @@ every downstream theme.
 ## Search, options, and reverting changes
 
 The collection browser uses the same compact search/disclosure interaction as
-AI Learn: a left-aligned result count, then one primary row containing the
-search field with its integrated search icon and a chevron disclosure button.
-Typing filters locally; Enter and the search icon apply the same search. The
-chevron expands the long-form controls *inside the same bordered control
-surface* rather than opening a second toolbar/popup. Active search, filters and
-sorting appear as removable chips below the control surface. Clear a chip to
-remove only that setting.
+AI Learn: the primary search row comes first, with its integrated search icon
+and disclosure button; the live result count is a separate row immediately
+under the entire control surface. It is never embedded above the input inside
+the collapsed search box. Typing filters locally; Enter and the search icon
+apply the same search. The disclosure expands the long-form controls *inside
+the same bordered control surface* rather than opening a second toolbar/popup.
+Active search, filters and sorting appear as removable chips below the status
+row. Clear a chip to remove only that setting.
+
+The adapter also validates this structure when it receives the delegated
+``gallery-grid`` node: an enhanced YouTube gallery must have the shared V4
+contract class and exactly one document-owned status sibling. A mismatched
+collection/gallery implementation fails the Sphinx build instead of falling back
+to a second, embedded result counter.
 
 A small **Try** row offers context-aware shortcuts without hiding the canonical
 controls. While typing it can suggest matching card titles. For interactive

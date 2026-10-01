@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
+  "create_label": "Create a Topic Prompt",
   "description": "Create and browse reusable community prompts for topic pages.",
+  "explorer_header": {
+    "kicker": "Topic Prompt",
+    "title": "Exploring Topic Prompts"
+  },
   "hide_secondary_sidebar": true,
   "title": "Topic Prompts",
   "view": "prompt-library"

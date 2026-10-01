@@ -1762,3 +1762,39 @@ def test_generation_cleanup_is_bfcache_safe_and_private_libraries_keep_volatile_
     for name in ('video-generation.js','audio-generation.js','document-generation.js','whiteboard-generation.js','record-generation.js'):
         source = (static/name).read_text()
         assert 'onPageDispose' in source or 'event?.persisted===true' in source or 'event.persisted === true' in source
+
+
+def test_index_explorer_header_is_shared_semantic_and_link_safe():
+    template_root = EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn'
+    shared = (template_root/'index-explorer-header.html').read_text()
+    topic = (template_root/'topic-explorer.html').read_text()
+    catalog = (template_root/'catalog-explorer.html').read_text()
+    pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
+    assert 'learn-index-explorer-head' in shared
+    assert '<nav class="learn-trending-links"' in shared
+    assert 'aria-label="{{ explorer_title|e }} shortcuts"' in shared
+    assert '{{ bookmarks_href|e }}' in shared and '{{ collections_href|e }}' in shared
+    assert 'Research explorer' not in topic
+    assert 'learn-trending-head' not in topic
+    assert 'learn-trending-head' not in catalog
+    assert 'class IndexExplorerHeaderDirective' in pages
+    assert 'root["index_explorer_header"] = True' in pages
+    assert 'app.add_directive("ai-index-explorer-header", IndexExplorerHeaderDirective)' in pages
+    css = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text()
+    assert 'container-name:learn-index-explorer-masthead' in css
+    assert '@container learn-index-explorer-masthead (max-width:640px)' in css
+
+
+def test_index_explorer_header_template_escapes_dynamic_copy_and_links():
+    template_root = EXT/'_sphinx_ext/_sphinx_ai_learn/_templates'
+    env = Environment(loader=FileSystemLoader(str(template_root)), autoescape=False)
+    rendered = env.get_template('learn/index-explorer-header.html').render(
+        kicker='Topic <Source>',
+        explorer_title='Exploring "Sources" & more',
+        bookmarks_href='../bookmarks/index.html?x=1&y=2',
+        collections_href='../collections/index.html',
+    )
+    assert 'Topic &lt;Source&gt;' in rendered
+    assert 'Exploring &#34;Sources&#34; &amp; more' in rendered
+    assert '?x=1&amp;y=2' in rendered
+    assert rendered.count('class="learn-button"') == 2

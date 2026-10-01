@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create an Open Problem",
+  "description": "Explore open questions and unresolved problems connected to AI Learn topics and supporting sources.",
+  "explorer_header": {
+    "kicker": "Topic question",
+    "title": "Exploring Open Problems"
+  },
   "hide_secondary_sidebar": true,
   "kind": "problem",
   "title": "Open Problems",

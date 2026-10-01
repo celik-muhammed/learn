@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Document",
+  "description": "Browse reusable learning documents created from AI Learn topics, sources, and reviewed learning context.",
+  "explorer_header": {
+    "kicker": "Topic Document",
+    "title": "Exploring Documents"
+  },
   "hide_secondary_sidebar": true,
   "kind": "document",
   "title": "Documents",

@@ -599,6 +599,7 @@ def _validate_page(  # ruff: ignore[too-many-branches]
             "mode",
             "children",
             "create_label",
+            "explorer_header",
             "design_grid",
             "hide_secondary_sidebar",
         ),
@@ -629,6 +630,18 @@ def _validate_page(  # ruff: ignore[too-many-branches]
         result["mode"] = _text(data["mode"], f"{rel}.mode", 64)
     if "create_label" in data:
         result["create_label"] = _text(data["create_label"], f"{rel}.create_label", 100)
+    if "explorer_header" in data:
+        header = data["explorer_header"]
+        _object(
+            header,
+            required=("kicker", "title"),
+            allowed=("kicker", "title"),
+            where=f"{rel}.explorer_header",
+        )
+        result["explorer_header"] = {
+            "kicker": _text(header["kicker"], f"{rel}.explorer_header.kicker", 100),
+            "title": _text(header["title"], f"{rel}.explorer_header.title", 200),
+        }
     if "children" in data:
         _len = len(data["children"]) > 256  # ruff: ignore[magic-value-comparison]
         if not isinstance(data["children"], list) or _len:
@@ -648,6 +661,15 @@ def _validate_page(  # ruff: ignore[too-many-branches]
             data["design_grid"], f"{rel}.design_grid"
         )
     view = result["view"]
+    if result.get("explorer_header") and view not in {
+        "explorer",
+        "media-gallery",
+        "prompt-library",
+        "skill-library",
+    }:
+        raise LearnValidationError(
+            f"AI Learn: {rel}.explorer_header is unsupported for {view} pages"
+        )
     if view == "root" and result.get("design_grid"):
         layout_children = [
             child
@@ -1718,6 +1740,14 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
     description = page.get("description", "")
     subjects_by_id = {subject["id"]: subject for subject in tree.catalog["subjects"]}
     body = _rst_text(description) + "\n\n" if description else ""
+    explorer_header = page.get("explorer_header")
+    explorer_header_rst = ""
+    if explorer_header:
+        explorer_header_rst = (
+            ".. ai-index-explorer-header::\n"
+            f"   :kicker: {_rst_text(explorer_header['kicker'])}\n"
+            f"   :title: {_rst_text(explorer_header['title'])}\n\n"
+        )
     if view == "root":
         if page.get("design_grid"):
             return body + _render_design_grid(page["design_grid"])
@@ -1727,6 +1757,7 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
         create_label = page.get("create_label", "")
         if create_label:
             body += f".. container:: learn-index-actions learn-{kind}-index-actions\n\n   :doc:`{_rst_text(create_label)} <new>`\n\n"
+        body += explorer_header_rst
         body += f".. ai-topic-explorer:: {kind}\n   :offset: 0\n\n"
         children = ["new"]
         directory = DIRECTORIES[kind]
@@ -1746,6 +1777,7 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
                 f".. container:: learn-index-actions learn-{kind}-index-actions\n\n"
                 f"   :doc:`{_rst_text(create_label)} <new>`\n\n"
             )
+        body += explorer_header_rst
         body += f".. ai-topic-explorer:: {kind}\n   :offset: 0\n\n"
         children = ["new"]
         children.extend(
@@ -1764,10 +1796,12 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
         )
     if view == "prompt-library":
         children = ["new", *(f"{prompt['id']}/index" for prompt in tree.prompts)]
+        create_label = page.get("create_label", "Create a Topic Prompt")
         return _append_page_design(
             body
             + ".. container:: learn-index-actions learn-topic-prompt-index-actions\n\n"
-            + "   :doc:`Create a Topic Prompt <new>`\n\n"
+            + f"   :doc:`{_rst_text(create_label)} <new>`\n\n"
+            + explorer_header_rst
             + ".. ai-topic-prompt-library::\n\n"
             + _toctree(children, hidden=True),
             page,
@@ -1778,10 +1812,12 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
         )
     if view == "skill-library":
         children = ["new", *(f"{skill['id']}/index" for skill in tree.skills)]
+        create_label = page.get("create_label", "Create a Skill")
         return _append_page_design(
             body
             + ".. container:: learn-index-actions learn-skill-index-actions\n\n"
-            + "   :doc:`Create a Skill <new>`\n\n"
+            + f"   :doc:`{_rst_text(create_label)} <new>`\n\n"
+            + explorer_header_rst
             + ".. ai-skill-library::\n\n"
             + _toctree(children, hidden=True),
             page,

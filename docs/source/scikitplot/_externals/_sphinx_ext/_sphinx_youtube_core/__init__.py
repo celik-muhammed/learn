@@ -13,7 +13,9 @@ It intentionally owns no browser/search controls: collection search UI belongs
 to ``_sphinx_collection`` and is consumed by gallery adapters. Keeping this
 package UI-free lets catalog tooling, the gallery adapter, and the standalone
 player share one provider contract without creating an extension dependency
-cycle.
+cycle. Result-count placement is likewise outside this provider layer: the
+shared collection/gallery renderer owns the V4 controls -> status -> cards
+structure; this provider layer must never create or reposition the result count.
 """
 
 from __future__ import annotations

@@ -731,3 +731,55 @@ def test_reviewed_feedback_sidecars_are_bounded_per_generation(tmp_path, monkeyp
 
     with pytest.raises(LearnValidationError, match="reviewed feedback event limit exceeded"):
         load_content_tree(root)
+
+
+def test_index_explorer_headers_are_canonical_and_materialized_consistently():
+    expected = {
+        "topics": ("Topic explorer", "Trending Topics", "Create a Topic"),
+        "open-problems": ("Topic question", "Exploring Open Problems", "Create an Open Problem"),
+        "sources": ("Topic Source", "Exploring Sources", "Add a Source"),
+        "whiteboards": ("Topic Whiteboard", "Exploring Whiteboards", "Create a Whiteboard"),
+        "videos": ("Topic Video", "Exploring Videos", "Create a Video"),
+        "audios": ("Topic Audio", "Exploring Audios", "Create an Audio"),
+        "documents": ("Topic Document", "Exploring Documents", "Create a Document"),
+        "topic-prompts": ("Topic Prompt", "Exploring Topic Prompts", "Create a Topic Prompt"),
+        "skills": ("Topic Skill", "Exploring Skills", "Create a Skill"),
+    }
+    for folder, (kicker, title, create_label) in expected.items():
+        data = json.loads((SOURCE / folder / "index.json").read_text(encoding="utf-8"))
+        assert data["description"]
+        assert data["create_label"] == create_label
+        assert data["explorer_header"] == {"kicker": kicker, "title": title}
+        rst = (SOURCE / folder / "index.rst").read_text(encoding="utf-8")
+        assert ".. ai-index-explorer-header::" in rst
+        assert f"   :kicker: {kicker}" in rst
+        assert f"   :title: {title}" in rst
+        assert f":doc:`{create_label} <new>`" in rst
+        description = data["description"]
+        assert rst.index(description) < rst.index(f":doc:`{create_label} <new>`")
+        assert rst.index(f":doc:`{create_label} <new>`") < rst.index(".. ai-index-explorer-header::")
+
+
+def test_index_explorer_header_contract_rejects_partial_or_unknown_fields(tmp_path):
+    root = _json_only_copy(tmp_path)
+    page = root / "topics/index.json"
+    data = json.loads(page.read_text(encoding="utf-8"))
+    data["explorer_header"] = {"kicker": "Topic explorer"}
+    page.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(LearnValidationError, match="explorer_header has unexpected or missing fields"):
+        load_content_tree(root)
+
+    data["explorer_header"] = {"kicker": "Topic explorer", "title": "Trending Topics", "href": "https://evil.example"}
+    page.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(LearnValidationError, match="explorer_header has unexpected or missing fields"):
+        load_content_tree(root)
+
+
+def test_index_explorer_header_is_rejected_on_non_index_page_views(tmp_path):
+    root = _json_only_copy(tmp_path)
+    page = root / "audios/new.json"
+    data = json.loads(page.read_text(encoding="utf-8"))
+    data["explorer_header"] = {"kicker": "Wrong place", "title": "Should fail"}
+    page.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    with pytest.raises(LearnValidationError, match="explorer_header is unsupported for media-create pages"):
+        load_content_tree(root)

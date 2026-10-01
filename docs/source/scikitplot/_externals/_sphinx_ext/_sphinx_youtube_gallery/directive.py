@@ -48,6 +48,7 @@ from docutils import nodes
 from docutils.parsers.rst import directives
 from docutils.statemachine import StringList
 from sphinx.application import Sphinx
+from sphinx.errors import ExtensionError
 from sphinx.util import logging
 from sphinx.util.docutils import SphinxDirective
 from yaml import safe_dump
@@ -55,11 +56,17 @@ from yaml import safe_dump
 from .._search_variant import resolve_search_variant, search_variant_option
 from .._sphinx_collection import (
     CONTAINER_CLASS,
+    CONTRACT_CLASS,
+    SEARCHABLE_CLASS,
     SECTION_STYLES,
     render_sections,
     sections_allowed,
 )
-from .._sphinx_collection._browser import collection_id, field_names
+from .._sphinx_collection._browser import (
+    collection_id,
+    field_names,
+    is_document_status_node,
+)
 from .._sphinx_collection._presentation import CARD_SPEC, GRID_SPEC
 from .._sphinx_collection._yaml import (
     BoundedYAMLError,
@@ -759,8 +766,10 @@ class YouTubeGalleryDirective(SphinxDirective):
             options["section-style"] = self.options["section-style"]
 
         # Forward the exact same reader-control contract instead of wrapping
-        # gallery-grid in a second enhanced collection. Flags are emitted as
-        # valueless directive options, never as the string ``None``.
+        # gallery-grid in a second enhanced collection. gallery-grid owns the
+        # structural controls -> status -> cards order, so this typed adapter
+        # must never create or prepend its own result-count node. Flags are
+        # emitted as valueless directive options, never as the string ``None``.
         for key in ("searchable", "interactive"):
             if key in self.options:
                 options[key] = None
@@ -839,6 +848,23 @@ class YouTubeGalleryDirective(SphinxDirective):
                 continue
             classes = node.get("classes", [])
             if CONTAINER_CLASS in classes:
+                if SEARCHABLE_CLASS in classes:
+                    if CONTRACT_CLASS not in classes:
+                        raise ExtensionError(
+                            "youtube-gallery received a searchable gallery-grid root "
+                            "without the shared controls -> status -> results contract"
+                        )
+                    statuses = [
+                        child
+                        for child in node.children
+                        if is_document_status_node(child)
+                    ]
+                    if len(statuses) != 1:
+                        raise ExtensionError(
+                            "youtube-gallery expected exactly one document-owned "
+                            "collection status sibling from gallery-grid; got "
+                            f"{len(statuses)}"
+                        )
                 if "youtube-gallery" not in classes:
                     classes.append("youtube-gallery")
                 return

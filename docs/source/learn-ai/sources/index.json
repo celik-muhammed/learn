@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Add a Source",
+  "description": "Browse source material used to ground AI Learn topics, open problems, and generated learning artifacts.",
+  "explorer_header": {
+    "kicker": "Topic Source",
+    "title": "Exploring Sources"
+  },
   "hide_secondary_sidebar": true,
   "kind": "source",
   "title": "Sources",

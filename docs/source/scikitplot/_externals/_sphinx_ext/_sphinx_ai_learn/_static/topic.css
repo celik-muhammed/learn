@@ -180,6 +180,7 @@ label.learn-switch>input:focus-visible+span[aria-hidden] { outline:2px solid var
    content container, not only the device viewport, so theme sidebars and resized
    windows cannot force Topics, Problems, Sources, or Skills into a scroller. */
 .learn-topic-explorer,.learn-catalog-explorer,.learn-card-explorer { margin-top:.4rem; container-type:inline-size; container-name:learn-topic-explorer; }
+.learn-index-explorer-masthead { container-type:inline-size; container-name:learn-index-explorer-masthead; }
 .learn-trending-head { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin:0 0 1rem; }
 .learn-kicker { margin:0 0 .2rem; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--pst-color-text-muted,#596573); font-weight:700; }
 .learn-trending-title { margin:0; text-transform:uppercase; letter-spacing:.035em; font-size:1.2rem; }
@@ -264,6 +265,11 @@ label.learn-switch>input:focus-visible+span[aria-hidden] { outline:2px solid var
 /* Phone / very narrow pane: each semantic table row becomes an inspectable card.
    There is still one DOM row and one set of data, so filters and sorting cannot
    diverge between desktop and mobile presentations. */
+@container learn-index-explorer-masthead (max-width:640px) {
+  .learn-index-explorer-head { align-items:flex-start; flex-direction:column; }
+  .learn-index-explorer-head .learn-trending-links { justify-content:flex-start; }
+}
+
 @container learn-topic-explorer (max-width:640px) {
   .learn-trending-head { align-items:flex-start; flex-direction:column; }
   .learn-trending-links { justify-content:flex-start; }
