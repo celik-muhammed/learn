@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Whiteboard",
+  "description": "Browse visual explanations and concept maps created from AI Learn topics and source-grounded context.",
+  "explorer_header": {
+    "kicker": "Topic Whiteboard",
+    "title": "Exploring Whiteboards"
+  },
   "hide_secondary_sidebar": true,
   "kind": "whiteboard",
   "title": "Whiteboards",

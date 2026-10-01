@@ -1,11 +1,14 @@
 # scikitplot/_externals/_sphinx_ext/_sphinx_collection/assets.py
 #
 # flake8: noqa: D213
+# ruff: noqa: RUF001
 #
 # Authors: The scikit-plots developers
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Local, progressive search, faceting and sorting for rendered gallery cards."""
+
+from .contract import COLLECTION_UI_CONTRACT
 
 CONTAINER_CLASS = "sk-collection"
 SEARCHABLE_CLASS = "sk-collection-searchable"
@@ -24,7 +27,7 @@ ASSET_CSS = r"""/* Compact collection controls share one inline shell across gal
   color:var(--pst-color-text-base,CanvasText); background:var(--sk-collection-soft);
 }
 .sk-collection-status {
-  margin:0; font-size:.8rem; line-height:1.45; overflow-wrap:anywhere;
+  margin:0 0 .65rem; font-size:.8rem; line-height:1.45; overflow-wrap:anywhere;
   color:var(--pst-color-text-muted,var(--pst-color-text-base,CanvasText));
 }
 .sk-collection-primary-row {
@@ -221,6 +224,7 @@ ASSET_CSS = r"""/* Compact collection controls share one inline shell across gal
 
 ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions. */
 (function () {
+  var UI_CONTRACT='__SK_COLLECTION_UI_CONTRACT__';
   'use strict';
   function text(value) { return value == null ? '' : String(value); }
   function fold(value) { return text(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
@@ -249,12 +253,45 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
     var el = document.createElement(tag); if (cls) el.className = cls;
     if (content != null) el.textContent = content; return el;
   }
+  function stampUiContract(root) {
+    root.setAttribute('data-sk-collection-ui-contract',UI_CONTRACT);
+    root.setAttribute('data-sk-collection-status-placement','sibling');
+  }
+  function directStatus(root) {
+    return Array.from(root.children).find(function (el) { return el.classList.contains('sk-collection-status'); });
+  }
+  function repairLegacyStatus(root) {
+    var controls = Array.from(root.children).find(function (el) { return el.classList.contains('sk-collection-controls'); });
+    if (!controls) return directStatus(root);
+    var embedded = Array.from(controls.children).find(function (el) { return el.classList.contains('sk-collection-status'); });
+    var status = directStatus(root);
+    if (embedded) {
+      if (status && status !== embedded) embedded.remove();
+      else { status = embedded; }
+    }
+    if (status && status.parentElement !== root) root.insertBefore(status, controls.nextSibling);
+    if (status && status.previousElementSibling !== controls) controls.after(status);
+    return status;
+  }
+  function prepareStatus(root) {
+    var status = repairLegacyStatus(root) || directStatus(root);
+    if (!status) {
+      status = element('p','sk-collection-status');
+      status.setAttribute('data-sk-collection-status-source','runtime-fallback');
+    }
+    status.setAttribute('role','status');
+    status.setAttribute('aria-live','polite');
+    status.setAttribute('aria-atomic','true');
+    status.hidden=false;
+    return status;
+  }
   var instance=0;
   function run(root) {
     root.querySelectorAll('img:not([loading])').forEach(function (img) {
       img.loading = 'lazy'; img.decoding = 'async';
     });
-    if (!root.classList.contains('sk-collection-searchable') || root.hasAttribute('data-sk-enhanced')) return;
+    if (!root.classList.contains('sk-collection-searchable')) return;
+    if (root.hasAttribute('data-sk-enhanced')) { prepareStatus(root); stampUiContract(root); return; }
     var config = ownData(root), caches = new Map();
     var cards = Array.from(root.querySelectorAll('.sd-card')).filter(function (card) {
       if (card.closest('.sk-collection-searchable') !== root) return false;
@@ -273,12 +310,12 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
         owner:owner(root,card)};
     });
     if (!cards.length) return;
+    var status=prepareStatus(root);
     var controls = element('div','sk-collection-controls');
     controls.setAttribute('role','group');
     var carrier = Array.from(root.children).find(function (el) { return el.classList.contains('sk-collection-label'); });
     var searchLabel = carrier ? carrier.textContent.trim() : 'Search this gallery';
     controls.setAttribute('aria-label', searchLabel + ' controls');
-    var status=element('p','sk-collection-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.setAttribute('aria-atomic','true');
     var searchVariant=config.searchVariant==='classic'?'classic':'pill-overflow';
     var primary=element('div','sk-collection-primary-row sk-collection-primary-row--'+searchVariant);primary.dataset.searchVariant=searchVariant;
     var panel=element('div','sk-collection-panel');panel.hidden=true;
@@ -306,7 +343,7 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
     toggle.setAttribute('aria-label','More gallery options');toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',panel.id);toggle.title='More options';
     var toggleSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');toggleSvg.setAttribute('viewBox','0 0 24 24');toggleSvg.setAttribute('aria-hidden','true');toggleSvg.setAttribute('focusable','false');
     var polyline=null;if(searchVariant==='pill-overflow'){toggleSvg.classList.add('sk-collection-overflow-icon');[5,12,19].forEach(function(y){var circle=document.createElementNS(toggleSvg.namespaceURI,'circle');circle.setAttribute('cx','12');circle.setAttribute('cy',String(y));circle.setAttribute('r','1.8');toggleSvg.append(circle);});}else{polyline=document.createElementNS(toggleSvg.namespaceURI,'polyline');polyline.setAttribute('points','6 9 12 15 18 9');polyline.setAttribute('fill','none');polyline.setAttribute('stroke','currentColor');polyline.setAttribute('stroke-width','2');polyline.setAttribute('stroke-linecap','round');polyline.setAttribute('stroke-linejoin','round');toggleSvg.append(polyline);}toggle.append(toggleSvg);primary.append(toggle);
-    controls.append(status,primary,panel);
+    controls.append(primary,panel);
     var facetControls=[];
     if (config.interactive) (config.facets || []).forEach(function (field) {
       var choices = Array.from(new Set(cards.flatMap(function (c) { return values(c,field); })));
@@ -938,10 +975,13 @@ ASSET_JS = r"""/* Local gallery controls with optional, explicit saved additions
       resetView();showPanel(storageDirty||viewStorageDirty);if(storageDirty && forget)forget.focus();else if(viewStorageDirty&&viewForget)viewForget.focus();
     });
     input.addEventListener('keydown',function(event){if(event.key==='Enter' && event.isComposing)event.preventDefault();});
-    root.insertBefore(controls,root.firstChild);controls.after(chips);chips.after(suggestions);root.append(empty);
-    root.setAttribute('data-sk-enhanced','true');restoreAdditions();restoreView();applySort();apply();
+    if(status.parentElement!==root){root.insertBefore(status,root.firstChild);}root.insertBefore(controls,status);status.after(chips);chips.after(suggestions);root.append(empty);
+    root.setAttribute('data-sk-enhanced','true');stampUiContract(root);restoreAdditions();restoreView();applySort();apply();
   }
   function start(){document.querySelectorAll('.sk-collection').forEach(function(root){try{run(root);}catch(error){console.warn('Gallery controls unavailable',error);}});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
-"""  # ruff: ignore[ambiguous-unicode-character-string]
+""".replace(
+    "__SK_COLLECTION_UI_CONTRACT__",
+    COLLECTION_UI_CONTRACT,
+)

@@ -3,6 +3,6 @@
   "description": "Create a narrated audio explanation from a Topic, Source, or prompt.",
   "hide_secondary_sidebar": true,
   "kind": "audio",
-  "title": "Create Audio",
+  "title": "Create an Audio",
   "view": "media-create"
 }

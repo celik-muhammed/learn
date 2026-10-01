@@ -1,6 +1,11 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Video",
+  "description": "Browse video explanations created from AI Learn topics, sources, and reviewed learning context.",
+  "explorer_header": {
+    "kicker": "Topic Video",
+    "title": "Exploring Videos"
+  },
   "hide_secondary_sidebar": true,
   "kind": "video",
   "title": "Videos",

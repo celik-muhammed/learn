@@ -63,6 +63,9 @@ jobs:
       AI_LEARN_ROOT: docs/source/learn-ai
       AI_LEARN_PREFIX: docs/source/learn-ai
       AI_LEARN_BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      # Canonical namespace preference. The resolver writes AI_LEARN_MODULE for
+      # later steps and falls back only when this package is genuinely absent.
+      AI_LEARN_MODULE_DEFAULT: scikitplot._externals._sphinx_ext._sphinx_ai_learn
       PYTHONDONTWRITEBYTECODE: '1'
 
     steps:
@@ -80,6 +83,9 @@ jobs:
 
       - name: Install deterministic materializer dependency
         run: python -m pip install --disable-pip-version-check 'Jinja2==3.1.6'
+
+      - name: Resolve AI Learn Python namespace
+        run: PYTHONPATH=docs/source python .github/scripts/resolve-ai-learn-module.py
 
       - name: Reconstruct and authenticate publication request
         env:
@@ -130,7 +136,7 @@ jobs:
         if: steps.terminal.outputs.replayed != 'true'
         run: |
           rm -rf /tmp/ai-learn-review
-          PYTHONPATH=docs/source python -m _sphinx_ext._sphinx_ai_learn._publication_request_cli \
+          PYTHONPATH=docs/source python -m "${AI_LEARN_MODULE}._publication_request_cli" \
             "$AI_LEARN_ROOT" \
             /tmp/ai-learn-publication-request.json \
             /tmp/ai-learn-review \
@@ -204,9 +210,12 @@ jobs:
         run: |
           PYTHONPATH=docs/source python - <<'PY'
           from pathlib import Path
+          import importlib
+          import os
           import shutil
           import tempfile
-          from _sphinx_ext._sphinx_ai_learn import materialize
+
+          materialize = importlib.import_module(os.environ['AI_LEARN_MODULE']).materialize
 
           source = Path('docs/source/learn-ai')
           with tempfile.TemporaryDirectory(prefix='ai-learn-publication-') as tmp:

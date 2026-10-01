@@ -47,24 +47,34 @@ alias). Its fallback remains `ai_learn_explorer_search_variant`.
 
 ```text
 pill-overflow (default)
-result metadata
 [ pill search input               | search icon ] [ ⋮ ]
 ---------------------------------------------------------
 long-form controls when expanded
+result metadata
 
 classic
-result metadata
 [ search input                    | search icon ] [ chevron ]
 -------------------------------------------------------------
 long-form controls when expanded
+result metadata
 ```
 
-The result count/status is left-aligned above the primary row. The search icon
-is part of the input surface. The chevron controls one in-flow panel inside the
+The result count/status is a document-owned live region immediately after the
+controls shell, matching AI Learn's controls → status → results ordering. The
+directive emits that status placeholder as a sibling before JavaScript runs; the
+browser asset inserts the controls immediately before it and only updates the
+existing status text. The count is therefore never a child of the collapsed
+search shell. When the options panel is expanded, it remains inside the controls
+shell and the live count follows the panel. The search icon is part of the input surface. The chevron controls one in-flow panel inside the
 same bordered shell; it does not open a second toolbar or popup. Typing filters
 immediately, while submit/Enter remains an equivalent explicit action. IME
 composition is not filtered until composition ends.
 
+The shared Docutils status node carries an internal ownership sentinel. Adapters
+such as ``youtube-gallery`` must use the shared ``is_document_status_node``
+predicate rather than inspecting ``rawsource``: for ``nodes.raw`` the raw source
+and rendered payload are distinct fields, and older code created the payload
+with an intentionally empty raw-source string.
 The expanded panel follows the same information hierarchy as AI Learn rather
 than presenting every control at one visual level. **View** owns facets, sort,
 and Reset. Domain-specific capabilities live under **Gallery tools** as compact
@@ -79,6 +89,35 @@ remains the primary explicit open/close control. The panel does not auto-close o
 outside pointer activity.
 
 ## Progressive-enhancement invariant
+
+The collection CSS/JS are generated into the HTML builder's ``_static`` directory
+and registered globally. Their content digest has two independent rebuild paths:
+
+1. ``sk_collection_asset_revision`` is registered as a native Sphinx config value
+   with rebuild scope ``"html"``. A changed CSS/JS digest therefore participates in
+   Sphinx's own configuration comparison and forces HTML documents to be rewritten
+   even when their RST sources are unchanged.
+2. The extension also stores its digest in the Sphinx environment and watches whether
+   ``builder-inited`` physically replaced an old output asset. This remains a
+   defense-in-depth path for stale or externally modified build directories.
+
+At ``build-finished`` the final emitted ``sk-collection.css`` and
+``sk-collection.js`` are compared byte-for-byte with the current extension source.
+The generated HTML is also checked: every searchable collection root must carry
+the V4 contract class and exactly the document-owned status marker emitted by the
+directive. A late overwrite, stale doctree, or mixed-version HTML/static pair fails
+the build instead of silently publishing a count inside the collapsed controls.
+Registration on one live Sphinx application remains digest-aware rather than a
+one-way boolean.
+
+The browser enhancement also stamps the collection root with
+``data-sk-collection-status-placement="sibling"`` and
+``data-sk-collection-ui-contract="controls-status-results-v4"``. This is a
+diagnostic contract: a post-load DOM/MHTML snapshot can prove that the current
+asset ran. The status node itself carries
+``data-sk-collection-status-source="document"`` when it came from the directive;
+a runtime-created status exists only as a backward-compatible fallback for HTML
+built by an older extension.
 
 The static gallery is complete without JavaScript. Browser controls only hide,
 reorder, or add local cards after page load. Provider/network lookup remains an

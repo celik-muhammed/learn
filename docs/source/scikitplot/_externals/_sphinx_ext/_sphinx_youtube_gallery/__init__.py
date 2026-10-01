@@ -19,7 +19,9 @@ The ``youtube-gallery`` directive accepts an inline video list, a homogeneous
 can also be projected into a deduplicated offline channel index with
 ``:view: channels``. Its build-time query selects the records;
 optional ``:interactive:`` controls search, filter and sort the emitted cards
-locally. Namespaced ``grid-*``, ``card-*`` and ``video-*`` options customize
+locally. The adapter delegates the entire V4 controls -> status -> cards structure
+to ``gallery-grid`` / ``_sphinx_collection``; it never embeds match counts in
+the search controls and validates the delegated structure before returning it. Namespaced ``grid-*``, ``card-*`` and ``video-*`` options customize
 the generated layout and players. See ``README.md`` beside this module for
 configuration, complete examples, option ownership and migration notes.
 """

@@ -45,22 +45,28 @@ from .._search_variant import resolve_search_variant, search_variant_option
 # this exact implementation.
 from .._sphinx_collection import (
     CONTAINER_CLASS,
+    CONTRACT_CLASS,
     SEARCH_VARIANTS,
     SEARCHABLE_CLASS,
     SECTION_STYLES,
     FilterError,
     Selection,
     apply_selection,
+    collection_assets_outdated,
     ensure_assets,
     group_records,
     has_field,
+    register_collection_asset_revision,
+    remember_collection_asset_revision,
     render_sections,
+    verify_collection_assets,
 )
 from .._sphinx_collection._browser import (
     collection_id,
     field_names,
     metadata_node,
     record_for_browser,
+    status_node,
 )
 from .._sphinx_collection._presentation import CARD_SPEC, GRID_SPEC, forwarded
 from .._sphinx_collection._yaml import (
@@ -833,7 +839,7 @@ class GalleryGridDirective(SphinxDirective):
         # themselves. Harmless when the assets are absent: it is a plain div.
         classes = [CONTAINER_CLASS]
         if "searchable" in self.options or "interactive" in self.options:
-            classes.append(SEARCHABLE_CLASS)
+            classes.extend((SEARCHABLE_CLASS, CONTRACT_CLASS))
         wrapper = nodes.container(classes=classes)
         if "searchable" in self.options or "interactive" in self.options:
             # Carried in a hidden node, not a `data-` attribute: docutils'
@@ -851,6 +857,13 @@ class GalleryGridDirective(SphinxDirective):
         except ValueError as exc:
             raise self.error(str(exc)) from exc
         wrapper += metadata_node(self._browser_records, browser_options)
+        if "searchable" in self.options or "interactive" in self.options:
+            # Build the live-result row into the document as a sibling of the
+            # future controls shell.  The shared browser asset inserts controls
+            # immediately before this node and only updates its text/visibility.
+            # Keeping status out of the control container at document-build time
+            # prevents the compact search row from ever owning match metadata.
+            wrapper += status_node(len(self._browser_records))
         wrapper += rendered
         return [wrapper]
         # -- end scikit-plots local patch ------------------------------------
@@ -994,6 +1007,7 @@ def setup(app: Sphinx) -> dict[str, Any]:  # ruff: ignore[undocumented-param]
     app.add_config_value(
         "collection_search_variant", "pill-overflow", "env", types=[str]
     )
+    register_collection_asset_revision(app)
     app.connect("config-inited", _validate_collection_search_variant)
 
     app.add_directive("gallery-grid", GalleryGridDirective)
@@ -1004,6 +1018,13 @@ def setup(app: Sphinx) -> dict[str, Any]:  # ruff: ignore[undocumented-param]
         "builder-inited",
         lambda a: _register_assets(a),  # ruff: ignore[unnecessary-lambda]
     )
+    # The collection CSS/JS are globally registered generated assets.  Their
+    # content can change while the RST documents do not.  Force incremental
+    # HTML builds to rewrite pages when that happens so Sphinx refreshes the
+    # static-asset cache token instead of leaving browsers on an older UI.
+    app.connect("env-get-outdated", collection_assets_outdated)
+    app.connect("env-updated", remember_collection_asset_revision)
+    app.connect("build-finished", verify_collection_assets)
 
     return {
         "parallel_read_safe": True,

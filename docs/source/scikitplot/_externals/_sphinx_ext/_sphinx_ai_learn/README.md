@@ -67,6 +67,29 @@ Repository JSON uses five source contracts:
 `learn.catalog.v3` is only the validated normalized in-memory graph assembled
 from that JSON tree. There is no repository `catalog.json` input.
 
+### Shared index explorer mastheads
+
+Index/library `learn.page.v1` documents may declare an `explorer_header` object
+with exactly two bounded plain-text fields, `kicker` and `title`. The materializer
+projects that object to the shared `ai-index-explorer-header` directive. The
+renderer owns the Bookmarks/Collections routes, so canonical JSON cannot inject
+link targets and every supported index uses one responsive, accessible masthead
+contract. Create-action labels remain canonical through `create_label`.
+
+```json
+{
+  "create_label": "Create a Topic",
+  "explorer_header": {
+    "kicker": "Topic explorer",
+    "title": "Trending Topics"
+  }
+}
+```
+
+`explorer_header` is accepted only on explorer/media-gallery/prompt-library/
+skill-library page views; unsupported views and unknown nested fields fail
+validation rather than being ignored.
+
 ### Optional Sphinx-Design page grids
 
 `learn.page.v1` may declare a typed `design_grid` projection. It is the only

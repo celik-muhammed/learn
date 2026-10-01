@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-  # ruff: ignore[utf8-encoding-declaration]
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -11,14 +11,217 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+
+"""
+scikit-plots Learn.
+"""
+
+from __future__ import annotations
+
 import os
 import sys
+from importlib import import_module as _import_module
+from importlib.util import find_spec as _find_spec
+from pathlib import Path as _Path
 
-sys.path.insert(0, os.path.abspath('.'))
+# Private Sphinx extension authority
+# ----------------------------------
+#
+# The documentation can run against either:
+#
+# * ``local``: the extension tree carried by this documentation checkout,
+#   imported as the standalone ``_sphinx_ext`` package.  This is the default
+#   for ``docs/Makefile`` / ``docs/make.bat`` and is intended for development
+#   and test work before the extension stack is released with Scikit-plots.
+# * ``installed``: the extension tree from the active Scikit-plots package,
+#   imported as ``scikitplot._externals._sphinx_ext``.  Release/stable builds
+#   should select this mode explicitly so documentation exercises exactly the
+#   extension code shipped by the installed library.
+# * ``auto``: choose only when exactly one authority is available.  If both a
+#   local checkout and an installed Scikit-plots extension stack are visible,
+#   fail closed instead of guessing and risking a mixed-version build.
+#
+# Selection happens once, before Sphinx imports any extension.  All children
+# then use package-relative imports (``.._sphinx_collection``, ``._directive``,
+# etc.), so one Sphinx application cannot mix siblings from different trees.
+os.environ["SCIKITPLOT_SPHINX_EXT_MODE"] = "local"  # define explicit
 
-# https://github.com/scikit-plots/scikit-plots
-# from . import _sphinx_ai_assistant  # dev
+_DOCS_SOURCE = _Path(__file__).resolve().parent
+_LOCAL_EXTERNALS = (_DOCS_SOURCE / "scikitplot" / "_externals").resolve()
+_LOCAL_SPHINX_EXT = (_LOCAL_EXTERNALS / "_sphinx_ext").resolve()
+_MODE_ENV = "SCIKITPLOT_SPHINX_EXT_MODE"
+_ALLOWED_SPHINX_EXT_MODES = frozenset({"auto", "local", "installed"})
+_EXPECTED_SPHINX_EXT_STACK_API = 1
+_COLLECTION_UI_CONTRACT_EXPECTED = "controls-status-results-v4"
+_REGISTERED_PRIVATE_EXTENSIONS = (
+    "_pydata_component_list",
+    "_sphinx_gallery_grid",
+    "_sphinxcontrib_youtube",
+    "_sphinx_youtube_gallery",
+    "_sphinx_ai_assistant",
+    "_sphinx_feedback",
+    "_sphinx_ai_learn",
+)
+_REQUIRED_PRIVATE_MODULES = (
+    "_extension_setup",
+    "_search_variant",
+    "_sphinx_collection",
+    "_sphinx_youtube_core",
+    *_REGISTERED_PRIVATE_EXTENSIONS,
+)
+
+
+def _spec_exists(module_name: str) -> bool:
+    """Return whether *module_name* is importable without masking real errors."""
+    try:
+        return _find_spec(module_name) is not None
+    except (ImportError, ModuleNotFoundError, AttributeError, ValueError):
+        return False
+
+
+def _path_is_within(path: _Path, parent: _Path) -> bool:
+    """Compatibility helper for explicit local-authority checks."""
+    try:
+        path.resolve().relative_to(parent.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _loaded_package_origin(package_name: str) -> _Path | None:
+    """Return the loaded package origin when it has a normal filesystem file."""
+    module = sys.modules.get(package_name)
+    filename = getattr(module, "__file__", None) if module is not None else None
+    return _Path(filename).resolve() if filename else None
+
+
+def _resolve_sphinx_ext_authority() -> tuple[str, str]:  # ruff: ignore[too-many-branches]
+    """Resolve exactly one private extension authority for this Sphinx process."""
+    requested = os.environ.get(_MODE_ENV, "auto").strip().lower() or "auto"
+    if requested not in _ALLOWED_SPHINX_EXT_MODES:
+        raise RuntimeError(
+            f"Invalid {_MODE_ENV}={requested!r}. Expected one of: "
+            + ", ".join(sorted(_ALLOWED_SPHINX_EXT_MODES))
+            + "."
+        )
+
+    local_available = (_LOCAL_SPHINX_EXT / "__init__.py").is_file()
+    installed_namespace = "scikitplot._externals._sphinx_ext"
+    installed_available = _spec_exists(installed_namespace)
+
+    if requested == "auto":
+        if local_available and installed_available:
+            raise RuntimeError(
+                "Both local and installed Scikit-plots Sphinx extension stacks are "
+                f"available. Set {_MODE_ENV}=local for development/tests or "
+                f"{_MODE_ENV}=installed for stable/release documentation builds."
+            )
+        if local_available:
+            requested = "local"
+        elif installed_available:
+            requested = "installed"
+        else:
+            raise RuntimeError(
+                "No Scikit-plots Sphinx extension stack is available. Install "
+                "Scikit-plots or restore docs/source/scikitplot/_externals/_sphinx_ext."
+            )
+
+    if requested == "local":
+        if not local_available:
+            raise RuntimeError(
+                f"{_MODE_ENV}=local was requested, but the local extension package "
+                f"is missing: {_LOCAL_SPHINX_EXT}."
+            )
+        # Do not silently reuse a pre-imported standalone package from another
+        # checkout.  This is the one path assertion that is intentional: local
+        # mode explicitly names this exact source tree as authority.
+        loaded_origin = _loaded_package_origin("_sphinx_ext")
+        if loaded_origin is not None and not _path_is_within(
+            loaded_origin, _LOCAL_SPHINX_EXT
+        ):
+            raise RuntimeError(
+                "Local Sphinx extension mode was requested, but '_sphinx_ext' was "
+                f"already imported from {loaded_origin}. Start a fresh Python "
+                "process or select installed mode explicitly."
+            )
+        local_externals_text = str(_LOCAL_EXTERNALS)
+        if local_externals_text not in sys.path:
+            sys.path.insert(0, local_externals_text)
+        namespace = "_sphinx_ext"
+    else:
+        if not installed_available:
+            raise RuntimeError(
+                f"{_MODE_ENV}=installed was requested, but "
+                f"{installed_namespace!r} is not importable from the active Python "
+                "environment. Install/reinstall the intended Scikit-plots release."
+            )
+        namespace = installed_namespace
+
+    stack = _import_module(namespace)
+    stack_origin = _loaded_package_origin(namespace)
+    if requested == "local":
+        if stack_origin is None or not _path_is_within(stack_origin, _LOCAL_SPHINX_EXT):
+            raise RuntimeError(
+                "Local Sphinx extension authority did not resolve to the documentation "
+                f"checkout: {stack_origin!s}."
+            )
+    elif stack_origin is not None and _path_is_within(stack_origin, _LOCAL_SPHINX_EXT):
+        raise RuntimeError(
+            "Installed Sphinx extension mode resolved back to the documentation-local "
+            "copy. Remove docs/source from the package import path or select local mode."
+        )
+
+    stack_api = getattr(stack, "SPHINX_EXT_STACK_API", None)
+    if stack_api != _EXPECTED_SPHINX_EXT_STACK_API:
+        raise RuntimeError(
+            f"Incompatible {namespace} stack API: expected "
+            f"{_EXPECTED_SPHINX_EXT_STACK_API!r}, got {stack_api!r}. "
+            "Use the local development stack or install a Scikit-plots release "
+            "that ships the matching private Sphinx extension API."
+        )
+
+    contract_module = _import_module(f"{namespace}._sphinx_collection.contract")
+    contract = getattr(contract_module, "COLLECTION_UI_CONTRACT", None)
+    if contract != _COLLECTION_UI_CONTRACT_EXPECTED:
+        raise RuntimeError(
+            f"Incompatible {namespace} collection UI contract: expected "
+            f"{_COLLECTION_UI_CONTRACT_EXPECTED!r}, got {contract!r}. "
+            "Update the selected extension stack as one package."
+        )
+
+    missing = [
+        child
+        for child in _REQUIRED_PRIVATE_MODULES
+        if not _spec_exists(f"{namespace}.{child}")
+    ]
+    if missing:
+        raise RuntimeError(
+            f"Selected Sphinx extension authority {namespace!r} is incomplete; "
+            "missing: " + ", ".join(missing)
+        )
+
+    return requested, namespace
+
+
+_SPHINX_EXT_MODE, _SPHINX_EXT_NAMESPACE = _resolve_sphinx_ext_authority()
+
+# Keep the documentation source tree available only as a fallback for ordinary
+# project imports/autodoc.  It never selects private Sphinx-extension authority.
+_DOCS_SOURCE_TEXT = str(_DOCS_SOURCE)
+if _DOCS_SOURCE_TEXT not in sys.path:
+    sys.path.append(_DOCS_SOURCE_TEXT)
+
+
+def _private_sphinx_extension(name: str) -> str:
+    """Return one extension name inside the already-selected package authority."""
+    return f"{_SPHINX_EXT_NAMESPACE}.{name}"
+
+
+# Exposed as plain conf.py values for diagnostics and CI assertions.  They are
+# not Sphinx config values and do not affect output by themselves.
+scikitplot_sphinx_ext_mode = _SPHINX_EXT_MODE
+scikitplot_sphinx_ext_namespace = _SPHINX_EXT_NAMESPACE
+
 
 # -- Project information -----------------------------------------------------
 
@@ -46,7 +249,7 @@ extensions = [
     # Built-in extensions (load early)
     "sphinx.ext.ifconfig",  # Include content based on configuration
     "sphinx.ext.extlinks",  # Markup to shorten external links by extlinks
-    "sphinx.ext.intersphinx",  # Link to other projects’ documentation
+    "sphinx.ext.intersphinx",  # Link to other projects' documentation
     # "sphinx.ext.linkcode",  # Add external links to source code 'sphinx.ext.linkcode', 'numpydoc.linkcode'
     'sphinx.ext.mathjax',  # Render mathematical expressions using MathJax.
     'sphinx.ext.autodoc',  # https://github.com/sglvladi/Sphinx-RTD-Tutorial/blob/master/docs/source/conf.py
@@ -64,13 +267,13 @@ extensions = [
     # "sphinxext.rediraffe",
     # "myst_parser",
     # "ablog",
-    "scikitplot._externals._sphinx_ext._pydata_component_list",  # pydata_sphinx_theme
-    "scikitplot._externals._sphinx_ext._sphinx_gallery_grid",  # pydata_sphinx_theme
-    "scikitplot._externals._sphinx_ext._sphinxcontrib_youtube",  # "sphinxcontrib.youtube",
-    "scikitplot._externals._sphinx_ext._sphinx_youtube_gallery",
-    "scikitplot._externals._sphinx_ext._sphinx_ai_assistant",
-    "scikitplot._externals._sphinx_ext._sphinx_feedback",
-    "scikitplot._externals._sphinx_ext._sphinx_ai_learn",
+    _private_sphinx_extension("_pydata_component_list"),  # pydata_sphinx_theme
+    _private_sphinx_extension("_sphinx_gallery_grid"),  # pydata_sphinx_theme
+    _private_sphinx_extension("_sphinxcontrib_youtube"),  # "sphinxcontrib.youtube",
+    _private_sphinx_extension("_sphinx_youtube_gallery"),
+    _private_sphinx_extension("_sphinx_ai_assistant"),
+    _private_sphinx_extension("_sphinx_feedback"),
+    _private_sphinx_extension("_sphinx_ai_learn"),
 ]
 
 # -- Sitemap -----------------------------------------------------------------
