@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-gaussian-processes",
   "section": {
     "body": "Gaussian processes provide predictive uncertainty through a kernel-defined prior but can become computationally expensive as data grows.",

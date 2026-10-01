@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-latent-component-stability",
   "section": {
     "body": "Cross-decomposition and feature-selection methods both reduce the effective representation, but they do so with different objectives. When predictors are correlated or the sample is limited, multiple representations can explain similar predictive behavior. Stability checks help distinguish a repeatable structure from one convenient fit.",

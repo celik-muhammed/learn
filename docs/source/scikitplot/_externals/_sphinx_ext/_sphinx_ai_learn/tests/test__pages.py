@@ -27,7 +27,9 @@ from _sphinx_ext._sphinx_ai_learn._registry import (
 from _sphinx_ext._sphinx_ai_learn._schema import LearnValidationError, validate_catalog
 
 EXT = Path(__file__).resolve().parents[3]
-TREE = load_content_tree(EXT / "learn-ai")
+DOCS_SOURCE = Path(__file__).resolve().parents[5]
+CONTENT = DOCS_SOURCE / "learn-ai"
+TREE = load_content_tree(CONTENT)
 PROMPTS = TREE.prompts
 SKILLS = TREE.skills
 
@@ -71,7 +73,7 @@ def test_scaffold_owns_every_heading_and_nested_prompt():
         (rel, row) for rel, row in TREE.records.items()
         if row["subject"]["kind"] == "topic"
     )
-    rst = (EXT / "learn-ai" / rel.with_suffix(".rst")).read_text()
+    rst = (CONTENT / rel.with_suffix(".rst")).read_text()
     specs = topic_sections(record["subject"], prompts=PROMPTS, skills=SKILLS)
     for spec in specs:
         assert f".. _learn-{record['subject']['id']}-{spec['id']}:" in rst
@@ -142,10 +144,10 @@ def test_inline_ai_section_generation_policy_is_explicit_and_kind_safe():
 
 
 def test_site_custom_css_is_backed_by_a_configured_static_source():
-    conf = (EXT / "conf.py").read_text(encoding="utf-8")
+    conf = (DOCS_SOURCE / "conf.py").read_text(encoding="utf-8")
     assert "html_static_path = ['_static', 'css']" in conf
     assert 'html_css_files = ["styles/custom.css"]' in conf
-    assert (EXT / "css/styles/custom.css").is_file()
+    assert (DOCS_SOURCE / "css/styles/custom.css").is_file()
 
 
 def test_publication_credit_is_explicit_public_metadata_not_generation_context():
@@ -625,8 +627,8 @@ def test_media_gallery_cards_have_bounded_surfaces_and_video_embeds():
     css = (EXT/'_sphinx_ext/_sphinx_ai_learn/_static/topic.css').read_text()
     pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
     video_card = (EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn/media-card-start.html').read_text()
-    video_index = (EXT/'learn-ai/videos/index.rst').read_text()
-    whiteboard_index = (EXT/'learn-ai/whiteboards/index.rst').read_text()
+    video_index = (CONTENT/'videos/index.rst').read_text()
+    whiteboard_index = (CONTENT/'whiteboards/index.rst').read_text()
     assert '.learn-explorer[data-kind=video] .learn-card' in css
     assert '.learn-explorer[data-kind=whiteboard] .learn-card' in css
     assert 'border:1px solid var(--learn-line)' in css
@@ -643,21 +645,21 @@ def test_media_gallery_cards_have_bounded_surfaces_and_video_embeds():
     assert video_card.index('learn-meta') < video_card.index('<h3>') < video_card.index('learn-media-card-content')
     assert '.. container:: learn-index-actions learn-video-index-actions' in video_index
     assert ':doc:`Create a Video <new>`' in video_index
-    topic_index = (EXT/'learn-ai/topics/index.rst').read_text()
+    topic_index = (CONTENT/'topics/index.rst').read_text()
     assert '.. container:: learn-index-actions learn-topic-index-actions' in topic_index
     assert '.learn-index-actions { margin:0 0 1rem; }' in css
     assert '.learn-media-index-actions a' not in css
     assert '.. container:: learn-index-actions learn-whiteboard-index-actions' in whiteboard_index
 
 def test_media_indexes_use_materialized_explorer_and_whiteboard_detail_targets():
-    index = (EXT / "learn-ai/whiteboards/index.rst").read_text()
+    index = (CONTENT / "whiteboards/index.rst").read_text()
     assert ".. ai-topic-explorer:: whiteboard" in index
     assert ".. toctree::" in index and ":hidden:" in index
     rel, record = next(
         (rel, row) for rel, row in TREE.records.items()
         if row["subject"]["kind"] == "whiteboard"
     )
-    detail = (EXT / "learn-ai" / rel.with_suffix(".rst")).read_text()
+    detail = (CONTENT / rel.with_suffix(".rst")).read_text()
     subject_id = record["subject"]["id"]
     assert detail.index(f".. ai-whiteboard-gallery:: {subject_id}") < detail.index(
         f".. ai-media-actions:: {subject_id}"
@@ -694,7 +696,7 @@ def test_media_actions_and_gallery_viewer_contract_are_progressive_and_contextua
 
 def test_video_generation_lifecycle_is_contextual_capability_gated_and_provider_neutral():
     pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
-    generated_new = (EXT/'learn-ai/videos/new.rst').read_text()
+    generated_new = (CONTENT/'videos/new.rst').read_text()
     template_root = EXT/'_sphinx_ext/_sphinx_ai_learn/_templates'
     template = (template_root/'learn/video-generation.html').read_text()
     rendered_template = Environment(loader=FileSystemLoader(str(template_root)), autoescape=False).get_template('learn/video-generation.html').render(
@@ -1124,7 +1126,7 @@ def test_explorer_search_variant_is_shared_config_not_a_second_controller():
     sphinx = (EXT/'_sphinx_ext/_sphinx_ai_learn/_sphinx.py').read_text()
     pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
     readme = (EXT/'_sphinx_ext/_sphinx_ai_learn/README.md').read_text()
-    conf = (EXT/'conf.py').read_text()
+    conf = (DOCS_SOURCE/'conf.py').read_text()
     assert 'app.add_config_value("ai_learn_explorer_search_variant", "pill-overflow", "env")' in sphinx
     assert "ai_learn_explorer_search_variant must be 'pill-overflow' or 'classic'" in sphinx
     assert '"search_control_variant": search_control_variant' in pages
@@ -1173,7 +1175,7 @@ def test_audio_topic_and_detail_contracts_are_materialized_without_autoplay():
     normalized = validate_catalog({"contract": "learn.catalog.v3", "revision": "a", "subjects": [audio]})["subjects"][0]
     assert ".. ai-audio-player:: audio-one" in _media_directive(normalized)
     topic_rel, _ = next((rel, row) for rel, row in TREE.records.items() if row["subject"]["kind"] == "topic")
-    assert "Audio Explanation" in (EXT / "learn-ai" / topic_rel.with_suffix(".rst")).read_text()
+    assert "Audio Explanation" in (CONTENT / topic_rel.with_suffix(".rst")).read_text()
     template = (EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn/audio-player.html').read_text()
     assert '<audio controls preload="metadata"' in template
     assert 'autoplay' not in template
@@ -1184,8 +1186,8 @@ def test_audio_topic_and_detail_contracts_are_materialized_without_autoplay():
 
 def test_document_and_whiteboard_generation_surfaces_are_first_class_and_fail_closed():
     pages = (EXT/'_sphinx_ext/_sphinx_ai_learn/_pages.py').read_text()
-    document_new = (EXT/'learn-ai/documents/new.rst').read_text()
-    whiteboard_new = (EXT/'learn-ai/whiteboards/new.rst').read_text()
+    document_new = (CONTENT/'documents/new.rst').read_text()
+    whiteboard_new = (CONTENT/'whiteboards/new.rst').read_text()
     overview = (EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn/overview-actions.html').read_text()
     section = (EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn/section-end.html').read_text()
     document_template = (EXT/'_sphinx_ext/_sphinx_ai_learn/_templates/learn/document-generation.html').read_text()

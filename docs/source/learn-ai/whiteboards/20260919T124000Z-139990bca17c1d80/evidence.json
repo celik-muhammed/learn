@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "whiteboard-lasso-regularization",
   "section": {
     "body": "Use the official scikit-learn 1.9 Lasso section for the estimator definition and parameter behavior.",

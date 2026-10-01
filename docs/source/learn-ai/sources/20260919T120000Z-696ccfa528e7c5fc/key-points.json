@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-neighbors",
   "section": {
     "body": "Neighbor methods are local and distance-driven, so representation, metric choice, and dimensionality are part of the model design.",

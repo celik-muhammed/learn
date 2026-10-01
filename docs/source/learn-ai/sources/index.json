@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Add a Source",
+  "hide_secondary_sidebar": true,
   "kind": "source",
   "title": "Sources",
   "view": "explorer"

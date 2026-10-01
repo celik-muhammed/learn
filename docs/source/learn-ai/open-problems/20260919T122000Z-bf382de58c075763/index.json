@@ -1,6 +1,7 @@
 {
   "add_toctree": false,
   "contract": "learn.record.v2",
+  "hide_secondary_sidebar": true,
   "record": {
     "authors": [
       "Anonymous"

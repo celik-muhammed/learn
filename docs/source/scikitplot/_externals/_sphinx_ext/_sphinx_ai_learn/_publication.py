@@ -1130,18 +1130,38 @@ def _project_json_tree(
     files.update({rel: (tree.root / rel).read_bytes() for rel in tree.feedback_events})
     files.update(canonical_prompt_json_files(prompts))
     files.update(canonical_skill_json_files(skills))
-    add_toctree = {
-        row["subject"]["id"]: row["add_toctree"] for row in tree.records.values()
-    }
+    record_layout = {}
+    for record_rel, row in tree.records.items():
+        section_layout = {}
+        for ref in row["section_refs"]:
+            section_rel = record_rel.parent.joinpath(
+                *PurePosixPath(ref["source"]).parts
+            )
+            section_layout[ref["id"]] = tree.sections[section_rel][
+                "hide_secondary_sidebar"
+            ]
+        record_layout[row["subject"]["id"]] = {
+            "add_toctree": row["add_toctree"],
+            "hide_secondary_sidebar": row["hide_secondary_sidebar"],
+            "section_hide_secondary_sidebar": section_layout,
+        }
     for subject in catalog["subjects"]:
         if subject["kind"] == "skill":
             continue
+        layout = record_layout.get(subject["id"], {})
         files.update(
             canonical_record_json_files(
                 subject,
                 prompts,
                 skills,
-                add_toctree=add_toctree.get(subject["id"], False),
+                add_toctree=layout.get("add_toctree", False),
+                hide_secondary_sidebar=layout.get(
+                    "hide_secondary_sidebar",
+                    True,
+                ),
+                section_hide_secondary_sidebar=layout.get(
+                    "section_hide_secondary_sidebar", {}
+                ),
             )
         )
     return files

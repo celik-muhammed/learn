@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-cross-decomposition",
   "section": {
     "body": "Latent component — a lower-dimensional direction constructed from the observed variables.\n\nPLS — partial least squares methods that build components using X/Y covariance structure.\n\nCCA — canonical correlation analysis, which seeks paired directions with high correlation.",

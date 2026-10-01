@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-naive-bayes",
   "section": {
     "body": "Use a Naive Bayes variant as a fast probabilistic baseline when its feature model is plausible, especially for sparse count-like data. Choose the variant to match feature semantics and evaluate probability quality rather than assuming posterior estimates are calibrated.",

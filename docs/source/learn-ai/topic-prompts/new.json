@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Design a reusable AI learning prompt with explicit purpose, evidence boundaries, and review expectations.",
+  "hide_secondary_sidebar": true,
   "title": "Create a Topic Prompt",
   "view": "prompt-create"
 }

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-sgd-convergence-monitoring",
   "section": {
     "body": "Design a repeatable check for whether an SGD-based linear model is converging adequately as data volume, feature scaling, sparsity, or update cadence changes.",

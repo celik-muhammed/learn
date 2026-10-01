@@ -15,7 +15,7 @@ Channels
    :grid-columns: 1 2 3 4
    :class-card: downstream-project-links
    :sort: title
-   :interactive:
+   :interactive: classic
    :search-label: Search channels
    :search-fields: link-alt
 
@@ -50,7 +50,7 @@ Videos
 .. gallery-grid::
    :grid-columns: 1 1 2 2
    :group-by: category
-   :interactive:
+   :interactive: pill-overflow
    :filter-fields: category
    :search-label: Search videos
 

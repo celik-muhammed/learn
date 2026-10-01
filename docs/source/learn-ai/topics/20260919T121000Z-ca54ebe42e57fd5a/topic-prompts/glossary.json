@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-feature-selection",
   "section": {
     "body": "Filter method — selects features from statistics computed independently of the final estimator.\n\nEmbedded selection — uses a fitted model’s coefficients or importances to select features.\n\nSequential selection — iteratively adds or removes features according to model performance.",

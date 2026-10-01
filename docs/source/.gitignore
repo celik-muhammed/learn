@@ -21,8 +21,8 @@ _contents/
 /sg_execution_times.rst
 
 # sphinx scss artifact
-/css/styles/apis-search.css
-/css/styles/apis.css
-/css/styles/colors.css
-/css/styles/custom.css
-/css/styles/index.css
+# /css/styles/apis-search.css
+# /css/styles/apis.css
+# /css/styles/colors.css
+# /css/styles/custom.css
+# /css/styles/index.css

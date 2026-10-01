@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-elastic-net",
   "section": {
     "body": "Use Elastic-Net for linear prediction when you want sparse coefficients but expect groups of correlated predictors. Tune both overall regularization and the L1/L2 mixture with a validation strategy that matches the deployment setting.",

@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Video",
+  "hide_secondary_sidebar": true,
   "kind": "video",
   "title": "Videos",
   "view": "media-gallery"

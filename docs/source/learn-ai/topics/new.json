@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Create a private AI-assisted Topic draft from selected catalog context and evidence.",
+  "hide_secondary_sidebar": true,
   "kind": "topic",
   "title": "Create a Topic",
   "view": "record-create"

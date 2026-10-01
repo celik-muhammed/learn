@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-lda-qda",
   "section": {
     "body": "Covers Gaussian class-conditional modeling, covariance assumptions, shrinkage, dimensionality reduction, and estimation algorithms.",

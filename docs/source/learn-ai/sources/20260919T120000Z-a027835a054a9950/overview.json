@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-feature-selection",
   "section": {
     "body": "Official scikit-learn 1.9 guidance for removing low-information features with filters, model-based selection, and sequential methods.",

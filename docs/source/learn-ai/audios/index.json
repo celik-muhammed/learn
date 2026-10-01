@@ -1,7 +1,8 @@
 {
   "contract": "learn.page.v1",
-  "create_label": "Create Audio",
+  "create_label": "Create a Audio",
+  "hide_secondary_sidebar": true,
   "kind": "audio",
-  "title": "Audio",
+  "title": "Audios",
   "view": "explorer"
 }

@@ -7,6 +7,7 @@
   "default_enabled": true,
   "description": "Rewrite the core ideas for an informed non-expert while preserving the important distinctions and intuition.",
   "empty_message": "No one has generated a conceptual simplification of this topic yet.",
+  "hide_secondary_sidebar": true,
   "id": "conceptual-simplification",
   "instruction": "Rewrite the core ideas of this topic for a graduate student or informed non-expert. Preserve the important distinctions while reducing unnecessary jargon. Emphasize intuition, causal relationships, concrete examples, and why each major component exists. Explicitly flag where simplification would otherwise hide an important limitation or exception.",
   "order": 50,

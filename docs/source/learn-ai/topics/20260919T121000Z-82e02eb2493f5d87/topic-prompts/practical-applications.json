@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-isotonic-regression",
   "section": {
     "body": "Use isotonic regression when domain knowledge supports monotonicity but not a specific curve shape. It can also serve as a flexible probability calibrator when enough independent calibration data is available.",

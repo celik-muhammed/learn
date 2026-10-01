@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-tree-complexity-generalization",
   "section": {
     "body": "Decision trees can keep splitting until they fit increasingly specific regions. Scikit-learn exposes structural controls and cost-complexity pruning to constrain that growth. The appropriate setting depends on validation behavior, interpretability requirements, and the cost of unstable rules.",

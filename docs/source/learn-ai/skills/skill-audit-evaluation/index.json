@@ -10,6 +10,7 @@
     "machine-learning"
   ],
   "empty_message": "No one has applied Audit an evaluation for leakage and weak evidence to this topic yet.",
+  "hide_secondary_sidebar": true,
   "id": "skill-audit-evaluation",
   "instruction": "1. Identify the prediction target and decision the metric is meant to support.\n2. Trace every preprocessing, feature-selection, calibration, and tuning step to confirm it is fitted only on permitted training data.\n3. Check whether baselines and metrics answer the same task.\n4. Look for class imbalance, repeated-subject leakage, temporal leakage, ceiling effects, and aggregation that hides subgroup behavior.\n5. Report uncertainty or fold variability where available.\n6. Replace the audit when the pipeline or dataset changes.",
   "order": 20,

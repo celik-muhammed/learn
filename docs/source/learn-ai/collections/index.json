@@ -6,6 +6,7 @@
   ],
   "contract": "learn.page.v1",
   "description": "Reading-status collections and bookmarks stored in this browser.",
+  "hide_secondary_sidebar": true,
   "mode": "collections",
   "title": "Collections",
   "view": "user-library"

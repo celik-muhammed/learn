@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-stochastic-gradient-descent",
   "section": {
     "body": "Epoch — one pass over the training data.\n\nLearning rate — the step size controlling parameter updates.\n\nPartial fit — an incremental-estimation interface that updates a model with additional data.",

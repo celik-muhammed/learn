@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-probabilistic-classifier-assumptions",
   "section": {
     "body": "LDA shares a covariance matrix across classes, QDA allows class-specific covariance, and Naive Bayes variants add stronger feature-distribution and conditional-independence assumptions. Choosing among them is therefore an assumption-and-data question, not only a benchmark-score question.",

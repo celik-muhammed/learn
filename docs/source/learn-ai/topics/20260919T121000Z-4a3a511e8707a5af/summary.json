@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-decision-trees",
   "section": {
     "body": "Decision Trees recursively partition the feature space to make predictions, yielding flexible nonlinear models whose complexity can be controlled through depth, leaf, split, and pruning settings.",

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "problem-probabilistic-classifier-assumptions",
   "section": {
     "body": "Use the LDA/QDA and Naive Bayes guides to make each assumption explicit before comparing validation results.",

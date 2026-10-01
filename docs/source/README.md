@@ -50,7 +50,7 @@ list of links — one engine, five option combinations.
 Third: **the query engine is domain-agnostic.**
 
 ```
-scikitplot/_sphinx_ext/
+scikitplot/_externals/_sphinx_ext/
     collection/          domain-agnostic: filter, sort, group, paginate
         select.py        operates on plain mappings; knows nothing about videos
     youtube_catalog/     a YouTube-shaped adapter over collection/
@@ -320,7 +320,7 @@ bakes in something that never reproduces.
 ## Sync tool
 
 ```bash
-python -m scikitplot._sphinx_ext.youtube_catalog.sync \
+python -m scikitplot._externals._sphinx_ext.youtube_catalog.sync \
     --source https://www.youtube.com/@cs50/playlists \
     --output docs/_data/youtube.yaml
 ```

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-gaussian-processes",
   "section": {
     "body": "Covers GPR, GPC, kernel composition, probabilistic prediction, hyperparameter optimization, and computational characteristics.",

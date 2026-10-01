@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "whiteboard-rickroll-showcase",
   "section": {
     "body": "These three diagrams are original documentation fixtures. They demonstrate a multi-image whiteboard without reproducing video frames: one diagram explains expectation and reveal, one explains the interaction sequence, and one explains the Learn catalog relationships among the topic, videos, and whiteboard.",

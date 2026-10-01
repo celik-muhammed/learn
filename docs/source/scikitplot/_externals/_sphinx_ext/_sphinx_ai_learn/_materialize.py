@@ -600,6 +600,7 @@ def _validate_page(  # ruff: ignore[too-many-branches]
             "children",
             "create_label",
             "design_grid",
+            "hide_secondary_sidebar",
         ),
         where=str(rel),
     )
@@ -616,7 +617,12 @@ def _validate_page(  # ruff: ignore[too-many-branches]
             empty=True,
             multiline=True,
         ),
+        "hide_secondary_sidebar": data.get("hide_secondary_sidebar", True),
     }
+    if not isinstance(result["hide_secondary_sidebar"], bool):
+        raise LearnValidationError(
+            f"AI Learn: {rel}.hide_secondary_sidebar must be boolean"
+        )
     if "kind" in data:
         result["kind"] = _text(data["kind"], f"{rel}.kind", 64)
     if "mode" in data:
@@ -728,6 +734,7 @@ def _validate_definition(data, rel, *, contract, directory, label, optional=()):
             "empty_message",
             "default_enabled",
             "order",
+            "hide_secondary_sidebar",
             *optional,
         ),
         where=str(rel),
@@ -742,6 +749,11 @@ def _validate_definition(data, rel, *, contract, directory, label, optional=()):
         )
     if not isinstance(data["default_enabled"], bool):
         raise LearnValidationError(f"AI Learn: {rel}.default_enabled must be boolean")
+    hide_secondary_sidebar = data.get("hide_secondary_sidebar", True)
+    if not isinstance(hide_secondary_sidebar, bool):
+        raise LearnValidationError(
+            f"AI Learn: {rel}.hide_secondary_sidebar must be boolean"
+        )
     if (
         isinstance(data["order"], bool)
         or not isinstance(data["order"], int)
@@ -776,6 +788,7 @@ def _validate_definition(data, rel, *, contract, directory, label, optional=()):
         "empty_message": _text(data["empty_message"], f"{rel}.empty_message", 1000),
         "default_enabled": data["default_enabled"],
         "order": data["order"],
+        "hide_secondary_sidebar": hide_secondary_sidebar,
     }
 
 
@@ -890,7 +903,13 @@ def _validate_record_wrapper(data, rel):
     _object(
         data,
         required=("contract", "record", "sections"),
-        allowed=("contract", "record", "sections", "add_toctree"),
+        allowed=(
+            "contract",
+            "record",
+            "sections",
+            "add_toctree",
+            "hide_secondary_sidebar",
+        ),
         where=str(rel),
     )
     if data["contract"] != RECORD_CONTRACT or not isinstance(data["record"], dict):
@@ -901,6 +920,11 @@ def _validate_record_wrapper(data, rel):
     add_toctree = data.get("add_toctree", False)
     if not isinstance(add_toctree, bool):
         raise LearnValidationError(f"AI Learn: {rel}.add_toctree must be boolean")
+    hide_secondary_sidebar = data.get("hide_secondary_sidebar", True)
+    if not isinstance(hide_secondary_sidebar, bool):
+        raise LearnValidationError(
+            f"AI Learn: {rel}.hide_secondary_sidebar must be boolean"
+        )
     refs = data["sections"]
     if not isinstance(refs, list) or len(refs) > MAX_SUBJECT_SECTIONS:
         raise LearnValidationError(f"AI Learn: {rel}.sections must be a bounded list")
@@ -947,14 +971,14 @@ def _validate_record_wrapper(data, rel):
         raise LearnValidationError(
             f"AI Learn: record path mismatch at {rel}; expected {expected.as_posix()}"
         )
-    return probe, tuple(normalized), add_toctree
+    return probe, tuple(normalized), add_toctree, hide_secondary_sidebar
 
 
 def _validate_section_wrapper(data, rel, *, record_id, section_id):
     _object(
         data,
         required=("contract", "record_id", "section"),
-        allowed=("contract", "record_id", "section"),
+        allowed=("contract", "record_id", "section", "hide_secondary_sidebar"),
         where=str(rel),
     )
     if (
@@ -964,6 +988,11 @@ def _validate_section_wrapper(data, rel, *, record_id, section_id):
         raise LearnValidationError(f"AI Learn: section parent mismatch at {rel}")
     if not isinstance(data["section"], dict):
         raise LearnValidationError(f"AI Learn: {rel}.section must be an object")
+    hide_secondary_sidebar = data.get("hide_secondary_sidebar", True)
+    if not isinstance(hide_secondary_sidebar, bool):
+        raise LearnValidationError(
+            f"AI Learn: {rel}.hide_secondary_sidebar must be boolean"
+        )
     actual_id = data["section"].get("id")
     if (
         actual_id != section_id
@@ -974,7 +1003,7 @@ def _validate_section_wrapper(data, rel, *, record_id, section_id):
             f"AI Learn: section source/id mismatch at {rel}",
         )
     if data["contract"] == SECTION_CONTRACT:
-        return dict(data["section"])
+        return dict(data["section"]), hide_secondary_sidebar
 
     section = data["section"]
     if set(section) != {"id", "title", "active_generation_id", "generations"}:
@@ -1011,7 +1040,7 @@ def _validate_section_wrapper(data, rel, *, record_id, section_id):
     }
     if "review" in active:
         projected["review"] = active["review"]
-    return projected
+    return projected, hide_secondary_sidebar
 
 
 @dataclass(frozen=True)
@@ -1203,7 +1232,12 @@ def load_content_tree(  # ruff: ignore[too-many-branches]
     subject_origins = {}
     section_origins = {}
     subject_ids = set()
-    for rel, (base, refs, add_toctree) in record_wrappers.items():
+    for rel, (
+        base,
+        refs,
+        add_toctree,
+        hide_secondary_sidebar,
+    ) in record_wrappers.items():
         if base["id"] in subject_ids:
             raise LearnValidationError(f"AI Learn: duplicate record id {base['id']}")
         subject_ids.add(base["id"])
@@ -1246,12 +1280,15 @@ def load_content_tree(  # ruff: ignore[too-many-branches]
                 raise LearnValidationError(
                     f"AI Learn: record {base['id']} is missing section JSON {ref['source']}"
                 )
-            section = _validate_section_wrapper(
+            section, section_hide_secondary_sidebar = _validate_section_wrapper(
                 data, section_rel, record_id=base["id"], section_id=section_id
             )
             loaded.append(section)
             section_origins[(base["id"], section_id)] = section_rel
-            sections[section_rel] = {"section": section}
+            sections[section_rel] = {
+                "section": section,
+                "hide_secondary_sidebar": section_hide_secondary_sidebar,
+            }
 
         subject = validate_subject({**base, "sections": loaded})
         subjects.append(subject)
@@ -1260,6 +1297,7 @@ def load_content_tree(  # ruff: ignore[too-many-branches]
             "subject": subject,
             "section_refs": refs,
             "add_toctree": add_toctree,
+            "hide_secondary_sidebar": hide_secondary_sidebar,
         }
         for ref in refs:
             section_rel = folder.joinpath(*PurePosixPath(ref["source"]).parts)
@@ -1450,10 +1488,16 @@ def _canonical_definition_json_files(
             "empty_message": definition["empty_message"],
             "default_enabled": definition["default_enabled"],
             "order": order,
+            "hide_secondary_sidebar": definition.get(
+                "hide_secondary_sidebar",
+                True,
+            ),
         }
         rel = Path(directory) / definition_id / "index.json"
         normalized = validator(payload, rel)
-        if normalized != {key: definition[key] for key in normalized}:
+        expected_definition = dict(definition)
+        expected_definition.setdefault("hide_secondary_sidebar", True)
+        if normalized != {key: expected_definition[key] for key in normalized}:
             raise LearnValidationError(
                 f"AI Learn: non-canonical {label} {definition_id}"
             )
@@ -1495,22 +1539,33 @@ def canonical_skill_json_files(skills):
             "empty_message": skill["empty_message"],
             "default_enabled": skill["default_enabled"],
             "order": order,
+            "hide_secondary_sidebar": skill.get("hide_secondary_sidebar", True),
             "domains": list(skill.get("domains", [])),
             "related": list(skill.get("related", [])),
         }
         rel = Path("skills") / skill_id / "index.json"
         normalized = _validate_skill(payload, rel)
-        if normalized != {
-            key: skill.get(key, [] if key in {"domains", "related"} else None)
-            for key in normalized
-        }:
+        expected_skill = dict(skill)
+        expected_skill.setdefault("hide_secondary_sidebar", True)
+        expected_skill.setdefault("domains", [])
+        expected_skill.setdefault("related", [])
+        if normalized != {key: expected_skill[key] for key in normalized}:
             raise LearnValidationError(f"AI Learn: non-canonical skill {skill_id}")
         files[rel] = json_source_bytes(payload)
     return files
 
 
-def canonical_record_json_files(subject, prompts, skills=(), *, add_toctree=False):
-    """Project one validated subject into its canonical JSON record subtree.
+def canonical_record_json_files(  # ruff: ignore[too-many-branches]
+    subject,
+    prompts,
+    skills=(),
+    *,
+    add_toctree=False,
+    hide_secondary_sidebar=True,
+    section_hide_secondary_sidebar=None,
+):
+    """
+    Project one validated subject into its canonical JSON record subtree.
 
     This is the single layout authority shared by migration, publication, and
     tests.  It returns content-root-relative JSON paths and canonical UTF-8
@@ -1518,6 +1573,16 @@ def canonical_record_json_files(subject, prompts, skills=(), *, add_toctree=Fals
     """
     if not isinstance(add_toctree, bool):
         raise LearnValidationError("AI Learn: add_toctree must be boolean")
+    if not isinstance(hide_secondary_sidebar, bool):
+        raise LearnValidationError(
+            "AI Learn: hide_secondary_sidebar must be boolean",
+        )
+    if section_hide_secondary_sidebar is None:
+        section_hide_secondary_sidebar = {}
+    if not isinstance(section_hide_secondary_sidebar, dict):
+        raise LearnValidationError(
+            "AI Learn: section_hide_secondary_sidebar must be a mapping"
+        )
     prompt_rows = tuple(prompts or ())
     skill_rows = tuple(skills or ())
     prompt_ids = {prompt["id"] for prompt in prompt_rows}
@@ -1537,6 +1602,18 @@ def canonical_record_json_files(subject, prompts, skills=(), *, add_toctree=Fals
 
     subject = validate_subject(subject)
     specs = _record_specs(subject, prompt_rows, skill_rows)
+    spec_ids = {spec["id"] for spec in specs}
+    unknown_sidebar_sections = set(section_hide_secondary_sidebar) - spec_ids
+    if unknown_sidebar_sections:
+        raise LearnValidationError(
+            "AI Learn: section_hide_secondary_sidebar contains unknown section ids"
+        )
+    if any(
+        not isinstance(value, bool) for value in section_hide_secondary_sidebar.values()
+    ):
+        raise LearnValidationError(
+            "AI Learn: section_hide_secondary_sidebar values must be boolean",
+        )
     content = {section["id"]: section for section in subject.get("sections", [])}
     folder = PurePosixPath(DIRECTORIES[subject["kind"]]) / route_key(subject)
     refs = []
@@ -1580,6 +1657,9 @@ def canonical_record_json_files(subject, prompts, skills=(), *, add_toctree=Fals
             payload = {
                 "contract": SECTION_CONTRACT_V2,
                 "record_id": subject["id"],
+                "hide_secondary_sidebar": section_hide_secondary_sidebar.get(
+                    section_id, True
+                ),
                 "section": {
                     "id": section_id,
                     "title": section["title"],
@@ -1591,6 +1671,9 @@ def canonical_record_json_files(subject, prompts, skills=(), *, add_toctree=Fals
             payload = {
                 "contract": SECTION_CONTRACT,
                 "record_id": subject["id"],
+                "hide_secondary_sidebar": section_hide_secondary_sidebar.get(
+                    section_id, True
+                ),
                 "section": section,
             }
         files[Path(folder.joinpath(source))] = json_source_bytes(payload)
@@ -1600,6 +1683,7 @@ def canonical_record_json_files(subject, prompts, skills=(), *, add_toctree=Fals
         "contract": RECORD_CONTRACT,
         "record": base,
         "add_toctree": add_toctree,
+        "hide_secondary_sidebar": hide_secondary_sidebar,
         "sections": refs,
     }
     files[Path(folder / "index.json")] = json_source_bytes(index)
@@ -1712,22 +1796,36 @@ def _page_body(  # ruff: ignore[too-many-branches, too-many-return-statements]
     raise LearnValidationError(f"AI Learn: unsupported page view at {rel}")
 
 
+def _secondary_sidebar_metadata(hide_secondary_sidebar):
+    """Render one validated page-level secondary-sidebar metadata field."""
+    return ":html_theme.sidebar_secondary.remove:\n\n" if hide_secondary_sidebar else ""
+
+
 def _render_page(page, tree, rel):
-    wide = page["view"] != "root"
-    prefix = ":html_theme.sidebar_secondary.remove:\n\n" if wide else ""
-    return prefix + _heading(page["title"]) + "\n" + _page_body(page, tree, rel)
+    return (
+        _secondary_sidebar_metadata(page["hide_secondary_sidebar"])
+        + _heading(page["title"])
+        + "\n"
+        + _page_body(page, tree, rel)
+    )
 
 
 def _render_prompt(prompt):
     return (
-        _heading(prompt["title"])
+        _secondary_sidebar_metadata(prompt["hide_secondary_sidebar"])
+        + _heading(prompt["title"])
         + "\n"
         + f".. ai-topic-prompt-detail:: {prompt['id']}\n"
     )
 
 
 def _render_skill(skill):
-    return _heading(skill["title"]) + "\n" + f".. ai-skill-detail:: {skill['id']}\n"
+    return (
+        _secondary_sidebar_metadata(skill["hide_secondary_sidebar"])
+        + _heading(skill["title"])
+        + "\n"
+        + f".. ai-skill-detail:: {skill['id']}\n"
+    )
 
 
 def _record_specs(subject, prompts, skills):
@@ -1742,9 +1840,22 @@ def _section_rst_source(ref):
     return PurePosixPath(ref["source"]).with_suffix(".rst").as_posix()
 
 
-def _render_record(subject, section_refs, *, add_toctree, prompts, skills):
+def _render_record(
+    subject,
+    section_refs,
+    *,
+    add_toctree,
+    hide_secondary_sidebar,
+    prompts,
+    skills,
+):
     specs = {spec["id"]: spec for spec in _record_specs(subject, prompts, skills)}
-    lines = [_heading(subject["title"]), f".. ai-topic-page:: {subject['id']}", ""]
+    prefix = _secondary_sidebar_metadata(hide_secondary_sidebar)
+    lines = [
+        _heading(subject["title"]),
+        f".. ai-topic-page:: {subject['id']}",
+        "",
+    ]
     media = _media_directive(subject)
     if media:
         lines.extend([media.rstrip(), ""])
@@ -1755,7 +1866,8 @@ def _render_record(subject, section_refs, *, add_toctree, prompts, skills):
             for ref in section_refs
         ]
         lines.append(_toctree(children, maxdepth=2).rstrip())
-        return "\n".join(line for line in lines if line is not None).rstrip() + "\n"
+        rendered = "\n".join(line for line in lines if line is not None).rstrip()
+        return prefix + rendered + "\n"
 
     for ref in section_refs:
         section_id = ref["id"]
@@ -1785,10 +1897,19 @@ def _render_record(subject, section_refs, *, add_toctree, prompts, skills):
                 "",
             ]
         )
-    return "\n".join(line for line in lines if line is not None).rstrip() + "\n"
+    rendered = "\n".join(line for line in lines if line is not None).rstrip()
+    return prefix + rendered + "\n"
 
 
-def _render_section(subject, section, *, add_toctree, prompts, skills):
+def _render_section(
+    subject,
+    section,
+    *,
+    add_toctree,
+    hide_secondary_sidebar,
+    prompts,
+    skills,
+):
     specs = {spec["id"]: spec for spec in _record_specs(subject, prompts, skills)}
     spec = specs.get(section["id"], {"kind": "text", "title": section["title"]})
     title = f"{subject['title']} — {spec.get('title', section['title'])}"
@@ -1796,7 +1917,7 @@ def _render_section(subject, section, *, add_toctree, prompts, skills):
     label = f".. _learn-{subject['id']}-{section['id']}:\n\n" if add_toctree else ""
     return (
         prefix
-        + ":html_theme.sidebar_secondary.remove:\n\n"
+        + _secondary_sidebar_metadata(hide_secondary_sidebar)
         + _heading(title)
         + "\n"
         + label
@@ -1840,6 +1961,7 @@ def render_materialized(tree: ContentTree):
             wrapper["subject"],
             wrapper["section_refs"],
             add_toctree=wrapper["add_toctree"],
+            hide_secondary_sidebar=wrapper["hide_secondary_sidebar"],
             prompts=tree.prompts,
             skills=tree.skills,
         )
@@ -1856,6 +1978,7 @@ def render_materialized(tree: ContentTree):
             wrapper["subject"],
             wrapper["section"],
             add_toctree=record["add_toctree"],
+            hide_secondary_sidebar=wrapper["hide_secondary_sidebar"],
             prompts=tree.prompts,
             skills=tree.skills,
         )

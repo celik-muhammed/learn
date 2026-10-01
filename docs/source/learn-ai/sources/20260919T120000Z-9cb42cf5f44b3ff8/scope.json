@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-probability-calibration",
   "section": {
     "body": "Covers calibration curves, proper scoring context, calibration methods, cross-validation behavior, and CalibratedClassifierCV.",

@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Create a source-aware visual explanation from a Topic, Source, or prompt.",
+  "hide_secondary_sidebar": true,
   "kind": "whiteboard",
   "title": "Create a Whiteboard",
   "view": "media-create"

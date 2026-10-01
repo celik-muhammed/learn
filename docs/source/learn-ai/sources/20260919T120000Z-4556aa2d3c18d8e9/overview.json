@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-linear-models",
   "section": {
     "body": "Official scikit-learn 1.9 guidance for linear estimators, regularization, Bayesian linear regression, logistic regression, and generalized linear models.",

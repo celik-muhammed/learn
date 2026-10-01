@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-logistic-regression",
   "section": {
     "body": "Logistic regression is a regularized linear classifier that models class probabilities through a logistic or multinomial formulation rather than performing ordinary least-squares regression.",

@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-isotonic-regression",
   "section": {
     "body": "Isotonic regression fits a non-decreasing or non-increasing function without imposing a fixed parametric shape, subject to a monotonicity constraint.",

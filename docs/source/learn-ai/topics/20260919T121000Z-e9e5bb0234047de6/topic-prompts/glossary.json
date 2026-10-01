@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-generalized-linear-models",
   "section": {
     "body": "Link function — maps the expected target to a linear predictor.\n\nTweedie distribution — a family spanning several mean-variance relationships used by TweedieRegressor.\n\nDeviance — a likelihood-based measure used to evaluate fit for generalized linear models.",

@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "create_label": "Create a Document",
+  "hide_secondary_sidebar": true,
   "kind": "document",
   "title": "Documents",
   "view": "explorer"

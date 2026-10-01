@@ -222,6 +222,7 @@
       }
     ]
   },
+  "hide_secondary_sidebar": true,
   "title": "Learn-AI (XwAI)",
   "view": "root"
 }

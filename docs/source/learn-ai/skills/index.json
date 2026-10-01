@@ -1,6 +1,7 @@
 {
   "contract": "learn.page.v1",
   "description": "Browse reusable AI Learn skills that can be applied to Topics.",
+  "hide_secondary_sidebar": true,
   "title": "Skills",
   "view": "skill-library"
 }

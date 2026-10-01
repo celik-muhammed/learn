@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-gaussian-processes",
   "section": {
     "body": "Gaussian Processes define distributions over functions through kernels, providing probabilistic regression or classification together with predictive uncertainty.",

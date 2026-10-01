@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-cross-decomposition",
   "section": {
     "body": "Use PLS or CCA-style methods when X and Y are both multivariate and their shared latent structure is of interest. Scale variables appropriately, choose component counts with validation, and inspect whether latent components remain stable across resamples.",

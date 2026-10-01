@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-probability-calibration",
   "section": {
     "body": "Use calibration when decisions depend on probability magnitudes rather than only ranking or class labels. Fit and evaluate calibrators on appropriately separated data, inspect calibration curves, and combine calibration metrics with discrimination metrics.",

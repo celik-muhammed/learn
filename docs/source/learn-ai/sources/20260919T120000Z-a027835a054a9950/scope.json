@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-feature-selection",
   "section": {
     "body": "Covers variance thresholds, univariate tests, SelectFromModel, sequential feature selection, and feature-selection pipelines.",

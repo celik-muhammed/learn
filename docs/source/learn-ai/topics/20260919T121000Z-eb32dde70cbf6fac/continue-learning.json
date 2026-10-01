@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-support-vector-machines",
   "section": {
     "body": "Compare LinearSVC with kernel SVC. Study how C and gamma affect margin and complexity. Contrast batch SVM training with SGD approximations for larger datasets.",

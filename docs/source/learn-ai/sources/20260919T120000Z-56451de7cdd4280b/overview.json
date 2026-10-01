@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "source-sklearn-isotonic",
   "section": {
     "body": "Official scikit-learn 1.9 guidance for fitting monotonic, non-parametric relationships with isotonic regression.",

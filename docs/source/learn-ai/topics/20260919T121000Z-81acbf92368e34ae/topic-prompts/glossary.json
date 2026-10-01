@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-probability-calibration",
   "section": {
     "body": "Calibration curve — compares predicted probability bins with observed outcome frequencies.\n\nCalibrator — a mapping fitted to transform model scores or probabilities.\n\nProper scoring rule — a score designed to reward accurate probabilistic forecasts.",

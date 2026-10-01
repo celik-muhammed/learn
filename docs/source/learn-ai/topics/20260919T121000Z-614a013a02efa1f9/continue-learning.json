@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-naive-bayes",
   "section": {
     "body": "Compare Gaussian Naive Bayes with LDA/QDA. Compare Multinomial and Complement Naive Bayes for count-like data. Evaluate whether good classification accuracy coincides with good probability calibration.",

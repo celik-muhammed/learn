@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-decision-trees",
   "section": {
     "body": "Compare fully grown and pruned trees. Track feature-importance stability across resamples. Compare tree-based selection with linear sparse-model feature selection.",

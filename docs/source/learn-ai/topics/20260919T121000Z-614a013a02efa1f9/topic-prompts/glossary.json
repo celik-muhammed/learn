@@ -1,5 +1,6 @@
 {
   "contract": "learn.section.v1",
+  "hide_secondary_sidebar": true,
   "record_id": "topic-naive-bayes",
   "section": {
     "body": "Conditional independence — the simplifying assumption that features are independent once the class is known.\n\nLikelihood — the class-conditional model for observed features.\n\nSmoothing — regularization that prevents zero or unstable probability estimates.",
