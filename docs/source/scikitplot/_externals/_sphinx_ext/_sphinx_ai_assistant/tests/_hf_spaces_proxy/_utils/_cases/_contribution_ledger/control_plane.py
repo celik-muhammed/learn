@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ....._paths import RUNTIME_ROOT
 
 import asyncio
 import importlib
@@ -30,14 +30,19 @@ proxy_app = importlib.import_module("app")
 
 
 def _payload() -> dict:
+    # The current contribution contract: the route accepts schemaVersion 4
+    # with consent 2.0.0 and nothing older. These cases are about what happens
+    # to a contribution after it is accepted, so the fixture must be one the
+    # route accepts.
     return {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "consentFlag": True,
-        "consentVersion": "1.0.0",
+        "consentVersion": "2.0.0",
         "page": "https://example.test/docs/page",
         "model": {"id": "claimed-model", "provider": "claimed-provider", "model": "claimed/model"},
         "records": [
             {
+                "recordType": "qa",
                 "answerIndex": 0,
                 "query": "question",
                 "answer": "answer",

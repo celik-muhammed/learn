@@ -8,9 +8,11 @@
 """Deterministic AI Learn JSON -> RST source materialization.
 
 Canonical Learn content lives in ``*.json`` files under the configured content
-root.  Every canonical JSON page owns exactly one sibling ``*.rst`` file with
-the same stem.  The RST is derived build source: it is safe to delete and
-regenerate, and it is never an authoring authority.
+root.  Every canonical JSON page owns one primary sibling ``*.rst`` file with
+the same stem.  Explorer indexes may additionally own deterministic
+``page-N.rst`` presentation shards derived from that same canonical index JSON;
+those shards never become authoring authority.  All generated RST is safe to
+delete and regenerate.
 
 The materializer performs no model calls, network I/O, repository writes outside
 the configured content root, or HTML generation.  Sphinx remains responsible
@@ -23,6 +25,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -211,13 +214,19 @@ def _heading(title, adornment="="):
     return escaped + "\n" + adornment * len(escaped) + "\n"
 
 
+EXPLORER_PAGE_SIZE = 12
+
+
 def page_size(kind):
-    """Bound explorer payloads; browser pagination remains presentation-only."""
-    if kind == "topic":
-        return 24
-    if kind == "whiteboard":
-        return 6
-    return 12
+    """Return the fixed static explorer shard size.
+
+    The argument is retained for API compatibility and future per-kind policy,
+    but every current explorer intentionally uses the same 12-record shard so
+    client-side display controls and no-JavaScript page navigation share one
+    predictable contract.
+    """
+    del kind
+    return EXPLORER_PAGE_SIZE
 
 
 def _heading_with(title, adornment="="):
@@ -1963,9 +1972,60 @@ def _render_section(
     )
 
 
-def render_materialized(tree: ContentTree):
+def _generated_document(header: str, body: str, *, owned: bool) -> bytes:
+    """
+    Assemble one generated page, marking it ``:orphan:`` when nothing owns it.
+
+    Parameters
+    ----------
+    header : str
+        The ownership comments from :func:`_owner_header`.
+    body : str
+        The rendered page, optionally starting with page-level metadata.
+    owned : bool
+        Whether an index page in the same tree lists this page in a toctree.
+
+    Returns
+    -------
+    bytes
+        The file content.
+
+    Notes
+    -----
+    **Developer notes.** A detail page is reached through the toctree of its
+    index page: the explorer or media gallery of its kind, or the prompt or
+    skill library. A tree is valid without that index page, and Sphinx then
+    reports the detail page as "not included in any toctree" - a warning the
+    materializer caused and the author cannot fix, and a failed build under
+    ``-W``. Whether the index exists is known here, so the page says so itself.
+
+    ``:orphan:`` must be the first metadata field, ahead of the ownership
+    comments; any sidebar metadata stays beside it in one field list. An
+    owned page is byte-for-byte what it was before this rule existed.
+    """
+    if owned:
+        return (header + body).encode()
+    sidebar = _secondary_sidebar_metadata(True)
+    if body.startswith(sidebar):
+        metadata, rest = ":orphan:\n" + sidebar.rstrip("\n"), body[len(sidebar) :]
+    else:
+        metadata, rest = ":orphan:", body
+    return (metadata + "\n\n" + header + rest).encode()
+
+
+def render_materialized(  # ruff: ignore[too-many-branches]
+    tree: ContentTree,
+):
     """Return ``{relative_rst_path: bytes}`` for the complete canonical tree."""
     files = {}
+    # What each index view owns: an explorer or media gallery lists every
+    # record of its kind, and each library lists its prompts or skills.
+    views = [(page["view"], page.get("kind")) for page in tree.pages.values()]
+    owned_kinds = {
+        kind for view, kind in views if view in {"explorer", "media-gallery"}
+    }
+    prompts_owned = any(view == "prompt-library" for view, _kind in views)
+    skills_owned = any(view == "skill-library" for view, _kind in views)
     prompt_paths = {
         Path("topic-prompts") / prompt["id"] / "index.json": prompt
         for prompt in tree.prompts
@@ -1982,15 +2042,19 @@ def render_materialized(tree: ContentTree):
     for rel, prompt in prompt_paths.items():
         out = rel.with_suffix(".rst")
         body = _render_prompt(prompt)
-        files[out] = (
-            _owner_header(rel.as_posix(), tree.source_digests[rel]) + body
-        ).encode()
+        files[out] = _generated_document(
+            _owner_header(rel.as_posix(), tree.source_digests[rel]),
+            body,
+            owned=prompts_owned,
+        )
     for rel, skill in skill_paths.items():
         out = rel.with_suffix(".rst")
         body = _render_skill(skill)
-        files[out] = (
-            _owner_header(rel.as_posix(), tree.source_digests[rel]) + body
-        ).encode()
+        files[out] = _generated_document(
+            _owner_header(rel.as_posix(), tree.source_digests[rel]),
+            body,
+            owned=skills_owned,
+        )
     for rel, wrapper in tree.records.items():
         out = rel.with_suffix(".rst")
         body = _render_record(
@@ -2001,9 +2065,11 @@ def render_materialized(tree: ContentTree):
             prompts=tree.prompts,
             skills=tree.skills,
         )
-        files[out] = (
-            _owner_header(rel.as_posix(), tree.source_digests[rel]) + body
-        ).encode()
+        files[out] = _generated_document(
+            _owner_header(rel.as_posix(), tree.source_digests[rel]),
+            body,
+            owned=wrapper["subject"]["kind"] in owned_kinds,
+        )
     records_by_subject = {
         record["subject"]["id"]: record for record in tree.records.values()
     }
@@ -2035,6 +2101,46 @@ def render_materialized(tree: ContentTree):
         raise LearnValidationError(
             f"AI Learn: not every renderable canonical JSON materialized: {missing[:1]}",
         )
+
+    # Explorer overflow pages are presentation-only shards owned by the canonical
+    # index JSON.  They are emitted *after* the one-JSON-to-one-primary-RST
+    # invariant above is checked, so derived pagination can never hide a missing
+    # canonical projection.  Keeping each shard to 12 records bounds HTML/DOM
+    # cost and gives both no-JS navigation and the progressive browser loader a
+    # real, deterministic target instead of the historical dead ``page-2`` link.
+    subjects_by_kind = {}
+    for subject in tree.catalog["subjects"]:
+        subjects_by_kind.setdefault(subject["kind"], 0)
+        subjects_by_kind[subject["kind"]] += 1
+    for rel, page in tree.pages.items():
+        if page["view"] not in {"explorer", "media-gallery"}:
+            continue
+        kind = page["kind"]
+        size = page_size(kind)
+        total = subjects_by_kind.get(kind, 0)
+        if total <= size:
+            continue
+        header = _owner_header(rel.as_posix(), tree.source_digests[rel])
+        page_count = (total + size - 1) // size
+        for number in range(2, page_count + 1):
+            out = rel.parent / f"page-{number}.rst"
+            if out in files:
+                raise LearnValidationError(
+                    f"AI Learn: derived explorer page collides with canonical output: {out}",
+                )
+            metadata = [":orphan:", ":no-search:"]
+            if page["hide_secondary_sidebar"]:
+                metadata.append(":html_theme.sidebar_secondary.remove:")
+            offset = (number - 1) * size
+            body = (
+                "\n".join(metadata)
+                + "\n\n"
+                + header
+                + _heading(f"{page['title']} — Page {number}")
+                + "\n"
+                + f".. ai-topic-explorer:: {kind}\n   :offset: {offset}\n"
+            )
+            files[out] = body.encode()
     return files
 
 
@@ -2096,6 +2202,15 @@ def materialize(root):
         target = _safe_target(root, rel)
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.is_file() and target.read_bytes() == raw:
+            _target = (
+                stat.S_IMODE(
+                    target.stat().st_mode,
+                )
+                != 0o644  # ruff: ignore[magic-value-comparison]
+            )
+            if os.name != "nt" and _target:
+                target.chmod(0o644)
+                changed.append(rel.as_posix())
             continue
         fd, temporary = tempfile.mkstemp(
             prefix=".ai-learn-",
@@ -2105,6 +2220,8 @@ def materialize(root):
         try:
             with os.fdopen(fd, "wb") as stream:
                 stream.write(raw)
+            if os.name != "nt":
+                os.chmod(temporary, 0o644)
             os.replace(temporary, target)
         finally:
             if os.path.exists(temporary):

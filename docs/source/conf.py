@@ -1252,6 +1252,12 @@ feedback_site_id = "scikit-plots-learn"
 feedback_endpoint = _FEEDBACK_PROXY_BASE + "/v1/feedback"
 feedback_counter_enabled = True
 feedback_counter_source = "embedded"
+# Quick reviewed-count placement is independently configurable per button. The
+# balanced default keeps the counts on the outside edges: [0 | 👎] [👍 | 0].
+feedback_buttons_ratings = {
+    "left_button_rating": "left",
+    "right_button_rating": "right",
+}
 # Generic page-feedback counters are build-time reviewed data. This complete V3
 # snapshot currently certifies that there are no reviewed generic page-feedback
 # events, so eligible pages may render authoritative 0 / 0 quick counts. Replace
@@ -1329,3 +1335,7 @@ ai_learn_explorer_search_variant = "pill-overflow"  # alternative: "classic"
 collection_search_variant = "pill-overflow"  # alternative: "classic"
 ai_learn_media = True
 ai_learn_youtube_subscribe_url = ""  # set an HTTPS youtube.com channel URL to enable Subscribe
+ai_learn_buttons_ratings = {
+    "left_button_rating": "left",
+    "right_button_rating": "right",
+}

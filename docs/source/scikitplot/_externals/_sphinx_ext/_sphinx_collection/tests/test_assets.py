@@ -4,14 +4,36 @@ import importlib
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
-DOCS_SOURCE = ROOT.parents[2]
+# The directory that contains ``scikitplot/``: the docs source in the
+# documentation checkout, the repository root in the library checkout.
+HOST_ROOT = ROOT.parents[2]
 ASSETS_PATH = ROOT / "_sphinx_collection" / "assets.py"
 
 
+def _docs_source() -> Path:
+    """
+    Return the documentation source directory, or skip where there is none.
+
+    The stack is deployed in a documentation checkout, beside the site's
+    ``conf.py``, and in the library checkout, where there is no site. A test
+    of the site's build configuration can only run where the site is; in the
+    library checkout it skips with that reason rather than failing on a
+    ``conf.py`` that was never meant to exist there.
+    """
+    if not (HOST_ROOT / "conf.py").is_file():
+        pytest.skip(
+            "no documentation site owns this extension stack in this checkout; "
+            "the site's build configuration is tested in the documentation checkout"
+        )
+    return HOST_ROOT
+
+
 def _assets_module():
-    externals = str(DOCS_SOURCE / "scikitplot" / "_externals")
+    externals = str(HOST_ROOT / "scikitplot" / "_externals")
     if externals not in sys.path:
         sys.path.insert(0, externals)
     return importlib.import_module("_sphinx_ext._sphinx_collection.assets")
@@ -90,6 +112,63 @@ def test_search_is_live_and_ime_safe() -> None:
     assert "if(event.key==='Enter' && event.isComposing)event.preventDefault();" in js
 
 
+
+def test_bounded_display_is_one_shared_gallery_contract() -> None:
+    assets = _assets_module()
+    css = assets.ASSET_CSS
+    js = assets.ASSET_JS
+    collection = (ROOT / "_sphinx_collection" / "README.md").read_text(encoding="utf-8")
+    gallery = (ROOT / "_sphinx_gallery_grid" / "directive.py").read_text(encoding="utf-8")
+    youtube_core = (ROOT / "_sphinx_youtube_core" / "__init__.py").read_text(encoding="utf-8")
+    youtube_gallery = (ROOT / "_sphinx_youtube_gallery" / "__init__.py").read_text(encoding="utf-8")
+
+    # One shared browser implementation owns both gallery-grid and delegated
+    # youtube-gallery card modes. Provider/core layers must not fork it.
+    assert "var DISPLAY_SIZES=[12,25,50,75,100,125,150],DISPLAY_STEP=12;" in js
+    assert "control('Display up to',displaySelect);" in js
+    assert "Maximum cards displayed" in js
+    assert "Load '+DISPLAY_STEP+' more" in js
+    assert "root.append(pager,empty);" in js
+    assert "displaySummary.setAttribute('aria-live'" not in js
+    assert "matching.slice(0,visibleLimit)" in js
+    assert "visibleLimit+=DISPLAY_STEP" in js
+    assert "displayPreset=value;visibleLimit=value" in js
+    assert "displayPreset=displayDefault;visibleLimit=displayDefault" in js
+    assert "sourceReversed?ordered.slice().reverse():ordered" in js
+    assert "pager.hidden=!expandable||matching.length===0" in js
+    assert "Remember my filters, sorting & display" in js
+    assert "display:displayPreset" in js
+    assert "payload.display=DISPLAY_SIZES.includes(savedDisplay)?savedDisplay:displayDefault" in js
+    assert "displayPreset=state.display;visibleLimit=state.display" in js
+    assert "f.select.addEventListener('change',function(){saveView();apply();})" in js
+    assert "if(sort)sort.addEventListener('change',function(){applySort();saveView();apply();})" in js
+    assert "entry.clear();saveView();apply()" in js
+    assert "sk-collection-pager" in css
+    assert "sk-collection-load-more" in css
+    assert ".sk-collection-suggestions,.sk-collection-pager { display:none !important; }" in css
+
+    assert "12/25/50/75/100/125/150" in collection
+    assert "12 cards by default" in gallery
+    assert "bounded 12-card display/load-more controller" in youtube_core
+    assert "12 by default, shared presets, and Load 12 more" in youtube_gallery
+
+
+def test_bounded_display_does_not_replace_build_time_selection() -> None:
+    gallery = (ROOT / "_sphinx_gallery_grid" / "directive.py").read_text(encoding="utf-8")
+    youtube = (ROOT / "_sphinx_youtube_gallery" / "directive.py").read_text(encoding="utf-8")
+    js = _assets_module().ASSET_JS
+
+    # Existing author-facing selection remains server/build-time. The browser
+    # window only bounds cards that gallery-grid actually rendered.
+    assert '"limit": directives.nonnegative_int' in gallery
+    assert '"offset": directives.nonnegative_int' in gallery
+    assert "limit=self.options.get(\"limit\")" in gallery
+    assert "offset=self.options.get(\"offset\", 0)" in gallery
+    assert '"limit": directives.nonnegative_int' in youtube
+    assert '"offset": directives.nonnegative_int' in youtube
+    assert "matching=displayOrder.filter" in js
+    assert "var cards = Array.from(root.querySelectorAll('.sd-card'))" in js
+
 def test_disclosure_is_inline_not_popup_autoclose() -> None:
     js = _assets_module().ASSET_JS
 
@@ -158,7 +237,7 @@ def test_search_variant_is_one_shared_presentation_contract() -> None:
     browser = (ROOT / "_sphinx_collection" / "_browser.py").read_text(encoding="utf-8")
     gallery = (ROOT / "_sphinx_gallery_grid" / "directive.py").read_text(encoding="utf-8")
     youtube = (ROOT / "_sphinx_youtube_gallery" / "directive.py").read_text(encoding="utf-8")
-    conf = (DOCS_SOURCE / "conf.py").read_text(encoding="utf-8")
+    conf = (_docs_source() / "conf.py").read_text(encoding="utf-8")
 
     assert assets.SEARCH_VARIANTS == ("pill-overflow", "classic")
     assert '"searchVariant": options.get("search-variant", "pill-overflow")' in browser
@@ -497,9 +576,9 @@ def test_final_collection_asset_integrity_fails_closed_on_stale_output(tmp_path)
 
 
 def test_docs_build_has_explicit_local_and_installed_extension_authorities() -> None:
-    conf = (DOCS_SOURCE / "conf.py").read_text(encoding="utf-8")
-    makefile = (DOCS_SOURCE.parent / "Makefile").read_text(encoding="utf-8")
-    make_bat = (DOCS_SOURCE.parent / "make.bat").read_text(encoding="utf-8")
+    conf = (_docs_source() / "conf.py").read_text(encoding="utf-8")
+    makefile = (_docs_source().parent / "Makefile").read_text(encoding="utf-8")
+    make_bat = (_docs_source().parent / "make.bat").read_text(encoding="utf-8")
     namespace_init = (ROOT / "__init__.py").read_text(encoding="utf-8")
 
     assert '_MODE_ENV = "SCIKITPLOT_SPHINX_EXT_MODE"' in conf
@@ -531,8 +610,8 @@ def test_local_authority_isolated_from_preimported_scikitplot(tmp_path) -> None:
     (package / "__init__.py").write_text(
         "ORIGIN = 'foreign-scikitplot'\n", encoding="utf-8"
     )
-    externals = DOCS_SOURCE / "scikitplot" / "_externals"
-    conf_path = DOCS_SOURCE / "conf.py"
+    externals = _docs_source() / "scikitplot" / "_externals"
+    conf_path = _docs_source() / "conf.py"
     code = f"""
 import os
 import runpy
@@ -597,7 +676,7 @@ def test_installed_authority_uses_scikitplot_namespace_without_local_path_inject
         package.mkdir()
         (package / "__init__.py").write_text("", encoding="utf-8")
 
-    conf_path = DOCS_SOURCE / "conf.py"
+    conf_path = _docs_source() / "conf.py"
     code = f"""
 import os
 import runpy
@@ -614,7 +693,7 @@ private = [name for name in ns['extensions'] if name.startswith('scikitplot._ext
 assert len(private) == 7
 import scikitplot._externals._sphinx_ext as stack
 assert Path(stack.__file__).resolve().is_relative_to(Path({str(fake)!r}).resolve())
-local_externals = str(Path({str(DOCS_SOURCE)!r}) / 'scikitplot' / '_externals')
+local_externals = str(Path({str(_docs_source())!r}) / 'scikitplot' / '_externals')
 assert local_externals not in sys.path
 """
     completed = subprocess.run(
@@ -635,7 +714,7 @@ def test_auto_authority_fails_closed_when_local_and_installed_are_both_available
     root.mkdir(parents=True)
     for package in (fake / "scikitplot", fake / "scikitplot" / "_externals", root):
         (package / "__init__.py").write_text("", encoding="utf-8")
-    conf_path = DOCS_SOURCE / "conf.py"
+    conf_path = _docs_source() / "conf.py"
     code = f"""
 import os
 import runpy
@@ -671,7 +750,7 @@ def test_installed_authority_rejects_old_stack_api(tmp_path) -> None:
     for package in (fake / "scikitplot", fake / "scikitplot" / "_externals", root):
         (package / "__init__.py").write_text("", encoding="utf-8")
     (root / "__init__.py").write_text("SPHINX_EXT_STACK_API = 0\n", encoding="utf-8")
-    conf_path = DOCS_SOURCE / "conf.py"
+    conf_path = _docs_source() / "conf.py"
     code = f"""
 import os
 import runpy

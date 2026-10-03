@@ -3,7 +3,7 @@
 """Package-layout contract owned by :mod:`_hf_spaces_proxy._utils.__init__`."""
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ..._paths import RUNTIME_ROOT
 
 import importlib
 
@@ -32,6 +32,10 @@ EXPECTED_HELPERS = {
     "_zip_artifact.py",
     "_zip_workspace.py",
     "deduplicate_dataset_v1.py",
+    # Maintainer script: rewrites ``_page_feedback`` from ``_sphinx_feedback``.
+    # ``tests/_hf_spaces_proxy/_page_feedback/test___init__.py`` checks the
+    # result, so the mirror cannot drift even if this is never run.
+    "sync_page_feedback_runtime.py",
 }
 
 
