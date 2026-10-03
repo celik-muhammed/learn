@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import stat
 from pathlib import Path, PurePosixPath
 
 import pytest
+
+import _learn_site
 
 from _sphinx_ext._sphinx_ai_learn._materialize import (
     GENERATED_MARKER,
@@ -20,7 +24,6 @@ from _sphinx_ext._sphinx_ai_learn._materialize import (
 )
 from _sphinx_ext._sphinx_ai_learn._schema import LearnValidationError
 
-SOURCE = Path(__file__).resolve().parents[5] / "learn-ai"
 
 
 def _feedback_id(index=1):
@@ -30,8 +33,8 @@ def _feedback_id(index=1):
 
 def _json_only_copy(tmp_path):
     root = tmp_path / "learn-ai"
-    for source in SOURCE.rglob("*.json"):
-        target = root / source.relative_to(SOURCE)
+    for source in _learn_site.content_root().rglob("*.json"):
+        target = root / source.relative_to(_learn_site.content_root())
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source.read_bytes())
     return root
@@ -46,7 +49,7 @@ def _first_topic(tree):
 
 
 def test_production_tree_is_one_json_to_one_rst_and_projection_is_canonical():
-    tree = load_content_tree(SOURCE)
+    tree = load_content_tree(_learn_site.content_root())
     rendered = render_materialized(tree)
     # Preserve the known baseline without freezing a publication-driven corpus.
     # New reviewed records/prompts/skills and feedback sidecars are expected to
@@ -64,16 +67,23 @@ def test_production_tree_is_one_json_to_one_rst_and_projection_is_canonical():
         for section in subject.get("sections", [])
         if section.get("body") or section.get("citations") or section.get("links")
     )
-    assert len(rendered) == len(tree.source_digests) - len(tree.feedback_events)
-    assert all((SOURCE / rel).is_file() for rel in rendered)
-    assert all((SOURCE / rel).read_bytes() == raw for rel, raw in rendered.items())
+    primary = {
+        rel.with_suffix(".rst")
+        for rel in set(tree.source_digests) - set(tree.feedback_events)
+    }
+    assert primary <= set(rendered)
+    derived = set(rendered) - primary
+    assert derived
+    assert all(path.name.startswith("page-") and path.suffix == ".rst" for path in derived)
+    assert all((_learn_site.content_root() / rel).is_file() for rel in rendered)
+    assert all((_learn_site.content_root() / rel).read_bytes() == raw for rel, raw in rendered.items())
 
     assert canonical_prompt_json_files(tree.prompts) == {
-        rel: (SOURCE / rel).read_bytes()
+        rel: (_learn_site.content_root() / rel).read_bytes()
         for rel in canonical_prompt_json_files(tree.prompts)
     }
     assert canonical_skill_json_files(tree.skills) == {
-        rel: (SOURCE / rel).read_bytes()
+        rel: (_learn_site.content_root() / rel).read_bytes()
         for rel in canonical_skill_json_files(tree.skills)
     }
     for rel, record in tree.records.items():
@@ -83,7 +93,18 @@ def test_production_tree_is_one_json_to_one_rst_and_projection_is_canonical():
             tree.skills,
             add_toctree=record["add_toctree"],
         )
-        assert projected == {path: (SOURCE / path).read_bytes() for path in projected}
+        assert projected == {path: (_learn_site.content_root() / path).read_bytes() for path in projected}
+
+
+def test_explorer_pagination_shards_are_uniform_owned_and_deterministic():
+    tree = load_content_tree(_learn_site.content_root())
+    rendered = render_materialized(tree)
+    assert Path("topics/page-2.rst") in rendered
+    page = rendered[Path("topics/page-2.rst")].decode()
+    assert page.startswith(":orphan:\n:no-search:\n")
+    assert ".. source-json: topics/index.json" in page
+    assert "Topics — Page 2" in page
+    assert ".. ai-topic-explorer:: topic\n   :offset: 12" in page
 
 
 def test_secondary_sidebar_control_is_explicit_for_every_renderable_json():
@@ -96,7 +117,7 @@ def test_secondary_sidebar_control_is_explicit_for_every_renderable_json():
         "learn.skill.v1",
     }
     matched = 0
-    for source in SOURCE.rglob("*.json"):
+    for source in _learn_site.content_root().rglob("*.json"):
         data = json.loads(source.read_text(encoding="utf-8"))
         if data.get("contract") not in renderable_contracts:
             continue
@@ -168,7 +189,7 @@ def test_secondary_sidebar_control_is_optional_defaults_hidden_and_rejects_non_b
 
 
 def test_canonical_record_projection_writes_sidebar_controls_explicitly():
-    tree = load_content_tree(SOURCE)
+    tree = load_content_tree(_learn_site.content_root())
     _, record = _first_topic(tree)
     projected = canonical_record_json_files(
         record["subject"],
@@ -193,9 +214,9 @@ def test_canonical_record_projection_writes_sidebar_controls_explicitly():
 def test_materialize_is_idempotent_and_preserves_unchanged_mtime(tmp_path):
     root = _json_only_copy(tmp_path)
     expected = load_content_tree(root)
-    expected_renderable = len(expected.source_digests) - len(expected.feedback_events)
+    expected_rendered = render_materialized(expected)
     _, first = materialize(root)
-    assert len(first) == expected_renderable
+    assert len(first) == len(expected_rendered)
     tracked = root / first[0]
     before = tracked.stat().st_mtime_ns
     _, second = materialize(root)
@@ -203,6 +224,22 @@ def test_materialize_is_idempotent_and_preserves_unchanged_mtime(tmp_path):
     assert tracked.stat().st_mtime_ns == before
 
 
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX mode bits are not portable to Windows")
+def test_materialize_normalizes_owned_rst_permissions(tmp_path):
+    root = _json_only_copy(tmp_path)
+    _, first = materialize(root)
+    target_rel = Path(first[0])
+    target = root / target_rel
+    target.chmod(0o600)
+
+    _, changed = materialize(root)
+    assert target_rel.as_posix() in changed
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+
+    _, again = materialize(root)
+    assert again == ()
 
 
 def test_feedback_sidecar_is_validated_scored_and_never_materialized_as_rst(tmp_path):
@@ -373,7 +410,7 @@ def test_toctree_mode_makes_children_navigable_without_orphan(tmp_path):
 
 def test_regeneration_from_json_only_is_byte_identical(tmp_path):
     root = _json_only_copy(tmp_path)
-    source_tree = load_content_tree(SOURCE)
+    source_tree = load_content_tree(_learn_site.content_root())
     expected = render_materialized(source_tree)
     _, changed = materialize(root)
     assert len(changed) == len(expected)
@@ -746,11 +783,11 @@ def test_index_explorer_headers_are_canonical_and_materialized_consistently():
         "skills": ("Topic Skill", "Exploring Skills", "Create a Skill"),
     }
     for folder, (kicker, title, create_label) in expected.items():
-        data = json.loads((SOURCE / folder / "index.json").read_text(encoding="utf-8"))
+        data = json.loads((_learn_site.content_root() / folder / "index.json").read_text(encoding="utf-8"))
         assert data["description"]
         assert data["create_label"] == create_label
         assert data["explorer_header"] == {"kicker": kicker, "title": title}
-        rst = (SOURCE / folder / "index.rst").read_text(encoding="utf-8")
+        rst = (_learn_site.content_root() / folder / "index.rst").read_text(encoding="utf-8")
         assert ".. ai-index-explorer-header::" in rst
         assert f"   :kicker: {kicker}" in rst
         assert f"   :title: {title}" in rst
@@ -783,3 +820,88 @@ def test_index_explorer_header_is_rejected_on_non_index_page_views(tmp_path):
     page.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     with pytest.raises(LearnValidationError, match="explorer_header is unsupported for media-create pages"):
         load_content_tree(root)
+
+
+def _synthetic_tree(root, *, kinds, explorers=()):
+    """Write records of ``kinds`` and explorer pages for ``explorers``; no site needed."""
+    root.mkdir(parents=True, exist_ok=True)
+    for kind in kinds:
+        subject = {
+            "id": "record-" + kind,
+            "kind": kind,
+            "title": kind.capitalize(),
+            "created_at": "2026-09-16T00:00:00Z",
+            "domains": [],
+            "related": [],
+            "sections": [],
+        }
+        if kind == "source":
+            subject["url"] = "https://example.org/source"
+        for relative, raw in canonical_record_json_files(subject, ()).items():
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+    folders = {"topic": "topics", "source": "sources"}
+    for kind in explorers:
+        folder = root / folders[kind]
+        folder.mkdir(parents=True, exist_ok=True)
+        for name, view, title in (("index", "explorer", "Index"), ("new", "record-create", "New")):
+            (folder / f"{name}.json").write_text(
+                json.dumps(
+                    {
+                        "contract": "learn.page.v1",
+                        "view": view,
+                        "kind": kind,
+                        "title": title,
+                        "hide_secondary_sidebar": False,
+                    },
+                    sort_keys=True,
+                )
+            )
+    return load_content_tree(root)
+
+
+def _record_pages(tree, rendered):
+    return {
+        wrapper["subject"]["kind"]: rendered[rel.with_suffix(".rst")].decode()
+        for rel, wrapper in tree.records.items()
+    }
+
+
+def test_a_record_page_no_index_owns_is_marked_orphan(tmp_path):
+    """
+    A detail page is in a toctree only if the explorer of its kind exists.
+
+    Without one, Sphinx reports "document isn't included in any toctree" for a
+    file the materializer wrote, and a build with warnings as errors fails.
+    The materializer knows whether the explorer exists, so the page says so.
+    """
+    tree = _synthetic_tree(tmp_path / "learn-ai", kinds=("topic", "source"))
+    pages = _record_pages(tree, render_materialized(tree))
+    for kind in ("topic", "source"):
+        assert pages[kind].startswith(":orphan:\n"), kind
+        # The ownership comments follow the metadata, as they do for sections.
+        assert pages[kind].index(":orphan:") < pages[kind].index(".. source-json:")
+
+
+def test_a_record_page_its_explorer_owns_is_not_orphan(tmp_path):
+    tree = _synthetic_tree(
+        tmp_path / "learn-ai", kinds=("topic", "source"), explorers=("topic",)
+    )
+    rendered = render_materialized(tree)
+    pages = _record_pages(tree, rendered)
+    assert ":orphan:" not in pages["topic"]
+    assert pages["source"].startswith(":orphan:\n")
+    # The explorer that owns the topic page lists it, which is what makes the
+    # absence of :orphan: correct rather than merely absent.
+    explorer = rendered[Path("topics/index.rst")].decode()
+    topic_rel = next(rel for rel, w in tree.records.items() if w["subject"]["kind"] == "topic")
+    assert f"   {topic_rel.parent.name}/index" in explorer
+
+
+def test_orphan_marking_is_deterministic_and_idempotent(tmp_path):
+    tree = _synthetic_tree(tmp_path / "learn-ai", kinds=("topic",))
+    first = render_materialized(tree)
+    assert first == render_materialized(load_content_tree(tmp_path / "learn-ai"))
+    (page,) = _record_pages(tree, first).values()
+    assert page.count(":orphan:") == 1

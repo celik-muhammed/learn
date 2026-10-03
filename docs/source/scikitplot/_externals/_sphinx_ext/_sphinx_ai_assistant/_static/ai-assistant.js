@@ -698,6 +698,7 @@
     var _CONTROL_RESPONSE_MAX_BYTES = 512 * 1024;
     var _CANONICAL_RESPONSE_MAX_BYTES = 1024 * 1024;
     var _CHAT_RESPONSE_MAX_BYTES = 8 * 1024 * 1024;
+    var _PUBLICATION_TEST_RESPONSE_MAX_BYTES = 64 * 1024;
     var _SSE_LINE_MAX_CHARS = 256 * 1024;
 
     function _responseDeclaredBytes(response) {
@@ -6210,6 +6211,14 @@
         var _STORAGE_KEY        = 'ai-assistant-ep';
         var _STORAGE_CUSTOM_KEY = 'ai-assistant-ep-custom';
 
+        // The only fields a stored custom profile may carry: the exact set
+        // _persistCustom() writes. Anything else found in storage - a token
+        // field above all - marks the blob for rewrite on load.
+        var _PERSISTED_PROFILE_FIELDS = [
+            'label', 'base', 'chat', 'share', 'training', 'image', 'video',
+            'audio', 'document', 'publication', 'datasetRepo', 'ttlDays'
+        ];
+
         // ── Limits ───────────────────────────────────────────────────────────
         var _SCHEMA_VER          = 9;    // v9: retired Assistant feedback endpoint/profile fields removed
         var _MAX_CUSTOM_PROFILES = 20;   // hard cap on runtime-added profiles
@@ -6580,25 +6589,46 @@
 //
 
         // ── Bootstrap: restore current custom profiles from localStorage ───────
+        //
+        // Storage holds the current schema, in the persisted shape, or nothing.
+        //
+        // Earlier schemas stored endpoint bearer tokens in this blob. Ignoring
+        // those fields in memory is not enough: the raw value stays readable
+        // by any same-origin script until the key is rewritten or removed, and
+        // a visitor who never edits a profile never rewrites it. There is no
+        // migration path - a blob that is not the current schema is removed,
+        // not skipped - and a current-schema blob that carries anything
+        // outside the persisted field list, or an entry this loader rejects,
+        // is rewritten from the sanitized in-memory registry before the
+        // function returns. After load, the stored bytes are exactly what
+        // _persistCustom() would write.
         (function _loadCustom() {
             var raw = null;
             try { raw = localStorage.getItem(_STORAGE_CUSTOM_KEY); } catch (_) { return; }
             if (!raw) return;
+            function _discardStored() {
+                try { localStorage.removeItem(_STORAGE_CUSTOM_KEY); } catch (_) {}
+            }
             var parsed;
-            try { parsed = JSON.parse(raw); } catch (_) { return; }
-            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed._v !== _SCHEMA_VER) return;
+            try { parsed = JSON.parse(raw); } catch (_) { _discardStored(); return; }
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed._v !== _SCHEMA_VER) { _discardStored(); return; }
             var profilesObj = parsed.profiles;
             var metaObj = parsed.meta;
-            if (!profilesObj || typeof profilesObj !== 'object' || Array.isArray(profilesObj)) return;
+            if (!profilesObj || typeof profilesObj !== 'object' || Array.isArray(profilesObj)) { _discardStored(); return; }
+            var needsRewrite = false;
             var keys = Object.keys(profilesObj);
             for (var i = 0; i < keys.length; i++) {
                 var k = keys[i];
-                if (!Object.prototype.hasOwnProperty.call(profilesObj, k) || !_SAFE_KEY_RE.test(k) || _builtin[k]) continue;
+                if (!Object.prototype.hasOwnProperty.call(profilesObj, k) || !_SAFE_KEY_RE.test(k) || _builtin[k]) { needsRewrite = true; continue; }
                 var rawProfile = profilesObj[k];
-                if (!_isValidProfileShape(rawProfile)) continue;
+                if (!_isValidProfileShape(rawProfile)) { needsRewrite = true; continue; }
+                var storedFields = Object.keys(rawProfile);
+                for (var f = 0; f < storedFields.length; f++) {
+                    if (_PERSISTED_PROFILE_FIELDS.indexOf(storedFields[f]) === -1) { needsRewrite = true; break; }
+                }
                 var safeStored = _sanitizeStoredProfile(rawProfile);
-                if (!safeStored) continue;
-                if (_countCustomOwn() >= _MAX_CUSTOM_PROFILES) break;
+                if (!safeStored) { needsRewrite = true; continue; }
+                if (_countCustomOwn() >= _MAX_CUSTOM_PROFILES) { needsRewrite = true; break; }
                 _profiles[k] = safeStored;
                 var metaEntry = (metaObj && metaObj[k]) || {};
                 _metadata[k] = {
@@ -6607,6 +6637,7 @@
                     lastActivated: typeof metaEntry.lastActivated === 'number' ? metaEntry.lastActivated : null
                 };
             }
+            if (needsRewrite) _persistCustom();
         }());
 
         // ── Internal helpers ──────────────────────────────────────────────────
@@ -11863,9 +11894,17 @@
         return names.slice(0, _TURN_RESOURCE_LIVE_MAX_ITEMS);
     }
 
-    function _composerTurnAttachmentSnapshot(plan, preparedPageContext) {
+    function _composerTurnAttachmentSnapshot(plan, preparedPageContext, attachmentItems, replayContext) {
         var out = [];
         var finalContext = plan && typeof plan.text === 'string' ? plan.text : '';
+        // Preserve the exact Send-time attachment sequence. The live composer is
+        // intentionally not authoritative here: privacy review and other async
+        // work can outlive the original click, and historical turn provenance
+        // must never drift to a later composer mutation or reorder.
+        var sourceAttachments = Array.isArray(attachmentItems)
+            ? attachmentItems.slice() : _composerAttachments.slice();
+        var sourceReplayContext = replayContext == null
+            ? _composerReplayAttachmentContext : String(replayContext || '');
         var includedRows = plan && Array.isArray(plan.included) ? plan.included : [];
         var budgetExcluded = plan && Array.isArray(plan.budgetExcluded) ? plan.budgetExcluded : [];
         var rawResources = plan && Array.isArray(plan.resources) ? plan.resources : [];
@@ -11902,7 +11941,7 @@
             if (live) out.push(live);
         });
 
-        _composerAttachments.forEach(function (item) {
+        sourceAttachments.forEach(function (item) {
             if (!item || out.length >= _TURN_RESOURCE_LIVE_MAX_ITEMS) return;
             var info = _includedInfo(item);
             var rawInfo = _rawInfo(item);
@@ -11925,8 +11964,8 @@
             }));
             if (live) out.push(live);
         });
-        if (_composerReplayAttachmentContext && out.length < _TURN_RESOURCE_LIVE_MAX_ITEMS) {
-            var replayNames = _replayAttachmentNames(_composerReplayAttachmentContext);
+        if (sourceReplayContext && out.length < _TURN_RESOURCE_LIVE_MAX_ITEMS) {
+            var replayNames = _replayAttachmentNames(sourceReplayContext);
             if (!replayNames.length) replayNames = ['Prior attachment context'];
             replayNames.forEach(function (name) {
                 if (out.length >= _TURN_RESOURCE_LIVE_MAX_ITEMS) return;
@@ -12035,11 +12074,15 @@
         return out;
     }
 
-    async function _prepareComposerEffectiveAttachmentPlan(snapshotItems) {
+    async function _prepareComposerEffectiveAttachmentPlan(snapshotItems, replayContext) {
         // Newly staged files take precedence when the combined context reaches
-        // the cap; replay receives only the remaining fixed budget.
+        // the cap; replay receives only the remaining fixed budget. Capture the
+        // replay string with the same Send-time snapshot as files so async
+        // preparation cannot mix two different composer revisions.
+        var sourceReplayContext = replayContext == null
+            ? _composerReplayAttachmentContext : String(replayContext || '');
         var plan = await _prepareComposerAttachmentPlan(snapshotItems);
-        plan.text = _mergeAttachmentContexts(plan.text, _composerReplayAttachmentContext);
+        plan.text = _mergeAttachmentContexts(plan.text, sourceReplayContext);
         plan.resources = _prepareComposerRawResources(snapshotItems);
         return plan;
     }
@@ -15510,7 +15553,15 @@
         tray.toggleAttribute('data-overflow', overflowing);
         tray.toggleAttribute('data-overflow-start', overflowing && left > 2);
         tray.toggleAttribute('data-overflow-end', overflowing && left < max - 2);
-        tray.setAttribute('aria-label', overflowing ? 'Context and attached files. Scroll horizontally for more items.' : 'Context and attached files');
+        // Cache each tray's own semantic label before adding an overflow hint.
+        // This keeps composer and historical-turn accessibility distinct.
+        var baseLabel = tray.getAttribute('data-attachment-base-label');
+        if (!baseLabel) {
+            baseLabel = tray.getAttribute('aria-label') || 'Context and attached files';
+            tray.setAttribute('data-attachment-base-label', baseLabel);
+        }
+        tray.setAttribute('aria-label', overflowing
+            ? baseLabel + '. Scroll horizontally for more items.' : baseLabel);
     }
 
     function _bindAttachmentTrayScrolling(tray) {
@@ -15542,6 +15593,14 @@
                 _updateAttachmentTrayOverflow(tray);
             });
             tray._aiAttachmentResizeObserver.observe(tray);
+        }
+        // Historical trays are built before their bubble is attached to the DOM.
+        // Measure again on the next frame so overflow state is correct even in
+        // browsers without ResizeObserver.
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(function () { _updateAttachmentTrayOverflow(tray); });
+        } else {
+            _updateAttachmentTrayOverflow(tray);
         }
     }
 
@@ -22234,9 +22293,24 @@
         function _makeEndpointValue(url, label, className) {
             var value = String(url || '');
             var el;
+            // Two independent checks before the value becomes a link: the
+            // string allow-list, then the URL parser's own verdict on the
+            // scheme. The link is set from the parsed URL, not from the
+            // text that was read, so what navigates is what was checked.
+            var href = '';
             if (value && _isSafeHref(value)) {
+                try {
+                    var parsed = new URL(value, document.baseURI);
+                    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+                        href = parsed.href;
+                    }
+                } catch (_err) {
+                    href = '';
+                }
+            }
+            if (href) {
                 el = document.createElement('a');
-                el.href = value;
+                el.href = href;
                 el.target = '_blank';
                 el.rel = 'noopener noreferrer';
                 el.setAttribute('aria-label', label + ' endpoint, opens in a new tab: ' + value);
@@ -23297,8 +23371,10 @@
                     cache: 'no-store',
                     redirect: 'error'
                 });
-                var raw = await response.text();
-                if (raw.length > 65536) throw new Error('Oversized response');
+                // The endpoint is operator- or visitor-configured, so its
+                // reply is bounded while it is read. Buffering it whole and
+                // measuring afterwards has already paid for the oversized body.
+                var raw = await _readResponseTextBounded(response, _PUBLICATION_TEST_RESPONSE_MAX_BYTES);
                 var doc = raw ? JSON.parse(raw) : {};
                 if (!response.ok) throw new Error(String(doc.detail || doc.message || ('HTTP ' + response.status)));
                 var target = [doc.repository, doc.default_branch ? 'branch ' + doc.default_branch : '', doc.canonical_prefix].filter(Boolean).join(' · ');
@@ -47386,7 +47462,6 @@
                 // PAGE/MD context look and behave the same before and after Send.
                 files.className = 'ai-assistant-panel-attachments ai-assistant-panel-user-turn-attachments';
                 files.setAttribute('aria-label', 'Files and pages used for this question');
-                files.setAttribute('data-scroll-bound', 'true');
                 files.setAttribute('data-attachment-count', String(turnResourceManifest.totalCount));
 
                 turnAttachments.forEach(function (item) {
@@ -50441,7 +50516,11 @@
         }
         var attachmentRevision = _attachmentMutationRevision;
         var attachmentSnapshot = _composerAttachments.slice();
-        var attachmentPlan = await _prepareComposerEffectiveAttachmentPlan(attachmentSnapshot);
+        var replayAttachmentSnapshot = _composerReplayAttachmentContext;
+        var attachmentPlan = await _prepareComposerEffectiveAttachmentPlan(
+            attachmentSnapshot,
+            replayAttachmentSnapshot
+        );
         if (attachmentRevision !== _attachmentMutationRevision) {
             showNotification('Attachments changed while preparing this request. Review the visible batch and send again.', false);
             input.focus();
@@ -50509,9 +50588,15 @@
             return;
         }
 
+
         attachmentPlan.text = attachmentText;
         var requestQuestion = _composeQuestionWithAttachments(questionText, attachmentText);
-        var turnAttachments = _composerTurnAttachmentSnapshot(attachmentPlan, preparedPageContext);
+        var turnAttachments = _composerTurnAttachmentSnapshot(
+            attachmentPlan,
+            preparedPageContext,
+            attachmentSnapshot,
+            replayAttachmentSnapshot
+        );
 
         // ── Cancel any in-flight request before starting a new one ───────
         // Without this, rapid submits fire multiple concurrent fetches; the
