@@ -8,6 +8,28 @@ YouTube
 
 Search channels or explore videos by topic. Filters apply to the cards on this page.
 
+.. important:: External resources: useful references, not endorsements
+
+   We share these external resources to help you explore and learn—not as
+   endorsements. Their inclusion does not mean that scikit-plots has reviewed or
+   verified the content, agrees with its claims or opinions, or sponsors or is
+   affiliated with its creator. External material is maintained by its publisher
+   and may change. Use your judgment, and check important claims, code, and setup
+   or security advice against current official documentation before relying on it.
+
+.. important:: Before you rely on an external video
+
+   **These links are suggestions, not endorsements.** We share third-party YouTube
+   channels and videos as optional learning resources. Their inclusion does not mean
+   that scikit-plots sponsors or partners with the creators, endorses their views, or
+   has independently verified every claim.
+
+   **The content belongs to its creators.** Videos may be incomplete, outdated, or
+   unsuitable for your situation, and their views are not necessarily those of the
+   scikit-plots project. Before using code or following technical or security advice,
+   check it against current official documentation and review it for your own
+   environment. External content and links may change or disappear.
+
 Channels
 --------
 
