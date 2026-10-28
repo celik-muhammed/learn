@@ -437,8 +437,10 @@ html_js_files = [
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-# html_sidebars = {}
-
+# To remove the primary (left) sidebar only on item, use html_sidebars in conf.py.
+html_sidebars = {
+    "youtube/index": [],
+}
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
