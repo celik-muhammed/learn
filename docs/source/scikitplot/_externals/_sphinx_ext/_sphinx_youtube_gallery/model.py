@@ -32,11 +32,11 @@ index and field. No field is ever silently dropped or guessed.
 
 from __future__ import annotations
 
-import datetime as _dt
+import datetime as dt
 import math
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Union
 
 from .._sphinx_collection._yaml import MAX_COLLECTION_ITEMS
 
@@ -122,7 +122,7 @@ def parse_video_id(value: Any) -> str:
         raise CatalogError(str(exc)) from exc
 
 
-def parse_timestamp(value: Any) -> _dt.datetime | None:
+def parse_timestamp(value: Any) -> dt.datetime | None:
     """
     Parse a publication timestamp into a timezone-aware UTC datetime.
 
@@ -159,10 +159,10 @@ def parse_timestamp(value: Any) -> _dt.datetime | None:
     """
     if value is None:
         return None
-    if isinstance(value, _dt.datetime):
+    if isinstance(value, dt.datetime):
         parsed = value
-    elif isinstance(value, _dt.date):
-        parsed = _dt.datetime(value.year, value.month, value.day)
+    elif isinstance(value, dt.date):
+        parsed = dt.datetime(value.year, value.month, value.day)
     elif isinstance(value, str):
         text = value.strip()
         if not text:
@@ -173,7 +173,7 @@ def parse_timestamp(value: Any) -> _dt.datetime | None:
         if text.endswith(("Z", "z")):
             text = text[:-1] + "+00:00"
         try:
-            parsed = _dt.datetime.fromisoformat(text)
+            parsed = dt.datetime.fromisoformat(text)
         except ValueError as exc:
             raise CatalogError(
                 f"{value!r} is not a valid ISO-8601 date or timestamp: {exc}"
@@ -183,8 +183,8 @@ def parse_timestamp(value: Any) -> _dt.datetime | None:
             f"timestamp must be a string or date, got {type(value).__name__}"
         )
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=_dt.timezone.utc)
-    return parsed.astimezone(_dt.timezone.utc)
+        return parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone(dt.timezone.utc)
 
 
 def parse_duration(value: Any) -> int | None:
@@ -242,7 +242,10 @@ def parse_duration(value: Any) -> int | None:
     if ":" in text:
         chunks = text.split(":")
         _len = len(chunks) > 3  # ruff: ignore[magic-value-comparison]
-        if _len or not all(c.isdigit() for c in chunks):
+        # ASCII digits only. str.isdigit() is also true for characters such
+        # as U+00B2 SUPERSCRIPT TWO, which int() refuses: the ValueError then
+        # escaped as a traceback instead of a located catalog error.
+        if _len or not all(re.fullmatch(r"[0-9]+", c) for c in chunks):
             raise CatalogError(f"{value!r} is not a valid clock duration")
         total = 0
         for chunk in chunks:
@@ -374,7 +377,7 @@ def _custom_fields(value: Any, index: int) -> dict[str, Any]:
                 f"record {index}: fields.{path} exceeds the maximum metadata "
                 f"nesting depth of {_MAX_CUSTOM_FIELD_DEPTH}"
             )
-        if node is None or isinstance(node, (str, bool, int, _dt.date, _dt.datetime)):
+        if node is None or isinstance(node, (str, bool, int, dt.date, dt.datetime)):
             return node
         if isinstance(node, float):
             if not math.isfinite(node):
@@ -479,7 +482,7 @@ class VideoRecord:
     playlist: str = ""
     playlist_id: str = ""
     position: int | None = None
-    published: _dt.datetime | None = None
+    published: dt.datetime | None = None
     duration: int | None = None
     tags: list[str] = field(default_factory=list)
     fields: dict[str, Any] = field(default_factory=dict)
@@ -552,7 +555,7 @@ class ChannelRecord:
     playlist: str = ""
     playlist_id: str = ""
     position: int | None = None
-    published: _dt.datetime | None = None
+    published: dt.datetime | None = None
     duration: int | None = None
     tags: list[str] = field(default_factory=list)
     fields: dict[str, Any] = field(default_factory=dict)
@@ -565,7 +568,10 @@ class ChannelRecord:
         return str(self.published.year) if self.published else "unknown"
 
 
-CatalogRecord = VideoRecord | ChannelRecord
+# ``Union[...]``, not ``VideoRecord | ChannelRecord``: this line is executed
+# when the module is imported, and ``|`` between two classes exists from
+# Python 3.10 on (on 3.8 and 3.9 the extension could not be imported at all).
+CatalogRecord = Union[VideoRecord, ChannelRecord]
 
 _CHANNEL_KNOWN_KEYS = frozenset(
     {
@@ -804,7 +810,7 @@ def derive_channel_records(  # ruff: ignore[too-many-branches]
     # is strong enough to upgrade a handle-only record.  Stable channel ids are
     # never merged merely because an ambiguous historical handle matches.
     handle_channel_ids: dict[str, set[str]] = {}
-    preferred_handle: dict[str, tuple[_dt.datetime | None, int, str]] = {}
+    preferred_handle: dict[str, tuple[dt.datetime | None, int, str]] = {}
     for index, record in enumerate(records):
         handle = authored_handle(record)
         if not (handle and record.channel_id):
@@ -817,12 +823,12 @@ def derive_channel_records(  # ruff: ignore[too-many-branches]
         # maintained historical catalog model a channel-handle rename without
         # splitting the stable UC identity.
         candidate_key = (
-            record.published or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+            record.published or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
             index,
         )
         current_key = (
             (
-                current[0] or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+                current[0] or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
                 current[1],
             )
             if current
@@ -868,7 +874,7 @@ def derive_channel_records(  # ruff: ignore[too-many-branches]
     # can be renamed while retaining its UC identity; using the first historical
     # label would leave a projected card visibly stale even though its handle URL
     # had already advanced to the newest known identity metadata.
-    preferred_label: dict[str, tuple[_dt.datetime | None, int, str]] = {}
+    preferred_label: dict[str, tuple[dt.datetime | None, int, str]] = {}
     for index, record in enumerate(records):
         authored = authored_handle(record)
         effective_channel_id = record.channel_id or (
@@ -878,13 +884,13 @@ def derive_channel_records(  # ruff: ignore[too-many-branches]
         if not (effective_channel_id and label):
             continue
         candidate_key = (
-            record.published or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+            record.published or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
             index,
         )
         current = preferred_label.get(effective_channel_id)
         current_key = (
             (
-                current[0] or _dt.datetime.min.replace(tzinfo=_dt.timezone.utc),
+                current[0] or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
                 current[1],
             )
             if current
@@ -1244,8 +1250,15 @@ def normalize_record(  # ruff: ignore[too-many-branches]
     # Never forward a raw URL into generated RST/MyST or HTML links. A record
     # may supply both id and url; validate they identify the same video.
     raw_url = _text("url")
-    if raw_url and parse_video_id(raw_url) != video_id:
-        raise CatalogError(f"record {index}: url and id name different videos")
+    if raw_url:
+        try:
+            url_video_id = parse_video_id(raw_url)
+        except CatalogError as exc:
+            # The same prefix every other failure of this record carries, so
+            # the author can find it in a catalogue of thousands.
+            raise CatalogError(f"record {index}: {exc}") from exc
+        if url_video_id != video_id:
+            raise CatalogError(f"record {index}: url and id name different videos")
     canonical_url = f"https://www.youtube.com/watch?v={video_id}"
 
     handle = _text("handle")

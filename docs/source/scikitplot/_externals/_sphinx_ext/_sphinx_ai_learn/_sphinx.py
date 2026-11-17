@@ -19,7 +19,7 @@ from docutils import nodes
 from docutils.parsers.rst import directives
 from sphinx import addnodes
 from sphinx.errors import ConfigError
-from sphinx.util import logging as sphinx_logging
+from sphinx.util import logging as logging_sphinx
 from sphinx.util.docutils import SphinxDirective
 
 from .._search_variant import SEARCH_VARIANTS
@@ -35,19 +35,21 @@ from ._schema import (
     LearnValidationError,
 )
 
+logger_sphinx = logging_sphinx.getLogger(__name__)
+
 _MAX_DOMAINS = 100
 _MAX_SECTIONS = 32
 _PRESET_FIELDS = 2
 _MAX_TITLE = 200
 _MAX_SUBSCRIBE_URL = 2048
+#: Hosts an ``ai_learn_youtube_subscribe_url`` may name.
+_YOUTUBE_HOSTS = frozenset({"youtube.com", "www.youtube.com", "m.youtube.com"})
 _AI_LEARN_BUTTON_RATING_POSITIONS = frozenset({"left", "right"})
 _AI_LEARN_BUTTONS_RATINGS_DEFAULT = {
     "left_button_rating": "left",
     "right_button_rating": "right",
 }
-
 _ASSETS = Path(__file__).parent / "_static"
-_LOGGER = sphinx_logging.getLogger(__name__)
 _ENV_SCHEMA_REVISION = "learn-json-materializer-v3"
 _ENV_VERSION = 1
 
@@ -291,12 +293,11 @@ def _configure(  # ruff: ignore[too-many-branches]
             parsed.scheme != "https"
             or parsed.username
             or parsed.password
-            or parsed.hostname
-            not in {"youtube.com", "www.youtube.com", "m.youtube.com"}
+            or parsed.hostname not in _YOUTUBE_HOSTS
             or port not in (None, 443)
         ):
             raise ConfigError(
-                "ai_learn_youtube_subscribe_url must be an HTTPS youtube.com URL"
+                "ai_learn_youtube_subscribe_url must be an HTTPS youtube.com URL",
             )
 
     content_root = config.ai_learn_content_root
@@ -358,7 +359,7 @@ def _configure(  # ruff: ignore[too-many-branches]
     app._ai_learn_feedback_digests = tree.feedback_digests
     app._ai_learn_content_digest = tree.content_digest
     app._ai_learn_tree_digest = tree.digest
-    _LOGGER.info(
+    logger_sphinx.info(
         "AI Learn: materialized %d canonical JSON files into RST (%d changed); revision %s",
         len(tree.source_digests),
         len(changed),

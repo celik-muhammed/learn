@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ..._paths import RUNTIME_ROOT
 
 import hashlib
-import importlib.util
 import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from functools import lru_cache
 
 import pytest
 
@@ -17,18 +17,26 @@ PROXY = ROOT / "_hf_spaces_proxy"
 SECURITY = PROXY / "security"
 
 
-def _load(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
 
 
-verify_mod = _load("run20_verify_release_evidence", SECURITY / "verify_release_evidence.py")
-probe_mod = _load("run20_probe_redis_authority", SECURITY / "probe_redis_authority.py")
-gate_mod = _load("run20_verify_release_gate", SECURITY / "verify_release_gate.py")
-subjects_mod = _load("run20_release_subjects", SECURITY / "release_subjects.py")
+from ...._hf_spaces_proxy.security import verify_release_evidence as verify_mod
+from ...._hf_spaces_proxy.security import probe_redis_authority as probe_mod
+from ...._hf_spaces_proxy.security import verify_release_gate as gate_mod
+from ...._hf_spaces_proxy.security import release_subjects as subjects_mod
+
+real_source_tree_sha256 = verify_mod.source_tree_sha256
+
+@lru_cache(maxsize=1)
+def source_tree_sha256_for_test(root):
+    return real_source_tree_sha256(root)
+
+
+@lru_cache(maxsize=1)
+def _fixture_source_fingerprints() -> tuple[str, str]:
+    return (
+        verify_mod.source_tree_sha256(verify_mod.EXTENSION_ROOT),
+        verify_mod._runtime_source_sha256(),
+    )
 
 
 def _proxy_version_from_source() -> str:
@@ -73,9 +81,9 @@ def _sha(path: Path) -> str:
 def _write_artifact(root: Path, name: str, data: object) -> dict[str, object]:
     path = root / name
     if isinstance(data, (dict, list)):
-        path.write_text(json.dumps(data, sort_keys=True))
+        path.write_text(json.dumps(data, sort_keys=True), encoding="utf-8")
     else:
-        path.write_text(str(data))
+        path.write_text(str(data), encoding="utf-8")
     return {
         "path": name,
         "sha256": _sha(path),
@@ -110,7 +118,8 @@ def _evidence(tmp_path: Path, now: datetime) -> Path:
         return dt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
     recent_backup = fmt(now - timedelta(days=2))
-    source_tree_sha = verify_mod.source_tree_sha256(verify_mod.EXTENSION_ROOT)
+    # source_tree_sha = verify_mod.source_tree_sha256(verify_mod.EXTENSION_ROOT)
+    source_tree_sha, runtime_source_sha = _fixture_source_fingerprints()
     source_revision = "1" * 40
 
     def chaos_entry(major: int, mode: str) -> dict[str, object]:
@@ -155,7 +164,8 @@ def _evidence(tmp_path: Path, now: datetime) -> Path:
         "source": {
             "requirementsLockSha256": _sha(PROXY / "requirements.lock"),
             "pythonSbomSha256": _sha(PROXY / "security/python-runtime.cdx.json"),
-            "runtimeSourceSha256": verify_mod._runtime_source_sha256(),
+            # "runtimeSourceSha256": verify_mod._runtime_source_sha256(),
+            "runtimeSourceSha256": runtime_source_sha,
             "sourceTreeSha256": source_tree_sha,
             "sourceRevision": source_revision,
             "baseImageIndexDigest": verify_mod.SUPPLY["base_image"]["index_digest"],
@@ -226,14 +236,14 @@ def _evidence(tmp_path: Path, now: datetime) -> Path:
         "riskExceptions": [],
     }
     target = tmp_path / "release-evidence.json"
-    target.write_text(json.dumps(doc, indent=2, sort_keys=True))
+    target.write_text(json.dumps(doc, indent=2, sort_keys=True), encoding="utf-8")
     return target
 
 
 def _mutate(path: Path, fn) -> None:
-    doc = json.loads(path.read_text())
+    doc = json.loads(path.read_text(encoding="utf-8"))
     fn(doc)
-    path.write_text(json.dumps(doc, indent=2, sort_keys=True))
+    path.write_text(json.dumps(doc, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def test_release_evidence_binds_exact_source_image_provenance_and_privacy(tmp_path):
@@ -262,7 +272,7 @@ def test_release_evidence_rejects_stale_wrong_source_and_artifact_tampering(tmp_
         verify_mod.verify(source, now=now)
 
     tamper = _evidence(tmp_path / "tamper", now)
-    (tamper.parent / "image-scan.json").write_text("tampered")
+    (tamper.parent / "image-scan.json").write_text("tampered", encoding="utf-8")
     with pytest.raises(verify_mod.EvidenceError, match="IMAGE_SCAN_HASH_MISMATCH"):
         verify_mod.verify(tamper, now=now)
 
@@ -271,9 +281,9 @@ def test_release_evidence_rejects_unbound_provenance_and_unverified_signature(tm
     now = datetime(2026, 8, 30, 1, 0, tzinfo=timezone.utc)
     wrong = _evidence(tmp_path / "wrong", now)
     prov_path = wrong.parent / "provenance.json"
-    prov = json.loads(prov_path.read_text())
+    prov = json.loads(prov_path.read_text(encoding="utf-8"))
     prov["subject"][0]["digest"]["sha256"] = "c" * 64
-    prov_path.write_text(json.dumps(prov, sort_keys=True))
+    prov_path.write_text(json.dumps(prov, sort_keys=True), encoding="utf-8")
     _mutate(wrong, lambda d: d["artifacts"]["provenance"].update(sha256=_sha(prov_path)))
     with pytest.raises(verify_mod.EvidenceError, match="PROVENANCE_SUBJECT_IMAGE_MISMATCH"):
         verify_mod.verify(wrong, now=now)
@@ -284,7 +294,13 @@ def test_release_evidence_rejects_unbound_provenance_and_unverified_signature(tm
         verify_mod.verify(unsigned, now=now)
 
 
-def test_release_evidence_rejects_logging_telemetry_and_redis_paper_claims(tmp_path):
+def test_release_evidence_rejects_logging_telemetry_and_redis_paper_claims(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        verify_mod, "source_tree_sha256", source_tree_sha256_for_test
+    )
     now = datetime(2026, 8, 30, 1, 0, tzinfo=timezone.utc)
     telemetry = _evidence(tmp_path / "telemetry", now)
     _mutate(telemetry, lambda d: d["logging"].update(thirdPartyTelemetryExport=True))
@@ -366,7 +382,7 @@ def test_release_evidence_policy_is_fail_closed_and_example_is_non_authoritative
     assert policy["forbid_unexpired_risk_exceptions"] is True
     assert policy["logging"]["request_body_logging"] is False
     assert policy["logging"]["third_party_telemetry_export"] is False
-    example = (SECURITY / "release-evidence.example.json").read_text()
+    example = (SECURITY / "release-evidence.example.json").read_text(encoding="utf-8")
     assert "example-only-not-production" in example
     assert "REPLACE_WITH_64_HEX" in example
     assert "rediss://" not in example
@@ -454,9 +470,9 @@ def test_release_evidence_rejects_oversize_manifest_old_sbom_and_unresolved_base
 
     old_sbom = _evidence(tmp_path / "old-sbom", now)
     sbom_path = old_sbom.parent / "image.cdx.json"
-    sbom = json.loads(sbom_path.read_text())
+    sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
     sbom["specVersion"] = "1.5"
-    sbom_path.write_text(json.dumps(sbom, sort_keys=True))
+    sbom_path.write_text(json.dumps(sbom, sort_keys=True), encoding="utf-8")
     _mutate(old_sbom, lambda d: d["artifacts"]["imageSbom"].update(sha256=_sha(sbom_path)))
     with pytest.raises(verify_mod.EvidenceError, match="IMAGE_SBOM_SPEC_VERSION_TOO_OLD"):
         verify_mod.verify(old_sbom, now=now)
@@ -472,14 +488,14 @@ def test_runtime_source_digest_includes_non_python_utils_files(tmp_path):
     root = tmp_path / "runtime"
     root.mkdir()
     for name in verify_mod.RUNTIME_SOURCE_FILES:
-        (root / name).write_text(f"{name}\n")
+        (root / name).write_text(f"{name}\n", encoding="utf-8")
     utils = root / "_utils"
     utils.mkdir()
-    (utils / "module.py").write_text("VALUE = 1\n")
+    (utils / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
     extra = utils / "runtime-policy.dat"
-    extra.write_text("policy-a\n")
+    extra.write_text("policy-a\n", encoding="utf-8")
     before = verify_mod._runtime_source_sha256(root)
-    extra.write_text("policy-b\n")
+    extra.write_text("policy-b\n", encoding="utf-8")
     after = verify_mod._runtime_source_sha256(root)
     assert before != after
 

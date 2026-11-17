@@ -1,3 +1,5 @@
+# scikitplot/_externals/_sphinx_ext/_sphinx_ai_assistant/_hf_spaces_proxy/_utils/_zip_workspace.py
+#
 # Authors: The scikit-plots developers
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -43,6 +45,7 @@ import os
 import re
 import stat
 import struct
+import sys
 import tempfile
 import unicodedata
 import zipfile
@@ -50,9 +53,23 @@ import zlib
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO, Callable, Iterator, Mapping
+from typing import (  # ruff: ignore[unused-import]
+    TYPE_CHECKING,
+    BinaryIO,
+    Callable,
+    Generator,
+    Iterator,
+    Mapping,
+)
 
-from typing_extensions import Self
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 11):
+        from typing import Self
+    else:
+        try:
+            from typing_extensions import Self
+        except ImportError:
+            Self = object
 
 ZIP_CHUNK_BYTES = 1024 * 1024
 ZIP_OUTPUT_SPOOL_BYTES = 8 * 1024 * 1024
@@ -63,6 +80,37 @@ ZIP_MAX_REPLACEMENT_TOTAL_BYTES = 256 * 1024 * 1024
 ZIP_MAX_COMPRESSION_RATIO = 500.0
 ZIP_MAX_SOURCE_BYTES = 512 * 1024 * 1024
 ZIP_MAX_PATH_CHARS = 4096
+
+if hasattr(tempfile.SpooledTemporaryFile, "seekable"):
+    #: The spool every archive generation is written to.
+    _SpooledFile = tempfile.SpooledTemporaryFile
+else:
+
+    class _SpooledFile(tempfile.SpooledTemporaryFile):
+        """
+        ``SpooledTemporaryFile`` with the queries :mod:`zipfile` asks a file.
+
+        Notes
+        -----
+        **Developer note** — Before Python 3.11 the spooled file does not
+        implement the :class:`io.IOBase` queries. ``zipfile.ZipFile.open``
+        reads ``file.seekable`` from the object it was given, so verifying a
+        rewritten archive raised ``AttributeError: 'SpooledTemporaryFile'
+        object has no attribute 'seekable'`` on Python 3.9 and 3.10 (18 tests
+        of this module and of ``_zip_artifact``). From 3.11 on the standard
+        class answers them by asking the file it wraps, which is what is done
+        here; the standard class is used unchanged wherever it has them.
+        """
+
+        def readable(self) -> bool:
+            return self._file.readable()
+
+        def writable(self) -> bool:
+            return self._file.writable()
+
+        def seekable(self) -> bool:
+            return self._file.seekable()
+
 
 _LOCAL_FILE_HEADER_SIGNATURE = 0x04034B50
 _CENTRAL_DIRECTORY_SIGNATURE = 0x02014B50
@@ -203,7 +251,9 @@ class _ArchivePlan:
 
 
 @contextmanager
-def _source_handle(source: str | os.PathLike[str] | BinaryIO) -> Iterator[BinaryIO]:
+def _source_handle(
+    source: str | os.PathLike[str] | BinaryIO,
+) -> Generator[BinaryIO, None, None]:  # Iterator[BinaryIO]
     if isinstance(source, (str, os.PathLike)):
         with open(Path(source), "rb") as fh:
             yield fh
@@ -261,7 +311,7 @@ def _snapshot_source(
     """Copy the authoritative archive generation into a bounded server spool."""
     snapshot = (
         # lint
-        tempfile.SpooledTemporaryFile(  # ruff: ignore[open-file-with-context-handler]
+        _SpooledFile(  # ruff: ignore[open-file-with-context-handler]
             max_size=limits.output_spool_bytes,
             mode="w+b",
         )
@@ -692,7 +742,7 @@ def _snapshot_replacement_value(  # ruff: ignore[too-many-branches]
     """Copy one replacement generation into a bounded server-owned spool."""
     spool = (
         # lint
-        tempfile.SpooledTemporaryFile(  # ruff: ignore[open-file-with-context-handler]
+        _SpooledFile(  # ruff: ignore[open-file-with-context-handler]
             max_size=limits.output_spool_bytes,
             mode="w+b",
         )
@@ -1055,7 +1105,7 @@ def _compress_replacement(  # ruff: ignore[too-many-branches]
 ) -> tuple[BinaryIO, int, int, int, str]:
     spool = (
         # lint
-        tempfile.SpooledTemporaryFile(  # ruff: ignore[open-file-with-context-handler]
+        _SpooledFile(  # ruff: ignore[open-file-with-context-handler]
             max_size=limits.output_spool_bytes,
             mode="w+b",
         )
@@ -1484,7 +1534,7 @@ def rewrite_zip_workspace(
 
     output = (
         # lint
-        tempfile.SpooledTemporaryFile(  # ruff: ignore[open-file-with-context-handler]
+        _SpooledFile(  # ruff: ignore[open-file-with-context-handler]
             max_size=limits.output_spool_bytes,
             mode="w+b",
         )

@@ -25,7 +25,10 @@ import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib  # the standard library, Python >= 3.11
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
+    import tomli as tomllib  # the same parser, as the package it came from
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -46,7 +49,9 @@ except (ImportError, ValueError) as exc:
     sys.modules[_spec.name] = run162
     _spec.loader.exec_module(run162)
 HERE = Path(__file__).resolve().parent
-POLICY = tomllib.loads((HERE / "release_archive_anchor_policy.toml").read_text())
+POLICY = tomllib.loads(
+    (HERE / "release_archive_anchor_policy.toml").read_text(encoding="utf-8")
+)
 PREDICATE_TYPE = str(POLICY["predicate_type"])
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,511}$")
@@ -709,10 +714,11 @@ def verify_anchor_history(  # ruff: ignore[too-many-branches, undocumented-publi
             _fail("ARCHIVE_ANCHOR_EMBEDDED_RUN162_INVALID")
         arts = {
             n: {
-                "sha256": _sha_bytes(_canonical(rdocs[n])),
-                "size": len(_canonical(rdocs[n])),
+                "sha256": _sha_bytes(canon),
+                "size": len(canon),
             }
             for n in sorted(rdocs)
+            for canon in [_canonical(rdocs[n])]
         }
         if e["run162Artifacts"] != arts:
             _fail("ARCHIVE_ANCHOR_RUN162_ARTIFACT_BINDING_INVALID")
@@ -854,12 +860,10 @@ def verify_anchor_history(  # ruff: ignore[too-many-branches, undocumented-publi
     }
     if active != eactive:
         _fail("ARCHIVE_ANCHOR_ACTIVE_BINDING_INVALID")
-    if (
-        not historical
-        and last_time is not None
-        and current - last_time
-        > timedelta(days=int(POLICY["maximum_anchor_interval_days"]))
-    ):
+    # ``last_time`` is None until an epoch exists, so ``current - last_time``
+    # must stay behind the guard; only the policy limit is computed first.
+    max_interval = timedelta(days=int(POLICY["maximum_anchor_interval_days"]))
+    if not historical and last_time is not None and current - last_time > max_interval:
         _fail("ARCHIVE_ANCHOR_ACTIVE_EPOCH_STALE")
     return {
         "ok": True,

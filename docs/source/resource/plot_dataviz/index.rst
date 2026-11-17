@@ -31,21 +31,74 @@ Plot DataViz (Data to Viz) Resource
    and may change. Use your judgment, and check important claims, code, and setup
    or security advice against current official documentation before relying on it.
 
+-----------------------------------
+Official Visualization Libraries
+-----------------------------------
+
+Static & Statistical Visualization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Matplotlib Official Documentation & Cheatsheets
+  <https://matplotlib.org/stable/index.html>`_
+  by matplotlib.org
+
+* `Seaborn: Statistical Data Visualization
+  <https://seaborn.pydata.org/>`_
+  by Michael Waskom
+
+* `Plotnine: A Grammar of Graphics for Python
+  <https://plotnine.org/>`_
+  by plotnine.org
+
+Interactive & Declarative Visualization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Plotly Python Open Source Graphing Library
+  <https://plotly.com/python/>`_
+  by Plotly
+
+* `Vega-Altair: Declarative Visualization in Python
+  <https://altair-viz.github.io/>`_
+  by Altair Developers
+
+* `Bokeh: Interactive Visualization Library
+  <https://docs.bokeh.org/>`_
+  by Bokeh Contributors
+
+* `HoloViz Ecosystem (Panel, hvPlot, Datashader)
+  <https://holoviz.org/>`_
+  by HoloViz Developers
+
 ---------
 Galleries
 ---------
 
-* `The Python Graph Gallery <https://www.python-graph-gallery.com>`_
+* `From Data to Viz: Chart Selection Decision Tree
+  <https://www.data-to-viz.com/>`_
+  by Yan Holtz and Conor Healy
+
+* `The Python Graph Gallery
+  <https://www.python-graph-gallery.com>`_
   by Yan Holtz
 
-* `Past winners for JDH plotting contest <https://jhepc.github.io/gallery.html>`_
+* `Matplotlib Example Gallery
+  <https://matplotlib.org/stable/gallery/index.html>`_
+  by matplotlib.org
+
+* `Seaborn Example Gallery
+  <https://seaborn.pydata.org/examples/index.html>`_
+  by seaborn.pydata.org
+
+* `Past winners for JDH plotting contest
+  <https://jhepc.github.io/gallery.html>`_
   by Nelle Varoquaux
 
 ---------
 Tutorials
 ---------
 
-* `Matplotlib Tutorial <https://www.labri.fr/perso/nrougier/teaching/matplotlib/>`_
+* `Matplotlib Tutorial
+  <https://www.labri.fr/perso/nrougier/teaching/matplotlib/>`_
   by Nicolas P. Rougier
 
 * `Anatomy of Matplotlib - IPython Notebooks
@@ -56,9 +109,17 @@ Tutorials
   <https://github.com/stefmolin/python-data-viz-workshop>`_
   by Stefanie Molin
 
+* `Seaborn User Guide & Tutorial
+  <https://seaborn.pydata.org/tutorial.html>`_
+  by Michael Waskom
+
 ----------------------------
 Books, chapters and articles
 ----------------------------
+
+* `Fundamentals of Data Visualization (Free Online Edition)
+  <https://clauswilke.com/dataviz/>`_
+  by Claus O. Wilke
 
 * `Scientific Visualization: Python + Matplotlib (2021)
   <https://hal.inria.fr/hal-03427242/>`_
@@ -76,7 +137,8 @@ Books, chapters and articles
   <https://www.packtpub.com/product/matplotlib-for-python-developers/9781847197900>`_
   by Sandro Tosi
 
-* `Matplotlib chapter <http://www.aosabook.org/en/matplotlib.html>`_
+* `Matplotlib chapter
+  <http://www.aosabook.org/en/matplotlib.html>`_
   by John Hunter and Michael Droettboom in The Architecture of Open Source
   Applications
 
@@ -105,7 +167,8 @@ Videos
   by Randal S. Olson
 
 * `Introduction to NumPy and Matplotlib
-  <https://www.youtube.com/watch?v=3Fp1zn5ao2M&feature=plcp>`_ by Eric Jones
+  <https://www.youtube.com/watch?v=3Fp1zn5ao2M&feature=plcp>`_
+  by Eric Jones
 
 ..
   # https://www.youtube.com/watch?v=3Fp1zn5ao2M
@@ -120,7 +183,8 @@ Videos
   # https://www.youtube.com/watch?v=qqwf4Vuj8oM&list=PLeo1K3hjS3uu4Lr8_kro2AqaO6CFYgKOl&index=1
 ..  youtube:: qqwf4Vuj8oM
 
-* `Plotting with matplotlib <https://www.youtube.com/watch?v=P7SVi0YTIuE>`_
+* `Plotting with matplotlib
+  <https://www.youtube.com/watch?v=P7SVi0YTIuE>`_
   by Mike Müller
 
 ..  youtube:: P7SVi0YTIuE

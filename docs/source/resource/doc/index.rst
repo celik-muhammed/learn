@@ -93,6 +93,25 @@ Sphinx Fundamentals
 * `Sphinx: Roles & Inline Markup
   <https://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html>`_
 
+Essential Sphinx Extensions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `MyST-Parser: Markdown in Sphinx
+  <https://myst-parser.readthedocs.io/>`_
+  by Executable Book Project
+
+* `Sphinx Copybutton Extension
+  <https://sphinx-copybutton.readthedocs.io/>`_
+  by Joel Nothman
+
+* `Sphinx Design Components
+  <https://sphinx-design.readthedocs.io/>`_
+  by Executable Book Project
+
+* `Sphinx AutoAPI
+  <https://sphinx-autoapi.readthedocs.io/>`_
+  by Read the Docs
+
 Practical Guides & Primers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -102,8 +121,9 @@ Practical Guides & Primers
 * `Sphinx Primer & Getting Started
   <https://lpn-doc-sphinx-primer-devel.readthedocs.io/index.html>`_
 
-* `https://labs.bilimedtech.com
+* `Bilimedtech Labs Documentation Guide
   <https://labs.bilimedtech.com/index.html>`_
+  by Bilimedtech
 
 -------------------------------
 Community & Real-World Examples
@@ -129,5 +149,6 @@ Community & Real-World Examples
 Terminology
 ------------------
 
-* `https://insightful-data-lab.com
+* `Insightful Data Lab Reference
   <https://insightful-data-lab.com>`_
+  by Insightful Data Lab

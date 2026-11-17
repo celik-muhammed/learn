@@ -43,6 +43,13 @@ LlamaIndex & Workflows
   <https://docs.llamaindex.ai/en/stable/module_guides/workflow/>`_
   by LlamaIndex
 
+Google Agent Development Kit (ADK)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Google Agent Development Kit (ADK) Documentation
+  <https://github.com/google/adk-docs>`_
+  by Google
+
 Anthropic Claude
 ^^^^^^^^^^^^^^^^
 
@@ -64,6 +71,32 @@ OpenAI
 * `OpenAI API Reference
   <https://platform.openai.com/docs/>`_
   by OpenAI
+
+Hugging Face & PydanticAI
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Hugging Face smolagents
+  <https://github.com/huggingface/smolagents>`_
+  by Hugging Face
+
+* `PydanticAI Agent Framework
+  <https://github.com/pydantic/pydantic-ai>`_
+  by Pydantic
+
+-----------------------------------
+Agent Protocols & Standards
+-----------------------------------
+
+Model Context Protocol (MCP)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Model Context Protocol (MCP) Documentation
+  <https://modelcontextprotocol.io/>`_
+  by Model Context Protocol
+
+* `MCP Specification & GitHub Repository
+  <https://github.com/modelcontextprotocol/modelcontextprotocol>`_
+  by github.com/modelcontextprotocol
 
 -----------------------------------
 Agent Orchestration Frameworks

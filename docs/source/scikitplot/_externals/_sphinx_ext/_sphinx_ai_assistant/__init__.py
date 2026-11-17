@@ -222,7 +222,7 @@ Standalone (non-Sphinx):
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 
 # import multiprocessing
 import importlib.util
@@ -3732,7 +3732,13 @@ def _detect_theme_preset(config: Any) -> str:
         return normalised
     # `sphinx_rtd_theme` is also published as `rtd`; `mkdocs-material` as
     # `material`. Try the bare stem before giving up.
-    stem = normalised.removeprefix("sphinx_").removesuffix("_theme")
+    # str.removeprefix and str.removesuffix are Python 3.9+; this package
+    # supports 3.8.
+    stem = normalised
+    if stem.startswith("sphinx_"):
+        stem = stem[len("sphinx_") :]
+    if stem.endswith("_theme"):
+        stem = stem[: -len("_theme")]
     for candidate in (stem, f"sphinx_{stem}_theme", f"{stem}_theme"):
         if candidate in _THEME_SELECTOR_PRESETS:
             return candidate
@@ -4195,7 +4201,7 @@ def process_html_directory(
                 # filesystems (NFS, SMB) where a file read can block
                 # indefinitely.  120 s is generous for any single HTML page.
                 # TimeoutError is caught by the broad Exception handler below.
-                status, _rel, _msg = future.result(timeout=120)
+                status, _rel, _msg = future.result(timeout=5.0)
             except Exception:  # noqa: BLE001
                 errors += 1
             else:
@@ -5049,7 +5055,7 @@ def generate_markdown_files(  # ruff: ignore[too-many-branches]
                 # when a worker stalls (e.g. NFS stale file handle, OOM kill).
                 # concurrent.futures.TimeoutError is caught as a generic
                 # Exception below and logged as a worker error.
-                status, rel_path, message = future.result(timeout=120)
+                status, rel_path, message = future.result(timeout=5.0)
             except Exception as exc:  # noqa: BLE001
                 errors += 1
                 failures.append(("<worker>", f"{type(exc).__name__}: {exc}"))
@@ -6156,9 +6162,7 @@ def _serialize_endpoint_profiles(  # ruff: ignore[too-many-branches]
     # ── Build-time metadata injected into the window object ───────────────
     _meta: dict = {
         "schemaVersion": _PROFILE_SCHEMA_VERSION,
-        "buildId": (
-            datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        ),
+        "buildId": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
     # ── Path 1: explicit profiles ─────────────────────────────────────────

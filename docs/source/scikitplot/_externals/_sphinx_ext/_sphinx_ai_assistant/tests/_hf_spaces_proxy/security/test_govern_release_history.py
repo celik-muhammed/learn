@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ..._paths import RUNTIME_ROOT
 
 from datetime import datetime, timezone
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 
@@ -15,16 +14,10 @@ ROOT = RUNTIME_ROOT
 SECURITY = ROOT / "_hf_spaces_proxy" / "security"
 
 
-def _load(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
 
 
-gov = _load("run154_governance", SECURITY / "govern_release_history.py")
-run153 = _load("run154_run153_fixture", HERE / "test_preserve_release_history.py")
+from ...._hf_spaces_proxy.security import govern_release_history as gov
+from . import test_preserve_release_history as run153
 NOW = datetime(2026, 9, 5, 9, 0, tzinfo=timezone.utc)
 GOVERNANCE_ID = "scikit-plots/release-governance"
 POLICY_AUTHORITIES = [
@@ -59,7 +52,7 @@ def _history(tmp_path: Path, *, alternate_key: bool = False) -> Path:
 
 
 def _history_binding(history_dir: Path) -> dict:
-    state = json.loads((history_dir / "trusted-history-state.json").read_text())
+    state = json.loads((history_dir / "trusted-history-state.json").read_text(encoding="utf-8"))
     return {
         "sequence": state["sequence"],
         "stateSha256": _sha(history_dir / "trusted-history-state.json"),
@@ -115,8 +108,8 @@ def _proposal(tmp_path: Path, history_dir: Path, init_dir: Path, *, reason="memb
         "schemaVersion": 1,
         "governanceId": GOVERNANCE_ID,
         "transitionId": transition_id,
-        "fromEpoch": json.loads(previous_state.read_text())["epoch"],
-        "toEpoch": json.loads(previous_state.read_text())["epoch"] + 1,
+        "fromEpoch": json.loads(previous_state.read_text(encoding="utf-8"))["epoch"],
+        "toEpoch": json.loads(previous_state.read_text(encoding="utf-8"))["epoch"] + 1,
         "reason": reason,
         "history": _history_binding(history_dir),
         "previousGovernanceStateSha256": _sha(previous_state),
@@ -128,7 +121,7 @@ def _proposal(tmp_path: Path, history_dir: Path, init_dir: Path, *, reason="memb
 
 
 def _approval(tmp_path: Path, proposal: Path, member: dict, *, role="policy", suffix="") -> Path:
-    pdoc = json.loads(proposal.read_text())
+    pdoc = json.loads(proposal.read_text(encoding="utf-8"))
     path = tmp_path / f"approval-{member['keyId'].replace('/', '-')}{suffix}.json"
     path.write_bytes(_canonical({
         "schemaVersion": 1,
@@ -204,8 +197,8 @@ class FakeRecoverySource:
     def __init__(self, identity: str, operator: str, history_dir: Path):
         self.identity = identity
         self.operator = operator
-        self.state = json.loads((history_dir / "trusted-history-state.json").read_text())
-        self.bundle = json.loads((history_dir / "release-history-bundle.json").read_text())
+        self.state = json.loads((history_dir / "trusted-history-state.json").read_text(encoding="utf-8"))
+        self.bundle = json.loads((history_dir / "release-history-bundle.json").read_text(encoding="utf-8"))
         self.unavailable = False
         self.read_only = True
         self.history_writer_reused = False
@@ -269,7 +262,7 @@ def test_run154_genesis_requires_explicit_external_hash_pin(tmp_path: Path):
 def test_run154_genesis_rebinds_run153_replica_and_archive_membership(tmp_path: Path):
     history_dir = _history(tmp_path / "history")
     genesis, expected = _genesis(tmp_path, history_dir)
-    doc = json.loads(genesis.read_text())
+    doc = json.loads(genesis.read_text(encoding="utf-8"))
     doc["policy"]["historyReplicas"]["members"][0]["identity"] = "history/other-replica"
     genesis.write_bytes(_canonical(doc)); expected = _sha(genesis)
     with pytest.raises(gov.GovernanceError, match="GOVERNANCE_GENESIS_REPLICA_MEMBERSHIP_MISMATCH"):
@@ -283,7 +276,7 @@ def test_run154_threshold_governed_membership_change_and_offline_verification(tm
     assert result["policy_version"] == 2
     verified = gov.verify_governance_bundle(bundle_path=out / "release-governance-bundle.json", state_path=out / "trusted-governance-state.json")
     assert verified["epoch"] == 1
-    state = json.loads((out / "trusted-governance-state.json").read_text())
+    state = json.loads((out / "trusted-governance-state.json").read_text(encoding="utf-8"))
     assert len(state["policy"]["historyArchives"]["members"]) == 3
 
 
@@ -291,7 +284,7 @@ def test_run154_proposal_is_bound_to_exact_history_and_previous_governance_state
     history_dir = _history(tmp_path / "history")
     init_dir = _initialize(tmp_path / "init", history_dir)
     proposal = _proposal(tmp_path, history_dir, init_dir)
-    doc = json.loads(proposal.read_text()); doc["history"]["chainHeadSha256"] = "0" * 64; proposal.write_bytes(_canonical(doc))
+    doc = json.loads(proposal.read_text(encoding="utf-8")); doc["history"]["chainHeadSha256"] = "0" * 64; proposal.write_bytes(_canonical(doc))
     approvals = [_approval(tmp_path, proposal, m) for m in POLICY_AUTHORITIES[:2]]
     archives = [(i, o, FakeGovernanceArchive(i, o)) for i, o in GOV_ARCHIVES]
     with pytest.raises(gov.GovernanceError, match="GOVERNANCE_PROPOSAL_HISTORY_MISMATCH"):
@@ -324,7 +317,7 @@ def test_run154_compromise_recovery_uses_emergency_council_and_revokes_compromis
     next_policy = _base_policy(version=2, policy_members=new_policy_members)
     result, out, *_ = _transition_run(tmp_path, reason="authority-compromise-recovery", selected=["emergency/key-a", "emergency/key-b"], revocations=["governance/key-a"], next_policy=next_policy, approval_members=EMERGENCY_AUTHORITIES[:2], role="emergency", transition_id="compromise-recovery-1")
     assert result["ok"] is True
-    state = json.loads((out / "trusted-governance-state.json").read_text())
+    state = json.loads((out / "trusted-governance-state.json").read_text(encoding="utf-8"))
     assert state["revokedAuthorityKeyIds"] == ["governance/key-a"]
     assert "governance/key-a" not in {m["keyId"] for m in state["policy"]["policyAuthority"]["members"]}
 
@@ -353,7 +346,7 @@ def test_run154_compromise_recovery_must_revoke_current_policy_key(tmp_path: Pat
 def test_run154_offline_verifier_rejects_revoked_key_reintroduced_later(tmp_path: Path):
     new_policy_members = [POLICY_AUTHORITIES[1], POLICY_AUTHORITIES[2], {"identity": "governance/policy-d", "operator": "governance-operator-d", "keyId": "governance/key-d"}]
     _, out, *_ = _transition_run(tmp_path, reason="authority-compromise-recovery", selected=["emergency/key-a", "emergency/key-b"], revocations=["governance/key-a"], next_policy=_base_policy(version=2, policy_members=new_policy_members), approval_members=EMERGENCY_AUTHORITIES[:2], role="emergency", transition_id="compromise-recovery-3")
-    bundle = json.loads((out / "release-governance-bundle.json").read_text())
+    bundle = json.loads((out / "release-governance-bundle.json").read_text(encoding="utf-8"))
     entry = bundle["entries"][0]
     entry["nextPolicy"]["emergencyAuthority"]["members"][0]["keyId"] = "governance/key-a"
     entry["proposal"]["nextPolicy"] = json.loads(json.dumps(entry["nextPolicy"]))
@@ -409,7 +402,7 @@ def test_run154_governance_snapshot_is_create_only_archived_and_retry_stable(tmp
     assert result1["bundle_sha256"] == result2["bundle_sha256"]
     assert result1["state_sha256"] == result2["state_sha256"]
     assert result1["recovery_snapshot_sha256"] == result2["recovery_snapshot_sha256"]
-    statuses = [json.loads(p.read_text())["status"] for p in sorted((out2/"archive-results").glob("*.bind.json"))]
+    statuses = [json.loads(p.read_text(encoding="utf-8"))["status"] for p in sorted((out2/"archive-results").glob("*.bind.json"))]
     assert statuses == ["present", "present"]
 
 
@@ -429,7 +422,7 @@ def test_run154_rejects_archive_mutation_locator_collision_and_credential_reuse(
 def test_run154_detects_run153_sidecar_tamper_before_governance(tmp_path: Path):
     history_dir = _history(tmp_path / "history")
     sidecar = next((history_dir / "archive-results").glob("*.verify.json"))
-    doc = json.loads(sidecar.read_text()); doc["verifiedAt"] = "2026-09-05T09:00:00Z"; sidecar.write_bytes(_canonical(doc))
+    doc = json.loads(sidecar.read_text(encoding="utf-8")); doc["verifiedAt"] = "2026-09-05T09:00:00Z"; sidecar.write_bytes(_canonical(doc))
     genesis, expected = _genesis(tmp_path, history_dir)
     with pytest.raises(gov.GovernanceError, match="RUN153_ARCHIVE_EVIDENCE_REBIND_FAILED"):
         gov.initialize_governance(history_dir=history_dir, genesis_path=genesis, expected_genesis_sha256=expected, output_dir=tmp_path/"bad")
@@ -443,8 +436,8 @@ def test_run154_policy_and_documentation_define_governance_and_recovery_boundary
     assert policy["min_recovery_sources"] >= 3
     assert policy["min_recovery_quorum"] >= 2
     assert policy["min_governance_archives"] >= 2
-    guide = (SECURITY / "RELEASE_GOVERNANCE_GUIDE.md").read_text()
-    gates = (SECURITY / "SECURITY_RELEASE_GATES.md").read_text()
+    guide = (SECURITY / "RELEASE_GOVERNANCE_GUIDE.md").read_text(encoding="utf-8")
+    gates = (SECURITY / "SECURITY_RELEASE_GATES.md").read_text(encoding="utf-8")
     assert "threshold" in guide.lower() and "compromise" in guide.lower() and "disaster" in guide.lower()
     assert "Run 154" in gates and "governance" in gates.lower()
 
@@ -452,7 +445,7 @@ class FakeGovernanceRecoverySource:
     def __init__(self, identity: str, operator: str, governed_dir: Path):
         self.identity = identity
         self.operator = operator
-        self.snapshot = json.loads((governed_dir / "release-governance-recovery-snapshot.json").read_text())
+        self.snapshot = json.loads((governed_dir / "release-governance-recovery-snapshot.json").read_text(encoding="utf-8"))
         self.unavailable = False
         self.read_only = True
         self.history_writer_reused = False
@@ -502,7 +495,7 @@ def test_run154_history_recovery_requires_out_of_band_chain_head_pin(tmp_path: P
 
 def test_run154_governance_recovery_accepts_two_of_three_matching_snapshots(tmp_path: Path):
     _, governed, *_ = _transition_run(tmp_path / "source")
-    state = json.loads((governed / "trusted-governance-state.json").read_text())
+    state = json.loads((governed / "trusted-governance-state.json").read_text(encoding="utf-8"))
     defs = [(i, o, FakeGovernanceRecoverySource(i, o, governed)) for i, o in RECOVERY_SOURCES]
     defs[2][2].unavailable = True
     out = tmp_path / "recovered-governance"
@@ -540,7 +533,7 @@ def test_run154_governance_recovery_rejects_wrong_chain_head_pin(tmp_path: Path)
 
 def test_run154_governance_recovery_rejects_writer_credential_reuse(tmp_path: Path):
     _, governed, *_ = _transition_run(tmp_path / "source")
-    state = json.loads((governed / "trusted-governance-state.json").read_text())
+    state = json.loads((governed / "trusted-governance-state.json").read_text(encoding="utf-8"))
     defs = [(i, o, FakeGovernanceRecoverySource(i, o, governed)) for i, o in RECOVERY_SOURCES]
     defs[0][2].governance_writer_reused = True
     with pytest.raises(gov.GovernanceError, match="GOVERNANCE_SNAPSHOT_RECOVERY_SOURCE_AUTHORITY_INVALID"):
@@ -557,7 +550,7 @@ def test_run154_governance_recovery_rejects_writer_credential_reuse(tmp_path: Pa
 
 def test_run154_offline_bundle_recomputes_previous_governance_state_hash(tmp_path: Path):
     _, out, *_ = _transition_run(tmp_path)
-    bundle = json.loads((out / "release-governance-bundle.json").read_text())
+    bundle = json.loads((out / "release-governance-bundle.json").read_text(encoding="utf-8"))
     entry = bundle["entries"][0]
     entry["proposal"]["previousGovernanceStateSha256"] = "0" * 64
     entry["proposalSha256"] = hashlib.sha256(_canonical(entry["proposal"])).hexdigest()
