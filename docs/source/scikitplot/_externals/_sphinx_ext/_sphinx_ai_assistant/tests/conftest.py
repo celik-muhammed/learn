@@ -24,7 +24,9 @@ sphinx_app
 """
 from __future__ import annotations
 
+import ast
 import importlib.util
+import os
 import sys
 import types
 from pathlib import Path
@@ -32,6 +34,187 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+
+from ._paths import RUNTIME_ROOT
+
+# Recorded before anything below imports a service module; see
+# pytest_collection_finish at the end of this file.
+import logging as _logging
+
+_ROOT_LOGGING_AT_IMPORT: dict = {
+    "handlers": list(_logging.getLogger().handlers),
+    "level": _logging.getLogger().level,
+}
+_SERVICE_LOGGING: dict = {"handlers": [], "level": None}
+
+# ---------------------------------------------------------------------------
+# Deployment environment: the services under test never see the ambient one
+# ---------------------------------------------------------------------------
+#
+# DEVELOPER NOTES
+# The proxy and model applications are configured by environment variables,
+# and they read most of them once, when the module is imported. Test modules
+# import them while pytest collects. So whatever the shell or the CI job had
+# exported at that moment became the configuration of the service for every
+# test of the session.
+#
+# With nothing exported the tests pass: that is a pull request from a fork,
+# where GitHub provides no secrets. A push to ``main`` exported the
+# repository's real ``HF_TOKEN``; the Hugging Face executor then reported
+# itself ``enabled`` and ``test_model_capability_endpoint_is_on_demand_...``
+# failed. More important than the failure: 2 800 tests ran against a service
+# that held a live credential. A developer with ``HF_TOKEN`` in the shell is
+# in the same position.
+#
+# So before any service module can be imported, every variable those
+# services read by name is taken out of the process, and put back when the
+# session ends. A test that needs a value sets it, with ``monkeypatch`` or
+# in the environment it gives a child process; nothing is inherited.
+#
+# The names are read from the service sources, so a variable added to a
+# service is covered without anybody remembering to list it here.
+
+#: Directories, next to ``tests``, whose modules are deployed as services.
+_SERVICE_PACKAGES: tuple[str, ...] = ("_hf_spaces_proxy", "_hf_spaces_model")
+
+
+def _is_os_environ(node: ast.AST) -> bool:
+    """Return True for the expression ``os.environ``."""
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "environ"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "os"
+    )
+
+
+def _literal(node: ast.AST) -> str:
+    """Return the string a node spells out, or an empty string."""
+    if isinstance(node, ast.Index):  # Python 3.8 wraps a subscript
+        node = node.value  # type: ignore[attr-defined]
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return ""
+
+
+def _environment_names_read_by(source: str) -> set[str]:
+    """
+    Return the variable names a module reads from ``os.environ`` by literal.
+
+    Parameters
+    ----------
+    source : str
+        Python source text.
+
+    Returns
+    -------
+    set of str
+        Names in ``os.environ.get("X")``, ``os.environ["X"]``,
+        ``os.getenv("X")`` and the ``pop`` and ``setdefault`` forms. A name
+        computed at run time is not a literal and is not returned.
+    """
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        name = ""
+        if isinstance(node, ast.Call) and node.args and isinstance(node.func, ast.Attribute):
+            owner, method = node.func.value, node.func.attr
+            if (_is_os_environ(owner) and method in {"get", "pop", "setdefault"}) or (
+                isinstance(owner, ast.Name) and owner.id == "os" and method == "getenv"
+            ):
+                name = _literal(node.args[0])
+        elif isinstance(node, ast.Subscript) and _is_os_environ(node.value):
+            name = _literal(node.slice)
+        if name:
+            names.add(name)
+    return names
+
+
+def _service_environment_names(root: Path) -> frozenset[str]:
+    """
+    Return every variable name the service packages under ``root`` read.
+
+    Raises
+    ------
+    RuntimeError
+        If no name is found although service packages exist: the scan no
+        longer matches how the services read their configuration, and
+        running on would mean running unprotected.
+    """
+    names: set[str] = set()
+    scanned = 0
+    for package in _SERVICE_PACKAGES:
+        for path in sorted((root / package).rglob("*.py")):
+            scanned += 1
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if "environ" not in text and "getenv" not in text:
+                continue
+            try:
+                names |= _environment_names_read_by(text)
+            except (SyntaxError, ValueError):
+                # A file Python cannot parse cannot be imported either.
+                continue
+    if scanned and not names:
+        raise RuntimeError(
+            "no environment variable was found in the service sources under "
+            f"{root}; tests/conftest.py can no longer isolate them"
+        )
+    return frozenset(names)
+
+
+def _withhold_ambient_service_environment(names: frozenset[str]) -> dict[str, str]:
+    """
+    Remove ``names`` from the process environment and return what was there.
+
+    Raises
+    ------
+    RuntimeError
+        If a value was present and a service module is already imported: it
+        has read that value, and removing it now would hide the fact.
+    """
+    held = {name: os.environ[name] for name in sorted(names) if name in os.environ}
+    if held:
+        prefix = __name__.rsplit(".", 2)[0] + "."
+        loaded = sorted(
+            module
+            for module in sys.modules
+            if module.startswith(tuple(prefix + package for package in _SERVICE_PACKAGES))
+        )
+        if loaded:
+            raise RuntimeError(
+                f"{loaded[0]} was imported before the test environment was isolated, "
+                f"with {', '.join(held)} set; unset the variable(s) or run these "
+                "tests so that this conftest is loaded first"
+            )
+    for name in held:
+        del os.environ[name]
+    return held
+
+
+#: Every variable the services read by name.
+SERVICE_ENVIRONMENT: frozenset[str] = _service_environment_names(RUNTIME_ROOT)
+
+#: What the process held for those names when this file was imported. Names
+#: only are ever shown; the values are kept to be put back.
+_AMBIENT_SERVICE_ENVIRONMENT: dict[str, str] = _withhold_ambient_service_environment(
+    SERVICE_ENVIRONMENT
+)
+
+
+def pytest_report_header(config: Any) -> "str | None":
+    """Say which ambient variables the service tests do not see."""
+    if not _AMBIENT_SERVICE_ENVIRONMENT:
+        return None
+    return (
+        "sphinx-ai-assistant tests: withheld from the services under test: "
+        + ", ".join(_AMBIENT_SERVICE_ENVIRONMENT)
+    )
+
+
+def pytest_unconfigure(config: Any) -> None:
+    """Give the process back what was withheld, unless a test replaced it."""
+    while _AMBIENT_SERVICE_ENVIRONMENT:
+        name, value = _AMBIENT_SERVICE_ENVIRONMENT.popitem()
+        os.environ.setdefault(name, value)
 
 # ---------------------------------------------------------------------------
 # Bootstrap: make the submodule importable under its canonical dotted name
@@ -565,3 +748,146 @@ __all__ = [
     "_catalog_entries",
     "register_generated_markdown",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Root logging: the service configuration stays inside this package
+# ---------------------------------------------------------------------------
+
+
+def _held_service_handlers() -> list:
+    """Return the service handlers taken off the root logger after collection."""
+    return _SERVICE_LOGGING["handlers"]
+
+
+def pytest_collection_finish(session: Any) -> None:
+    """
+    Take the service's logging configuration off the root logger.
+
+    Notes
+    -----
+    **Developer notes.** The proxy and model applications configure logging
+    for a service when they are imported: they replace the root logger's
+    handlers with one whose filter rewrites URLs in a log record *in place*,
+    and lower the root level to ``INFO``. Test modules import them while
+    pytest collects, so by the time the first test of the whole session ran
+    that handler was on the root logger, and it stayed there for every test
+    in every package: a test anywhere that read a URL from a captured record
+    found ``<url-redacted>``.
+
+    Whatever was added to the root logger between the import of this file and
+    the end of collection is removed here and held, and the level is put
+    back. :func:`_service_logging_inside_this_package` installs it again for
+    the tests of this package only, so they run as they always have.
+    """
+    import logging
+
+    root = logging.getLogger()
+    before = _ROOT_LOGGING_AT_IMPORT
+    added = [handler for handler in root.handlers if handler not in before["handlers"]]
+    _SERVICE_LOGGING["handlers"] = added
+    _SERVICE_LOGGING["level"] = root.level
+    for handler in added:
+        root.removeHandler(handler)
+    root.setLevel(before["level"])
+
+
+@pytest.fixture(scope="package", autouse=True)
+def _service_logging_inside_this_package():
+    """Install the service's root handlers for this package's tests only."""
+    import logging
+
+    root = logging.getLogger()
+    outside_level = root.level
+    outside = list(root.handlers)
+    for handler in reversed(_held_service_handlers()):
+        if handler not in root.handlers:
+            root.handlers.insert(0, handler)
+    if _SERVICE_LOGGING["level"] is not None:
+        root.setLevel(_SERVICE_LOGGING["level"])
+    try:
+        yield
+    finally:
+        _remove_handlers_added_since(outside)
+        root.setLevel(outside_level)
+
+
+@pytest.fixture(autouse=True)
+def _root_logging_restored_after_each_test():
+    """
+    Undo any root-logger change a test makes, after that test.
+
+    Notes
+    -----
+    **Developer notes.** Some code under test configures the root logger as a
+    side effect: ``deduplicate_dataset.main()`` installs CLI handlers, and
+    importing a service app replaces the handlers outright. Inside a test that
+    change outlived the test, so the next test on the same xdist worker ran
+    with the wrong handlers; ``test_root_logging_isolation`` failed whenever
+    the scheduler put it after ``test_deduplicate_dataset`` or
+    ``test_bounded_remote_response``. Each test now starts from, and leaves,
+    the root logger it was given.
+    """
+    import logging
+
+    root = logging.getLogger()
+    handlers = list(root.handlers)
+    level = root.level
+    try:
+        yield
+    finally:
+        _restore_root_logging(handlers, level)
+
+
+def _restore_root_logging(handlers: list, level: int) -> None:
+    """
+    Put the root logger back to *handlers* and *level*.
+
+    Parameters
+    ----------
+    handlers : list of logging.Handler
+        The root handlers to restore, in order.
+    level : int
+        The root level to restore.
+
+    Notes
+    -----
+    pytest's own capture handlers come and go around each test phase and are
+    left alone.
+    """
+    import logging
+
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        ours = type(handler).__module__.startswith("_pytest.")
+        if handler not in handlers and not ours:
+            root.removeHandler(handler)
+    for index, handler in enumerate(handlers):
+        if handler not in root.handlers:
+            root.handlers.insert(min(index, len(root.handlers)), handler)
+    root.setLevel(level)
+
+
+def _remove_handlers_added_since(outside: list) -> None:
+    """
+    Remove root handlers that are neither in ``outside`` nor pytest's own.
+
+    Parameters
+    ----------
+    outside : list of logging.Handler
+        The root logger's handlers before this package's tests ran.
+
+    Notes
+    -----
+    **Developer notes.** A test here may configure service logging again, so
+    the handlers to remove are not only the ones held after collection.
+    pytest attaches and detaches its own capture handlers around every test
+    phase; those are recognised by their module and left for pytest.
+    """
+    import logging
+
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        ours = type(handler).__module__.startswith("_pytest.")
+        if handler not in outside and not ours:
+            root.removeHandler(handler)

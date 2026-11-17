@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ..._paths import RUNTIME_ROOT
 
 import base64
-import importlib.util
 import json
 import sys
 from datetime import timedelta
@@ -18,20 +17,11 @@ ROOT = RUNTIME_ROOT
 SEC = ROOT / "_hf_spaces_proxy" / "security"
 
 
-def _load(name, path):
-    s = importlib.util.spec_from_file_location(name, path)
-    assert s and s.loader
-    m = importlib.util.module_from_spec(s)
-    sys.modules[name] = m
-    s.loader.exec_module(m)
-    return m
 
 
-anchor = _load("run163_anchor", SEC / "anchor_archive_health.py")
-r162t = _load(
-    "run162_helpers_for_run163",
-    HERE / "test_witness_archive_health.py",
-)
+from ...._hf_spaces_proxy.security import anchor_archive_health as anchor
+from . import test_witness_archive_health as r162t
+from . import _stages
 NOW = r162t.NOW
 
 
@@ -153,7 +143,7 @@ class Observer:
 
 
 def _anchored(tmp, plan_mut=None, channel_mut=None, previous=None, at=NOW):
-    r, wr, wrp, wrpin, wprivs, wout, _ = r162t._witnessed(tmp / "r162")
+    r, wr, wrp, wrpin, wprivs, wout, _ = _stages.shared("run162", r162t._witnessed, tmp / "r162")
     plan, pp, cpriv, opriv = _plan(tmp, wr, wprivs, plan_mut)
     adapters = []
     for cid, cfg in plan["signed"]["channels"].items():
@@ -287,7 +277,7 @@ def test_run163_anchor_output_is_create_only(tmp_path):
 
 def test_run163_duplicate_json_keys_rejected(tmp_path):
     p = tmp_path / "d.json"
-    p.write_text('{"x":1,"x":2}\n')
+    p.write_text('{"x":1,"x":2}\n', encoding="utf-8")
     with pytest.raises(anchor.ArchiveAnchorError, match="DUPLICATE_KEY"):
         anchor._read_json(p, "DUP")
 
@@ -389,7 +379,7 @@ def _recover(tmp, subject_mut=None, new_mut=None):
         _write(np, new)
         npin = anchor._sha_bytes(_canonical(new))
     state = json.loads(
-        (aout / "trusted-archive-anchor-state.json").read_text()
+        (aout / "trusted-archive-anchor-state.json").read_text(encoding="utf-8")
     )
     sel = rr["signed"]["selectedSignerKeyIds"]
     sub = {
@@ -457,7 +447,7 @@ def test_run163_recovery_offline_verify(tmp_path):
 
 def test_run163_recovery_receipt_mutation_detected(tmp_path):
     _, wrp, wrpin, _, rrp, rrpin, _, _, out, aout, res = _recover(tmp_path)
-    d = json.loads((out / "archive-witness-root-recovery-receipt.json").read_text())
+    d = json.loads((out / "archive-witness-root-recovery-receipt.json").read_text(encoding="utf-8"))
     d["rewrittenAnchorEpochs"] = [1]
     _write(out / "archive-witness-root-recovery-receipt.json", d)
     with pytest.raises(anchor.ArchiveAnchorError, match="RECEIPT_MISMATCH"):
@@ -475,7 +465,7 @@ def test_run163_recovery_receipt_mutation_detected(tmp_path):
 
 def test_run163_command_adapter_bounds_output(tmp_path, monkeypatch):
     p = tmp_path / "noisy.py"
-    p.write_text("import sys;sys.stdout.write('x'*(9*1024*1024))")
+    p.write_text("import sys;sys.stdout.write('x'*(9*1024*1024))", encoding="utf-8")
     real_popen = anchor.subprocess.Popen
     seen = {}
 
@@ -496,8 +486,8 @@ def test_run163_command_adapter_bounds_output(tmp_path, monkeypatch):
 
 
 def test_run163_documentation_mentions_external_anchor_and_recovery():
-    g = (SEC / "RELEASE_ARCHIVE_ANCHOR_GUIDE.md").read_text().lower()
-    s = (SEC / "SECURITY_RELEASE_GATES.md").read_text()
+    g = (SEC / "RELEASE_ARCHIVE_ANCHOR_GUIDE.md").read_text(encoding="utf-8").lower()
+    s = (SEC / "SECURITY_RELEASE_GATES.md").read_text(encoding="utf-8")
     for x in ("append-only", "split view", "observer", "witness root recovery", "anchored epochs"):
         assert x in g
     assert "Run 163" in s
@@ -506,9 +496,9 @@ def test_run163_anchor_advances_exactly_with_run162_epoch(tmp_path):
     r, wr, wrp, wrpin, wprivs, wout, plan, pp, cpriv, opriv, aout, _ = _anchored(
         tmp_path / "first"
     )
-    state = json.loads((r["out"] / "trusted-archive-health-state.json").read_text())
+    state = json.loads((r["out"] / "trusted-archive-health-state.json").read_text(encoding="utf-8"))
     receipt = json.loads(
-        (r["run160"] / "release-native-evidence-archive-receipt.json").read_text()
+        (r["run160"] / "release-native-evidence-archive-receipt.json").read_text(encoding="utf-8")
     )
     later = NOW + timedelta(minutes=5)
     mp2, _ = r162t.r161t._membership(
@@ -592,7 +582,7 @@ def test_run163_anchor_advances_exactly_with_run162_epoch(tmp_path):
         now=later,
     )
     assert res2["sequence"] == 2
-    b = json.loads((out2 / "release-archive-anchor-bundle.json").read_text())
+    b = json.loads((out2 / "release-archive-anchor-bundle.json").read_text(encoding="utf-8"))
     assert [e["run162WitnessSequence"] for e in b["events"]] == [1, 2]
     assert (
         b["events"][0]["run162WitnessChainHeadSha256"]

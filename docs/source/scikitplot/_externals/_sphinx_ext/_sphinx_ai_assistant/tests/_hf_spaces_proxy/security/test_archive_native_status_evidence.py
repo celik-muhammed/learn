@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ..._paths import RUNTIME_ROOT
 
 import base64
 from datetime import timedelta
-import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -16,17 +15,11 @@ ROOT = RUNTIME_ROOT
 SECURITY = ROOT / "_hf_spaces_proxy" / "security"
 
 
-def _load(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
 
 
-archive = _load("run160_native_archive", SECURITY / "archive_native_status_evidence.py")
-run159 = _load("run159_helpers_for_run160", HERE / "test_verify_native_status_provenance.py")
+from ...._hf_spaces_proxy.security import archive_native_status_evidence as archive
+from . import test_verify_native_status_provenance as run159
+from . import _stages
 NOW = run159.NOW
 
 
@@ -145,7 +138,7 @@ class RecoverySource:
 
 
 def _native(tmp_path: Path):
-    setup, _, native_dir, *_ = run159._init_native(tmp_path / "run159")
+    setup, _, native_dir, *_ = _stages.shared("run159", run159._init_native, tmp_path / "run159")
     return setup, native_dir
 
 
@@ -184,7 +177,7 @@ def test_run160_preserves_and_offline_verifies_complete_run159_output(tmp_path: 
 
 def test_run160_archive_embeds_exact_run159_canonical_documents(tmp_path: Path):
     _, native_dir, out, _, _ = _preserved(tmp_path)
-    payload = json.loads((out / "release-native-evidence-archive.json").read_text())
+    payload = json.loads((out / "release-native-evidence-archive.json").read_text(encoding="utf-8"))
     embedded = payload["nativeStatus"]["output"]
     for name in archive._NATIVE_NAMES:
         assert archive._canonical(embedded[name]) == (native_dir/name).read_bytes()
@@ -192,7 +185,7 @@ def test_run160_archive_embeds_exact_run159_canonical_documents(tmp_path: Path):
 
 def test_run160_source_inventory_rebinds_raw_der_hashes(tmp_path: Path):
     _, _, out, _, _ = _preserved(tmp_path)
-    payload = json.loads((out / "release-native-evidence-archive.json").read_text())
+    payload = json.loads((out / "release-native-evidence-archive.json").read_text(encoding="utf-8"))
     assert {x["type"] for x in payload["sourceInventory"]} >= {"crl", "ocsp"}
     assert {x["type"] for x in payload["sourceInventory"]} >= {"crl", "ocsp"}
     assert all(len(x["sha256"]) == 64 and x["size"] > 0 for x in payload["sourceInventory"])
@@ -372,7 +365,7 @@ def test_run160_archive_payload_and_state_are_deterministic(tmp_path: Path):
 def test_run160_archive_offline_verifier_detects_embedded_run159_mutation(tmp_path: Path):
     setup, _, out, _, _ = _preserved(tmp_path)
     p = out / "release-native-evidence-archive.json"
-    doc = json.loads(p.read_text())
+    doc = json.loads(p.read_text(encoding="utf-8"))
     doc["nativeStatus"]["output"]["active-native-status-evidence.json"]["nativeStatusChainHeadSha256"] = "0" * 64
     p.write_bytes(_canonical(doc))
     with pytest.raises(archive.NativeArchiveError):
@@ -389,7 +382,7 @@ def test_run160_archive_offline_verifier_detects_embedded_run159_mutation(tmp_pa
 def test_run160_archive_offline_verifier_detects_receipt_mutation(tmp_path: Path):
     setup, _, out, _, _ = _preserved(tmp_path)
     p = out / "release-native-evidence-archive-receipt.json"
-    doc = json.loads(p.read_text())
+    doc = json.loads(p.read_text(encoding="utf-8"))
     doc["archiveCount"] = 99
     p.write_bytes(_canonical(doc))
     with pytest.raises(archive.NativeArchiveError, match="RECEIPT"):
@@ -534,7 +527,7 @@ def test_run160_recovery_rejects_duplicate_locator_sources(tmp_path: Path):
 
 
 def test_run160_duplicate_json_keys_are_rejected(tmp_path: Path):
-    p = tmp_path / "dup.json"; p.write_text('{"a":1,"a":2}\n')
+    p = tmp_path / "dup.json"; p.write_text('{"a":1,"a":2}\n', encoding="utf-8")
     with pytest.raises(archive.NativeArchiveError, match="DUPLICATE_KEY"):
         archive._read_json(p, "RUN160_DUP")
 
@@ -546,14 +539,14 @@ def test_run160_persistent_output_contains_no_local_paths_or_private_key_markers
 
 
 def test_run160_documentation_describes_replication_verifier_diversity_and_recovery():
-    guide = (SECURITY / "RELEASE_NATIVE_ARCHIVE_GUIDE.md").read_text(); gates = (SECURITY / "SECURITY_RELEASE_GATES.md").read_text()
+    guide = (SECURITY / "RELEASE_NATIVE_ARCHIVE_GUIDE.md").read_text(encoding="utf-8"); gates = (SECURITY / "SECURITY_RELEASE_GATES.md").read_text(encoding="utf-8")
     assert "Run 160" in guide and "immutable" in guide.lower() and "independent" in guide.lower() and "recovery" in guide.lower() and "equivocation" in guide.lower()
     assert "Run 160" in gates and "native" in gates.lower() and "archive" in gates.lower()
 
 
 def test_run160_receipt_replays_exact_preserved_adapter_results(tmp_path: Path):
     setup, _, out, _, _ = _preserved(tmp_path)
-    p = out / "release-native-evidence-archive-receipt.json"; doc = json.loads(p.read_text())
+    p = out / "release-native-evidence-archive-receipt.json"; doc = json.loads(p.read_text(encoding="utf-8"))
     doc["archives"][0]["bindResult"]["guarantees"]["remoteReadbackVerified"] = False
     p.write_bytes(_canonical(doc))
     with pytest.raises(archive.NativeArchiveError, match="RESULT_REBIND|GUARANTEES"):
@@ -573,7 +566,7 @@ def test_run160_create_only_retry_accepts_present_only_for_same_artifact(tmp_pat
         archive.preserve_native_status(native_dir=native_dir, output_dir=out, expected_bootstrap_root_sha256=setup["pin"], expected_recovery_root_sha256=setup["rr_pin"], expected_attestation_root_sha256=[setup["ca_pin"]], targets=_targets(store), now=NOW)
         outs.append(out)
     assert (outs[0] / "release-native-evidence-archive.json").read_bytes() == (outs[1] / "release-native-evidence-archive.json").read_bytes()
-    receipt = json.loads((outs[1] / "release-native-evidence-archive-receipt.json").read_text())
+    receipt = json.loads((outs[1] / "release-native-evidence-archive-receipt.json").read_text(encoding="utf-8"))
     assert all(x["bindResult"]["status"] == "present" for x in receipt["archives"])
 
 
@@ -600,7 +593,7 @@ def test_run160_command_adapter_bounds_output_while_produced(tmp_path: Path, mon
         "#!/usr/bin/env python3\n"
         "import sys\n"
         "sys.stdin.buffer.read()\n"
-        "sys.stdout.buffer.write(b'x' * 4096)\n"
+        "sys.stdout.buffer.write(b'x' * 4096)\n", encoding="utf-8"
     )
     script.chmod(0o755)
     real_popen = archive.subprocess.Popen

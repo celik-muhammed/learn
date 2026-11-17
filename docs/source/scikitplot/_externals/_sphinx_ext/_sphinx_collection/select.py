@@ -42,7 +42,8 @@ back to source order, so the same input always renders byte-identically.
 
 from __future__ import annotations
 
-import datetime as _dt
+import datetime as dt
+import math
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -152,7 +153,7 @@ def get_field(record: Mapping[str, Any], path: str) -> Any:
 _ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?")
 
 
-def _as_date(value: Any) -> _dt.datetime | None:
+def _as_date(value: Any) -> dt.datetime | None:
     """
     Interpret a value as a datetime, if it unambiguously is one.
 
@@ -167,24 +168,24 @@ def _as_date(value: Any) -> _dt.datetime | None:
         A naive-UTC-normalised datetime, or ``None`` if the value is not an
         unambiguous date.
     """
-    if isinstance(value, _dt.datetime):
+    if isinstance(value, dt.datetime):
         return (
             value.replace(tzinfo=None)
             if value.tzinfo is None
-            else (value.astimezone(_dt.timezone.utc).replace(tzinfo=None))
+            else (value.astimezone(dt.timezone.utc).replace(tzinfo=None))
         )
-    if isinstance(value, _dt.date):
-        return _dt.datetime(value.year, value.month, value.day)
+    if isinstance(value, dt.date):
+        return dt.datetime(value.year, value.month, value.day)
     if isinstance(value, str) and _ISO_RE.match(value.strip()):
         text = value.strip().replace(" ", "T")
         if text.endswith(("Z", "z")):
             text = text[:-1] + "+00:00"
         try:
-            parsed = _dt.datetime.fromisoformat(text)
+            parsed = dt.datetime.fromisoformat(text)
         except ValueError:
             return None
         if parsed.tzinfo is not None:
-            return parsed.astimezone(_dt.timezone.utc).replace(tzinfo=None)
+            return parsed.astimezone(dt.timezone.utc).replace(tzinfo=None)
         return parsed
     return None
 
@@ -206,13 +207,16 @@ def _as_number(value: Any) -> float | None:
     """
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
+    if isinstance(value, (int, float, str)):
         try:
-            return float(value.strip())
-        except ValueError:
+            number = float(value.strip() if isinstance(value, str) else value)
+        except (ValueError, OverflowError):
             return None
+        # NaN compares false with everything, itself included, so one NaN in
+        # a column makes the sort depend on input order; infinity is not a
+        # quantity a record can hold. Neither is a number here, which also
+        # keeps the words "nan" and "inf" text.
+        return number if math.isfinite(number) else None
     return None
 
 
@@ -344,7 +348,14 @@ def _compare(value: Any, operand: str) -> int | None:
         left, right = coerce(value), coerce(operand)
         if left is not None and right is not None:
             return (left > right) - (left < right)
-    left_text, right_text = str(value).casefold(), operand.casefold()
+        if right is not None:
+            # The filter names a number or a date and this value is neither.
+            return None
+    if not isinstance(value, str):
+        # A list, a mapping, a boolean or a number against a word: comparing
+        # their text would give an answer that means nothing.
+        return None
+    left_text, right_text = value.casefold(), operand.casefold()
     return (left_text > right_text) - (left_text < right_text)
 
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from scikitplot._externals._sphinx_ext._sphinx_ai_assistant.tests._paths import RUNTIME_ROOT
+from ..._paths import RUNTIME_ROOT
 
 import base64
 from datetime import datetime, timedelta, timezone
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 
@@ -18,16 +17,10 @@ ROOT = RUNTIME_ROOT
 SECURITY = ROOT / "_hf_spaces_proxy" / "security"
 
 
-def _load(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
 
 
-trust = _load("run156_trust", SECURITY / "maintain_release_trust.py")
-run155 = _load("run156_run155_fixture", HERE / "test_seal_release_governance.py")
+from ...._hf_spaces_proxy.security import maintain_release_trust as trust
+from . import test_seal_release_governance as run155
 NOW = run155.NOW
 
 SNAPSHOT_MEMBERS = [
@@ -82,7 +75,7 @@ def _sha(path: Path) -> str:
 def _base(tmp_path: Path):
     result, sealed, _candidate, root_envelope, root_private, _sigs = run155._seal(tmp_path / "run155")
     assert result["ok"] is True
-    bundle = json.loads((sealed / "release-root-bundle.json").read_text())
+    bundle = json.loads((sealed / "release-root-bundle.json").read_text(encoding="utf-8"))
     return sealed, bundle["bootstrapRootSha256"], root_envelope, root_private
 
 
@@ -370,7 +363,7 @@ def test_run156_previous_state_rejects_metadata_version_skip(tmp_path: Path):
 
 def test_run156_chain_rejects_previous_bundle_mutation(tmp_path: Path):
     _, out, *_ = _refresh(tmp_path)
-    doc = json.loads((out / "release-delegated-metadata-bundle.json").read_text())
+    doc = json.loads((out / "release-delegated-metadata-bundle.json").read_text(encoding="utf-8"))
     doc["entries"][0]["chainHeadSha256"] = "0" * 64
     _write(out / "release-delegated-metadata-bundle.json", doc)
     with pytest.raises(
@@ -394,7 +387,7 @@ def test_run156_refresh_is_deterministic_for_identical_inputs(tmp_path: Path):
 
 def test_run156_verify_detects_receipt_mutation(tmp_path: Path):
     _, out, sealed, pin, *_ = _refresh(tmp_path)
-    doc = json.loads((out / "release-delegated-metadata-receipt.json").read_text())
+    doc = json.loads((out / "release-delegated-metadata-receipt.json").read_text(encoding="utf-8"))
     doc["sequence"] = 99
     _write(out / "release-delegated-metadata-receipt.json", doc)
     with pytest.raises(trust.DelegatedTrustError, match="DELEGATED_VERIFY_RECEIPT_REBIND_FAILED"):
@@ -402,7 +395,7 @@ def test_run156_verify_detects_receipt_mutation(tmp_path: Path):
 
 
 def test_run156_duplicate_json_keys_are_rejected(tmp_path: Path):
-    p = tmp_path/"bad.json"; p.write_text('{"a":1,"a":2}\n')
+    p = tmp_path/"bad.json"; p.write_text('{"a":1,"a":2}\n', encoding="utf-8")
     with pytest.raises(trust.DelegatedTrustError, match="DUPLICATE_KEY"):
         trust._read(p, "TEST")
 
@@ -471,7 +464,7 @@ def test_run156_recovery_output_is_deterministic(tmp_path: Path):
 
 def test_run156_offline_recovery_verifier_detects_signature_mutation(tmp_path: Path):
     _, out, sealed, pin, rrpin = _recover(tmp_path)
-    doc = json.loads((out / "release-root-recovery-record.json").read_text())
+    doc = json.loads((out / "release-root-recovery-record.json").read_text(encoding="utf-8"))
     doc["signatures"][0]["signature"] = "A" * 88
     _write(out / "release-root-recovery-record.json", doc)
     with pytest.raises(trust.DelegatedTrustError):
@@ -486,7 +479,7 @@ def test_run156_offline_recovery_verifier_detects_signature_mutation(tmp_path: P
 
 def test_run156_outputs_contain_no_private_key_material(tmp_path: Path):
     _, out, *_ = _recover(tmp_path)
-    text = "\n".join(p.read_text() for p in out.iterdir())
+    text = "\n".join(p.read_text(encoding="utf-8") for p in out.iterdir())
     for needle in ("privateKey", "private key", "seed", "hsmHandle", "secretKey"):
         assert needle.lower() not in text.lower()
 
@@ -506,8 +499,8 @@ def test_run156_same_delegation_version_cannot_change_bytes(tmp_path: Path):
 
 def test_run156_previous_root_history_fork_is_rejected(tmp_path: Path):
     _, previous_out, *_ = _refresh(tmp_path / "first")
-    bundle = json.loads((previous_out / "release-delegated-metadata-bundle.json").read_text())
-    state = json.loads((previous_out / "trusted-delegated-metadata-state.json").read_text())
+    bundle = json.loads((previous_out / "release-delegated-metadata-bundle.json").read_text(encoding="utf-8"))
+    state = json.loads((previous_out / "trusted-delegated-metadata-state.json").read_text(encoding="utf-8"))
     entry = bundle["entries"][0]
     entry["effectiveRoot"]["sha256"] = "f" * 64
     body = {k: v for k, v in entry.items() if k != "chainHeadSha256"}
@@ -606,8 +599,8 @@ def test_run156_historical_recovery_verification_survives_later_expiry(tmp_path:
 
 
 def test_run156_documentation_describes_delegation_and_recovery():
-    guide = (SECURITY / "RELEASE_DELEGATED_TRUST_GUIDE.md").read_text()
-    gates = (SECURITY / "SECURITY_RELEASE_GATES.md").read_text()
+    guide = (SECURITY / "RELEASE_DELEGATED_TRUST_GUIDE.md").read_text(encoding="utf-8")
+    gates = (SECURITY / "SECURITY_RELEASE_GATES.md").read_text(encoding="utf-8")
     for needle in (
         "Run 156", "snapshot", "timestamp", "recovery root", "multi-channel",
         "Ed25519", "rollback", "freeze",

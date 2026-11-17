@@ -14,7 +14,7 @@ Skill Resource
    or security advice against current official documentation before relying on it.
 
 -----------------------------------
-Claude Skills (Official)
+Claude & AI Provider Skills
 -----------------------------------
 
 Hugging Face Skills
@@ -23,10 +23,6 @@ Hugging Face Skills
 * `Hugging Face Skills
   <https://github.com/huggingface/skills>`_
   by github.com/huggingface
-
------------------------------------
-Claude Skills (Official)
------------------------------------
 
 Claude Skills Overview
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -56,6 +52,17 @@ Claude Skills Hub
 * `Skill Creator
   <https://claude.com/plugins/skill-creator>`_
   by Claude
+
+OpenAI & LangChain Skill Integrations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `OpenAI Custom Tools & Function Calling Guide
+  <https://platform.openai.com/docs/guides/function-calling>`_
+  by OpenAI
+
+* `LangChain Tool Definition & Custom Skills Guide
+  <https://python.langchain.com/docs/how_to/custom_tools/>`_
+  by LangChain
 
 -----------------------------------
 Skill Generators & Tools

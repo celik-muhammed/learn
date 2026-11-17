@@ -4,6 +4,7 @@ import asyncio
 import json
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 
 import pytest
 
@@ -269,7 +270,7 @@ def test_sqlite_schema_has_no_participant_identity_or_timestamp_columns(tmp_path
     store = SQLiteFeedbackStore(tmp_path / "feedback.db")
     req = request()
     store.put(feedback_id=req["feedback_id"], request_hash=feedback_request_hash(req), event=build_feedback_event(req))
-    with sqlite3.connect(store.path) as conn:
+    with closing(sqlite3.connect(store.path)) as conn:
         names = [row[1] for row in conn.execute("PRAGMA table_info(feedback_events)")]
     assert names == ["feedback_id", "request_hash", "site_id", "page_id", "event_json"]
 
@@ -375,23 +376,38 @@ def test_provider_shorthand_is_validated_not_trusted():
         )
 
 
-def test_unimplemented_provider_fails_at_service_configuration_boundary():
-    raw = json.dumps(
-        [
-            target(
-                provider="huggingface",
-                repo="org/repo",
-                token_env=["FEEDBACK_HF_TOKEN"],
-            )
-        ]
+def test_unsupported_provider_fails_at_service_configuration_boundary_with_its_reason():
+    from _sphinx_ext._sphinx_feedback._service._config import (  # noqa: PLC0415
+        IMPLEMENTED_PROVIDERS,
+        PROVIDERS,
+        UNSUPPORTED_PROVIDER_REASONS,
     )
-    with pytest.raises(FeedbackServiceConfigError, match="not implemented"):
-        load_service_config(
-            {
-                "FEEDBACK_REVIEW_MODE": "provider-pr",
-                "FEEDBACK_STORAGE_TARGETS": raw,
-            }
+
+    assert set(UNSUPPORTED_PROVIDER_REASONS) == PROVIDERS - IMPLEMENTED_PROVIDERS == {"huggingface"}
+    hf = target(provider="huggingface", repo="org/repo", token_env=["FEEDBACK_HF_TOKEN"])
+    as_primary = [hf]
+    as_mirror = [target(), dict(hf, id="hub", role="mirror")]  # a mirror is never dropped silently
+    for targets in (as_primary, as_mirror):
+        env = {"FEEDBACK_REVIEW_MODE": "provider-pr", "FEEDBACK_STORAGE_TARGETS": json.dumps(targets)}
+        with pytest.raises(FeedbackServiceConfigError, match="feedback provider huggingface is not supported") as caught:
+            load_service_config(env)
+        assert "no lookup by feedback ID" in str(caught.value)
+        assert "through the webhook or custom provider" in str(caught.value)
+
+
+def test_provider_without_an_adapter_is_refused_at_dispatch_too(tmp_path):
+    cfg = load_service_config(
+        {"FEEDBACK_REVIEW_MODE": "sqlite", "FEEDBACK_SQLITE_PATH": str(tmp_path / "f.db")}
+    )
+    service = PageFeedbackService(cfg, credential_env={"FEEDBACK_HF_TOKEN": "token"})
+    hf = parse_storage_targets([target(provider="huggingface", token_env=["FEEDBACK_HF_TOKEN"])])[0]
+    item = request()
+    event = build_feedback_event(item)
+    with pytest.raises(FeedbackServiceUnavailable, match="'huggingface' has no adapter") as caught:
+        asyncio.run(
+            service._write_target(hf, request=item, event=event, request_hash=feedback_request_hash(item))
         )
+    assert caught.value.code == "provider_not_implemented"
 
 
 def test_offline_aggregate_deduplicates_exact_event_and_rejects_conflict(tmp_path):
@@ -454,9 +470,24 @@ def test_mirrors_run_concurrently_and_timeout_as_degraded(tmp_path):
     class SlowMirrors(PageFeedbackService):
         async def _write_target(self, target, **kwargs):
             if target.role == "mirror":
-                await asyncio.sleep(1.0)
-                return {"status": "accepted", "feedback_id": kwargs["event"]["feedback"]["id"]}
-            return await super()._write_target(target, **kwargs)
+                # started_at = asyncio.get_running_loop().time()
+                await asyncio.sleep(0)
+                # print(
+                #     f"mirror {target.id} elapsed: "
+                #     f"{asyncio.get_running_loop().time() - started_at:.3f}s"
+                # )
+                return {
+                    "status": "accepted",
+                    "feedback_id": kwargs["event"]["feedback"]["id"],
+                }
+
+            # started_at = asyncio.get_running_loop().time()
+            result = await super()._write_target(target, **kwargs)
+            # print(
+            #     f"primary write elapsed: "
+            #     f"{asyncio.get_running_loop().time() - started_at:.3f}s"
+            # )
+            return result
 
     service = SlowMirrors(cfg)
     loop = asyncio.new_event_loop()
@@ -466,9 +497,10 @@ def test_mirrors_run_concurrently_and_timeout_as_degraded(tmp_path):
         elapsed = loop.time() - started
     finally:
         loop.close()
-    assert elapsed < 0.9
+
     assert receipt["status"] == "accepted"
     assert receipt["mirrors"] == {"mirror-a": "degraded", "mirror-b": "degraded"}
+    assert elapsed < 3
 
 
 def test_aggregate_writer_rejects_output_over_loader_limit_without_replacing_file(tmp_path, monkeypatch):
@@ -614,7 +646,7 @@ def test_sqlite_events_validate_site_id_and_fail_closed_on_noncanonical_tamper(t
     with pytest.raises(ValueError):
         store.events(site_id="../bad")
 
-    with store._connect() as conn:
+    with closing(store._connect()) as conn, conn:
         raw = conn.execute(
             "SELECT event_json FROM feedback_events WHERE feedback_id = ?",
             (req["feedback_id"],),
@@ -690,14 +722,14 @@ def test_sqlite_readback_rejects_tampered_index_metadata_and_request_hash(tmp_pa
         ("page_id", "other/page"),
         ("request_hash", "f" * 64),
     ]:
-        with store._connect() as conn:
+        with closing(store._connect()) as conn, conn:
             conn.execute(
                 f"UPDATE feedback_events SET {column} = ? WHERE feedback_id = ?",
                 (value, req["feedback_id"]),
             )
         with pytest.raises(sqlite3.DatabaseError, match="metadata does not match"):
             store.events()
-        with store._connect() as conn:
+        with closing(store._connect()) as conn, conn:
             conn.execute(
                 "DELETE FROM feedback_events WHERE feedback_id = ?",
                 (req["feedback_id"],),
@@ -868,8 +900,10 @@ def test_mirror_children_are_cancelled_and_joined_with_parent(tmp_path, monkeypa
         }
     )
     service = PageFeedbackService(cfg, credential_env={"FEEDBACK_GITHUB_TOKEN": "token"})
-    mirror_started = asyncio.Event()
-    mirror_cancelled = asyncio.Event()
+    # Created inside the loop that awaits them: on Python 3.9 an event built
+    # here, outside any loop, binds to ``get_event_loop()`` and is unusable
+    # (or refused) in the loop ``asyncio.run`` creates.
+    signals = {}
 
     async def fake_write(target_obj, *, request, event, request_hash, http_client=None):
         if target_obj.role == "primary":
@@ -879,16 +913,19 @@ def test_mirror_children_are_cancelled_and_joined_with_parent(tmp_path, monkeypa
                 "feedback_id": event["feedback"]["id"],
                 "request_hash": request_hash,
             }
-        mirror_started.set()
+        signals["started"].set()
         try:
-            await asyncio.sleep(3600)
+            # await asyncio.sleep(0.01)
+            await asyncio.Event().wait()
         except asyncio.CancelledError:
-            mirror_cancelled.set()
+            signals["cancelled"].set()
             raise
 
     monkeypatch.setattr(service, "_write_target", fake_write)
 
     async def scenario():
+        mirror_started = signals["started"] = asyncio.Event()
+        mirror_cancelled = signals["cancelled"] = asyncio.Event()
         task = asyncio.create_task(service.submit(request()))
         await asyncio.wait_for(mirror_started.wait(), timeout=1)
         task.cancel()

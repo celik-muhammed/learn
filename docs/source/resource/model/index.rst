@@ -25,11 +25,43 @@ NumPy Fundamentals
   <https://numpy.org/learn/>`_
   by numpy.org
 
+Pandas
+^^^^^^
+
+* `Pandas User Guide & Cookbook
+  <https://pandas.pydata.org/docs/user_guide/cookbook.html>`_
+  by pandas.pydata.org
+
+* `Pandas Learn & Getting Started
+  <https://pandas.pydata.org/docs/getting_started/index.html>`_
+  by pandas.pydata.org
+
+Matplotlib
+^^^^^^^^^^
+
+* `Matplotlib Tutorials & Quick Start Guide
+  <https://matplotlib.org/stable/tutorials/index.html>`_
+  by matplotlib.org
+
+Matplotlib Examples & Gallery
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Matplotlib Example Gallery & Tutorials
+  <https://matplotlib.org/stable/gallery/index.html>`_
+  by matplotlib.org
+
 Scikit-learn
 ^^^^^^^^^^^^
 
 * `Scikit-learn User Guide
   <https://scikit-learn.org/stable/user_guide.html>`_
+  by scikit-learn.org
+
+Scikit-learn Examples
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Scikit-learn Model Examples & Gallery
+  <https://scikit-learn.org/stable/auto_examples/index.html>`_
   by scikit-learn.org
 
 .. _machine_gnostics:
@@ -130,12 +162,26 @@ PyTorch
   <https://pytorch.org/tutorials/>`_
   by pytorch.org
 
+PyTorch Tutorials
+^^^^^^^^^^^^^^^^^
+
+* `PyTorch Examples
+  <https://pytorch.org/tutorials/>`_
+  by pytorch.org
+
 TensorFlow
 ^^^^^^^^^^
 
 * `TensorFlow Tutorials
   <https://www.tensorflow.org/tutorials>`_
   by tensorflow.org
+
+Keras Code Examples
+^^^^^^^^^^^^^^^^^^^^^^
+
+* `Keras Code Examples Hub
+  <https://keras.io/examples/>`_
+  by keras.io
 
 JAX
 ^^^
@@ -157,6 +203,13 @@ Pre-trained models and tools for NLP tasks.
 
 * `Transformers Documentation
   <https://huggingface.co/docs/transformers>`_
+  by huggingface.co
+
+Hugging Face Transformers Examples
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Hugging Face Transformers Notebooks & Examples
+  <https://huggingface.co/docs/transformers/notebooks>`_
   by huggingface.co
 
 Hugging Face Learn
@@ -298,9 +351,62 @@ Claude Academy and Courses
 OpenAI
 ^^^^^^
 
-* Coming soon
+* `OpenAI Academy
+  <https://openai.com/en-EN/academy/>`_
+  by openai.com
+
+* `OpenAI Academy Courses
+  <https://academy.openai.com/pages/courses>`_
+  by academy.openai.com
+
+ChatGPT Documentation & Use Cases
+"""""""""""""""""""""""""""""""""
+
+* `ChatGPT Changelog
+  <https://learn.chatgpt.com/docs/changelog>`_
+  by learn.chatgpt.com
+
+* `ChatGPT Hooks Documentation
+  <https://learn.chatgpt.com/docs/hooks>`_
+  by learn.chatgpt.com
+
+* `ChatGPT Resources
+  <https://learn.chatgpt.com/resources>`_
+  by learn.chatgpt.com
+
+* `ChatGPT Use Cases
+  <https://learn.chatgpt.com/use-cases>`_
+  by learn.chatgpt.com
 
 Google
 ^^^^^^
 
-* Coming soon
+* `Google Gemini App
+  <https://gemini.google.com/app>`_
+  by gemini.google.com
+
+* `Google Notebook (NotebookLM)
+  <https://notebook.google/>`_
+  by notebook.google
+
+Google NotebookLM Tutorials & Guides
+""""""""""""""""""""""""""""""""""""
+
+* `Google NotebookLM Tutorial
+  <https://sites.google.com/view/notebook-lm/tutorial?authuser=0>`_
+  by Google Sites
+
+* `Google NotebookLM Guide on GeeksforGeeks
+  <https://www.geeksforgeeks.org/websites-apps/google-notebooklm/>`_
+  by geeksforgeeks.org
+
+* `Using Google NotebookLM for Data Science on KDnuggets
+  <https://www.kdnuggets.com/using-google-notebooklm-for-data-science-a-comprehensive-guide>`_
+  by kdnuggets.com
+
+Research & Academic Search
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Google Scholar
+  <https://scholar.google.com/>`_
+  by scholar.google.com

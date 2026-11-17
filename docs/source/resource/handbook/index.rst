@@ -14,7 +14,7 @@ Handbook
    or security advice against current official documentation before relying on it.
 
 -----------------------------------
-AI Handbook
+AI & LLM Handbooks
 -----------------------------------
 
 Claude Handbook
@@ -24,9 +24,46 @@ Claude Handbook
   <https://arxiv.org/pdf/2608.26742>`_
   by David Soldani
 
+AI Engineer Handbook & Guides
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `AI Engineer Handbook
+  <https://github.com/aiengineeralliance/ai-engineer-handbook>`_
+  by AI Engineer Alliance
+
+* `AI Engineer Handbook Resources & Books
+  <https://github.com/DataExpert-io/ai-engineer-handbook>`_
+  by DataExpert.io
+
+* `AI Handbook: Practical Notes on ML, LLMs, RAG, and Agents
+  <https://github.com/codebygk/ai-handbook>`_
+  by codebygk
+
+-----------------------------------
+Machine Learning & Data Science Handbooks
+-----------------------------------
+
+The Machine Learning Handbook
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `The Machine Learning Handbook Reference
+  <https://engr-rabbi.github.io/ml-handbook/>`_
+  by engr-rabbi.github.io
+
+Machine Learning Guide & Handbook
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Comprehensive Machine Learning Guide
+  <https://github.com/mikeroyal/Machine-Learning-Guide>`_
+  by mikeroyal
+
+-----------------------------------
+Company & Open-Source Handbooks
+-----------------------------------
+
 Ultralytics Handbook
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* `Ultralytics company handbook
+* `Ultralytics Company Handbook
   <https://github.com/ultralytics/handbook>`_
   by github.com/ultralytics

@@ -1,0 +1,31 @@
+import micropip; from itertools import combinations, product
+VERSIONS   = ["0.5.dev0", "0.4.0.post12"]
+WASM_TAGS = [
+    "pyemscripten",  # PyPI ✅ pyodide/v314.0.0 Emscripten-5.0.3-wasm32
+    "pyodide",       # PyPI ❌ pyodide/v0.29.4  Emscripten-4.0.9-wasm32
+]
+BUILD_TAGS = [
+    "cp314-cp314-{}_2026_0_wasm32",
+    "cp313-cp313-{}_2025_0_wasm32",
+    "cp312-cp312-{}_2024_0_wasm32",
+]
+BUILD_TAGS = [b.format(w) for w in WASM_TAGS for b in BUILD_TAGS]
+URL_TEMPLATE = (
+    # "https://anaconda.org/scikit-plots-wheels-staging-nightly/scikit-plots/{v}/download/"
+    "https://pypi.anaconda.org/scikit-plots-wheels-staging-nightly/simple/scikit-plots/{v}/"
+    "scikit_plots-{v}-{tag}.whl"
+)
+for v, tag in product(VERSIONS, BUILD_TAGS):
+    url = URL_TEMPLATE.format(v=v, tag=tag)
+    try:
+        await micropip.install(url, keep_going=True)
+        break  # success -> stop trying
+    except Exception as e:
+        print(f"install failed for {v} {tag}: {e}")
+else:
+    # Pure python runs only if the loop never hit 'break' (i.e., all installs failed)
+    await micropip.install("scikit-plots==0.3.9rc3", keep_going=True)
+import scikitplot as sp
+print("scikit-plots version:", sp.__version__)
+sp.show_versions()
+# https://pyodide.org/en/stable/usage/packages-in-pyodide.html#packages-in-pyodide
