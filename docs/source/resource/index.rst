@@ -67,6 +67,7 @@ Learning Resource External
    and may change. Use your judgment, and check important claims, code, and setup
    or security advice against current official documentation before relying on it.
 
+
 .. grid:: 1 1 1 1
 
     .. grid-item-card::
@@ -113,8 +114,43 @@ Learning Resource External
 
             Model Resource <./model/index.rst>
 
+.. grid:: 1 1 1 1
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **hands-on**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Hands-On Resource <./hands-on/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **checklist**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Checklist Resource <./checklist/index.rst>
+
 
 .. grid:: 1 1 1 1
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **horizons**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Curriculum Resource <./curriculum/index.rst>
 
     .. grid-item-card::
         :padding: 2
@@ -137,6 +173,9 @@ Learning Resource External
             :maxdepth: 2
 
             Research Resource <./research/index.rst>
+
+
+.. grid:: 1 1 1 1
 
     .. grid-item-card::
         :padding: 2
@@ -164,12 +203,34 @@ Learning Resource External
         :padding: 2
         :columns: 12 12 6 6
 
-        **hands-on**
+        **playbook**
         ^^^
         .. toctree::
             :maxdepth: 2
 
-            Hands-On Resource <./hands-on/index.rst>
+            Playbook Resource <./playbook/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **quickbook**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Quickbook Resource <./quickbook/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **runbook**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Runbook Resource <./runbook/index.rst>
 
 
 .. grid:: 1 1 1 1
@@ -195,3 +256,14 @@ Learning Resource External
             :maxdepth: 2
 
             Skills <./skill/index.rst>
+
+    .. grid-item-card::
+        :padding: 2
+        :columns: 12 12 6 6
+
+        **code-tool**
+        ^^^
+        .. toctree::
+            :maxdepth: 2
+
+            Code Tool <./code-tool/index.rst>
