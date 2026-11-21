@@ -1,19 +1,8 @@
-:orphan:
-..
-  # This file is included. So it needs to be marked as orphan to suppress warnings.
-  # https://www.sphinx-doc.org/en/master/usage/restructuredtext/field-lists.html#metadata
-  .. include:: dependencies.rst
-      :start-after: :orphan:
+.. _resource-quickbook-index:
 
-.. contents:: On this page
-   :local:
-   :depth: 2
-
-.. _401-specialized-index:
-
-============================
-401 Specialized (or Mastery)
-============================
+==========================
+Quickbook
+==========================
 
 .. important:: External resources: useful references, not endorsements
 
@@ -23,3 +12,5 @@
    affiliated with its creator. External material is maintained by its publisher
    and may change. Use your judgment, and check important claims, code, and setup
    or security advice against current official documentation before relying on it.
+
+https://github.com/LibreChat-AI/quickbooks-online-mcp

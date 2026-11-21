@@ -23,3 +23,36 @@
    affiliated with its creator. External material is maintained by its publisher
    and may change. Use your judgment, and check important claims, code, and setup
    or security advice against current official documentation before relying on it.
+
+-----------------------------------
+Peer-Reviewed Journals & Proceedings
+-----------------------------------
+
+Machine Learning Journals & Series
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Journal of Machine Learning Research (JMLR)
+  <https://www.jmlr.org/>`_
+  by JMLR
+
+* `Proceedings of Machine Learning Research (PMLR)
+  <https://proceedings.mlr.press/>`_
+  by PMLR
+
+Representation Learning & Conferences
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `International Conference on Learning Representations (ICLR)
+  <https://iclr.cc/>`_
+  by ICLR
+
+-----------------------------------
+Research Communication & Interpretability
+-----------------------------------
+
+Interactive & Visual ML Research
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Distill Archive: Clear Explanations in Machine Learning
+  <https://distill.pub/archive/>`_
+  by Distill
