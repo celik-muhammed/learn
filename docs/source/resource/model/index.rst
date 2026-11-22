@@ -1,4 +1,3 @@
-
 .. _resource-model-index:
 
 ==========================
@@ -55,14 +54,14 @@ Scikit-learn
 
 * `Scikit-learn User Guide
   <https://scikit-learn.org/stable/user_guide.html>`_
-  by scikit-learn.org
+  by scikit.learn.org
 
 Scikit-learn Examples
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 * `Scikit-learn Model Examples & Gallery
   <https://scikit-learn.org/stable/auto_examples/index.html>`_
-  by scikit-learn.org
+  by scikit.learn.org
 
 .. _machine_gnostics:
 
@@ -297,6 +296,71 @@ LlamaIndex
 * `LlamaIndex Documentation
   <https://docs.llamaindex.ai/>`_
   by llamaindex.ai
+
+DataRobot Agentic AI & GenAI
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `DataRobot Agentic Evaluation Tools
+  <https://docs.datarobot.com/en/docs/agentic-ai/agentic-eval/agentic-evaluation-tools.html>`_
+  by docs.datarobot.com
+
+* `DataRobot Agentic MCP
+  <https://docs.datarobot.com/en/docs/agentic-ai/agentic-mcp/index.html>`_
+  by docs.datarobot.com
+
+* `DataRobot Playground Tools
+  <https://docs.datarobot.com/en/docs/agentic-ai/playground-tools/index.html>`_
+  by docs.datarobot.com
+
+* `DataRobot GenAI Code
+  <https://docs.datarobot.com/en/docs/agentic-ai/genai-code/index.html>`_
+  by docs.datarobot.com
+
+* `DataRobot Agent Assist
+  <https://docs.datarobot.com/en/docs/agentic-ai/agent-assist/index.html>`_
+  by docs.datarobot.com
+
+---------------------------------------
+AI & Modeling Platforms (DataRobot)
+---------------------------------------
+
+DataRobot Documentation
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* `DataRobot Python client
+  <https://datarobot-public-api-client.readthedocs-hosted.com/en/latest-release/index.html>`_
+  by docs.datarobot.com
+
+* `DataRobot Classic UI
+  <https://docs.datarobot.com/en/docs/classic-ui/index.html>`_
+  by docs.datarobot.com
+
+* `DataRobot Analyze Models
+  <https://docs.datarobot.com/en/docs/classic-ui/modeling/analyze-models/index.html>`_
+  by docs.datarobot.com
+
+DataRobot Community Repositories
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `DataRobot Quickstart Guide (GitHub)
+  <https://github.com/datarobot-community/quickstart-guide>`_
+  by github.com/datarobot-community
+
+* `DataRobot Tutorials for Data Scientists (GitHub)
+  <https://github.com/datarobot-community/tutorials-for-data-scientists>`_
+  by github.com/datarobot-community
+
+* `DataRobot API Samples for Data Scientists (GitHub)
+  <https://github.com/datarobot-community/api-samples-for-data-scientists>`_
+  by github.com/datarobot-community
+
+* `DataRobot MLOps Guide (GitHub)
+  <https://github.com/datarobot-community/mlops-guide>`_
+  by github.com/datarobot-community
+
+* `DataRobot MLOps Guide: Data Drift (GitHub)
+  <https://github.com/datarobot-community/mlops-guide-data-drift>`_
+  by github.com/datarobot-community
 
 --------------------
 AI Provider Guides

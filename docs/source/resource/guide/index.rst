@@ -1,3 +1,15 @@
+.. 
+  :orphan:
+..
+  # This file is included. So it needs to be marked as orphan to suppress warnings.
+  # https://www.sphinx-doc.org/en/master/usage/restructuredtext/field-lists.html#metadata
+  .. include:: dependencies.rst
+      :start-after: :orphan:
+
+.. contents:: On this page
+   :local:
+   :depth: 2
+
 .. _resource-guide-index:
 
 ==========================
@@ -19,6 +31,10 @@ AI & Prompt Engineering Guides
 
 Claude Guide
 ^^^^^^^^^^^^^^^^^^^^^^
+
+* `Claude Code Complete Guide
+  <https://peter-whyte.com/2026/08/claude-code-complete-guide/>`_
+  by Peter Whyte
 
 * `Claude Code Ultimate Guide
   <https://cc.bruniaux.com/>`_
@@ -43,8 +59,49 @@ Google Gemini Prompting & Design
   by Google
 
 -----------------------------------
-AI Safety, Security & Governance Guidelines
+OS, Shell & Environment Guides
 -----------------------------------
+
+Windows & PowerShell Guides
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `PowerShell Complete Guide
+  <https://peter-whyte.com/2026/08/powershell-complete-guide/>`_
+  by Peter Whyte
+
+* `Windows Administration Complete Guide
+  <https://peter-whyte.com/2026/08/windows-administration-complete-guide/>`_
+  by Peter Whyte
+
+WSL Guides
+^^^^^^^^^^
+
+* `WSL Complete Guide
+  <https://peter-whyte.com/2026/08/wsl-complete-guide/>`_
+  by Peter Whyte
+
+* `Restart WSL
+  <https://peter-whyte.com/2022/08/restart-wsl/>`_
+  by Peter Whyte
+
+Linux on Android & Termux
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `Linux on Android via Termux (GitHub)
+  <https://github.com/mayukh4/linux-android>`_
+  (sets up a GPU-accelerated Linux desktop or Home Assistant environment on Android via Termux without root)
+  by mayukh4
+
+Blog & Technical Notes
+^^^^^^^^^^^^^^^^^^^^^^
+
+* `Peter Whyte Blog Posts
+  <https://peter-whyte.com/blog-posts/>`_
+  by Peter Whyte
+
+-------------------------------------------
+AI Safety, Security & Governance Guidelines
+-------------------------------------------
 
 OWASP Top 10 for LLMs
 ^^^^^^^^^^^^^^^^^^^^^
@@ -60,9 +117,9 @@ NIST AI Risk Management Framework
   <https://www.nist.gov/itl/ai-risk-management-framework>`_
   by National Institute of Standards and Technology
 
------------------------------------
+-------------------------------------
 Machine Learning Engineering Guidance
------------------------------------
+-------------------------------------
 
 Google Machine Learning Guides
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
