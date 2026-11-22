@@ -17,6 +17,13 @@ Checklist Resource
 Security & Engineering Checklists
 -----------------------------------
 
+PrivacyTests Checklists
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* `PrivacyTests Checklist
+  <https://privacytests.org/>`_
+  by privacytests.org
+
 CTO Security Checklists
 ^^^^^^^^^^^^^^^^^^^^^^^
 
